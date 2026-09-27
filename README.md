@@ -7,15 +7,21 @@ Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev
 1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
 2. Choose **Download port**, or **Choose checkout** for an existing port folder. Development runs detect a neighboring `sms-port/` automatically.
 3. Choose your own **North American Super Mario Sunshine GMSE01 Rev 0** `.iso`, `.gcm`, or Dolphin `.ciso` image. The launcher reads it in place and saves only its path in local preferences.
-4. Choose the settings you want, then **Build game** and **Play**.
+4. Use the main action on Home. It shows the next step: **Download port**, **Choose image**, **Install textures** (if HD textures are enabled), **Build & play**, or **Play game**. A build starts automatically when your selected game does not have one. **Rebuild** appears after a build exists.
 
 The Home screen keeps setup, build, play, widescreen, frame rate, and Eclipse controls visible without scrolling. **Settings** holds the remaining visual and build choices; **Maintenance** holds updates, cleanup, backups, and the activity log.
 
 The port build prerequisites still apply: see its `BUILD.md` (also available via **Build help**). Linux supports 64 and 32 bit builds; macOS supports x86_64 (Rosetta 2 on Apple Silicon); Windows supports MSYS2 MINGW32 32 bit. The launcher offers only supported choices. On Windows install MSYS2 at `C:\msys64`, or set `MSYS2_ROOT` to its location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
 
+Home shows the current task, elapsed time, and a progress bar. It uses the actual percentage when the port or Git reports one; downloads and unpacking show their current phase while the source tool does not report a percentage.
+
+## HD textures
+
+HD textures are optional and off for new users. Turn them on in **Settings → Visuals**. The launcher detects an existing pack in the port's `mods/textures` folder; otherwise choose **Install UHD pack** there or use the main action on Home. The installer downloads the authors' pack (about 1 GB, about 3 GB installed), checks its checksum, and needs Python 3 and 7-Zip. The launcher points the running game at that folder when HD textures are on. Installations and changes take effect on the next game start. The texture pack stays in the port checkout, separate from launcher updates and builds.
+
 ## Eclipse
 
-Enable **Play Super Mario Eclipse**, then **Install Eclipse mod** or just **Build game**. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
+Enable **Super Mario Eclipse**, then choose **Install Eclipse mod** or use **Build & play**. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
 
 The Eclipse patcher needs an unmodified 1:1 GMSE01 image; a compressed CISO does not pass its checksum. Eclipse builds have been verified in the port on Linux. The launcher offers the same build path on macOS and Windows, marked experimental until those port builds are verified there.
 

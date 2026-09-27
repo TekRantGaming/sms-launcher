@@ -44,8 +44,25 @@ test('offers only platform-supported architectures and keeps builds separate', (
   assert.equal(windows.arch, '32');
   const settings = port.normalizeSettings({ eclipse: true, arch: '64' }, 'linux');
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
-  assert.equal(port.buildEnvironment(settings, '/my/disc.iso').SMS_DISC_IMAGE, '/my/disc.iso');
-  assert.equal(port.buildEnvironment(settings, '/my/disc.iso').SMS_MOD, 'none');
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_DISC_IMAGE, '/my/disc.iso');
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_MOD, 'none');
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS, '0');
+  assert.equal(port.buildEnvironment({ ...settings, textures: true }, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS,
+    path.join('/port', 'mods', 'textures'));
+});
+
+test('recognizes an installed texture pack and points the game at its folder', () => {
+  const dir = temporary();
+  try {
+    assert.equal(port.texturePackInstalled(dir), false);
+    const textures = port.texturePackDirectory(dir);
+    fs.mkdirSync(path.join(textures, 'GMS', 'stage'), { recursive: true });
+    fs.writeFileSync(path.join(textures, 'GMS', 'stage', 'tex1_abcdef.dds'), 'texture');
+    assert.equal(port.texturePackInstalled(dir), true);
+    const settings = port.normalizeSettings({ textures: true });
+    assert.equal(port.buildEnvironment(settings, '/my/disc.iso', dir).SMS_TEXTURE_PACKS, textures);
+    assert.deepEqual(port.commandFor(dir, 'textures').args, ['tools/mods/get.py', 'textures']);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('Eclipse builder uses its own CMake tree without bundling the patched disc', () => {
@@ -86,6 +103,9 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.equal(cmd.args.at(-1), rom);
     assert.doesNotMatch(cmd.args[1], /Sunshine/);
     assert.match(cmd.env.PATH, /mingw32/);
+    const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows' });
+    assert.match(textures.args[1], /get\.py textures/);
+    assert.equal(textures.args.at(-1), 'C:\\port');
   } finally {
     if (old === undefined) delete process.env.MSYS2_ROOT;
     else process.env.MSYS2_ROOT = old;

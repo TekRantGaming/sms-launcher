@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const port = require('./port');
 const saves = require('./saves');
+const { activityFromLine } = require('./progress');
 
 let window;
 let config;
@@ -75,10 +76,25 @@ function launch(command, args, options = {}, label = 'Task') {
     log(`▶ ${label}`);
     const child = spawn(command, args, { ...options, detached: process.platform !== 'win32',
       windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    active = { label, child };
-    broadcast('activity', { label });
-    child.stdout.on('data', bytes => log(bytes.toString()));
-    child.stderr.on('data', bytes => log(bytes.toString()));
+    active = { label, child, detail: 'Starting…', percent: null, startedAt: Date.now() };
+    broadcast('activity', { label, detail: active.detail, percent: null, startedAt: active.startedAt });
+    const pending = { stdout: '', stderr: '' };
+    function line(value) {
+      if (!value) return;
+      log(value);
+      const progress = activityFromLine(value);
+      if (progress && active && active.child === child) {
+        Object.assign(active, progress);
+        broadcast('activity', { label, detail: active.detail, percent: active.percent, startedAt: active.startedAt });
+      }
+    }
+    function consume(stream, bytes) {
+      const parts = (pending[stream] + bytes.toString()).split(/[\r\n]/);
+      pending[stream] = parts.pop();
+      for (const part of parts) line(part);
+    }
+    child.stdout.on('data', bytes => consume('stdout', bytes));
+    child.stderr.on('data', bytes => consume('stderr', bytes));
     let settled = false;
     function done(error, code) {
       if (settled) return;
@@ -95,7 +111,11 @@ function launch(command, args, options = {}, label = 'Task') {
       }
     }
     child.on('error', error => done(error));
-    child.on('close', code => done(null, code));
+    child.on('close', code => {
+      line(pending.stdout);
+      line(pending.stderr);
+      done(null, code);
+    });
   });
 }
 
@@ -147,13 +167,32 @@ async function installEclipse() {
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
 }
 
+async function installTextures() {
+  const root = requireRepo();
+  if (port.texturePackInstalled(root)) {
+    log('HD textures are already installed.');
+    return { installed: true };
+  }
+  const cmd = port.commandFor(root, 'textures');
+  await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install UHD textures');
+  if (!port.texturePackInstalled(root)) throw new Error('Texture installer finished without a usable texture pack.');
+  log('HD textures are ready for the next game launch.');
+  return { installed: true };
+}
+
+function binaryReady(root = config.repo, settings = config.settings) {
+  if (!port.isPort(root)) return false;
+  const binary = port.binaryPath(root, settings);
+  return fs.existsSync(binary) && (!config.portGeneration || config.builtGeneration[binary] === config.portGeneration);
+}
+
 async function build() {
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
   const settings = config.settings;
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse();
   const disc = port.gameDisc(root, rom, settings.eclipse);
-  const env = port.buildEnvironment(settings, disc);
+  const env = port.buildEnvironment(settings, disc, root);
   const cmd = settings.eclipse
     ? port.eclipseBuildCommand(root, settings, process.platform, env)
     : port.commandFor(root, 'build', [disc], process.platform, env);
@@ -167,12 +206,13 @@ async function play() {
   const root = requireRepo();
   const settings = config.settings;
   const rom = port.validateRom(config.rom);
-  const binary = port.binaryPath(root, settings);
-  if (!fs.existsSync(binary) || (config.portGeneration && config.builtGeneration[binary] !== config.portGeneration))
+  if (!binaryReady(root, settings))
     throw new Error('Build this configuration before playing.');
+  if (settings.textures && !port.texturePackInstalled(root))
+    throw new Error('HD textures are enabled but not installed. Install the UHD pack or turn off HD textures.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
-  const env = { ...port.buildEnvironment(settings, disc), SMS_SAVE_DIR: currentSaveDirectory() };
+  const env = { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() };
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
@@ -182,6 +222,15 @@ async function play() {
     try { makeSaveBackup('after-play'); }
     catch (error) { log(`Save backup failed: ${error.message}`); }
   }
+}
+
+async function launchGame() {
+  const root = requireRepo();
+  port.validateRom(config.rom);
+  if (config.settings.textures && !port.texturePackInstalled(root))
+    throw new Error('Install the UHD texture pack before playing, or turn off HD textures.');
+  if (!binaryReady(root)) await build();
+  return play();
 }
 
 async function clean(dryRun) {
@@ -199,14 +248,15 @@ function state() {
   const info = port.platformInfo();
   let romError = '';
   if (config.rom) { try { port.validateRom(config.rom); } catch (error) { romError = error.message; } }
-  const binary = port.isPort(config.repo) ? port.binaryPath(config.repo, config.settings) : '';
+  const repoReady = port.isPort(config.repo);
   return {
-    config, platform: info, repoReady: port.isPort(config.repo),
+    config, platform: info, repoReady,
     romReady: Boolean(config.rom) && !romError, romError,
-    eclipseInstalled: port.isPort(config.repo) && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
-    binaryReady: Boolean(binary) && fs.existsSync(binary)
-      && (!config.portGeneration || config.builtGeneration[binary] === config.portGeneration),
-    active: active ? { label: active.label } : null, appUpdate, logs: logLines,
+    eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
+    texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
+    binaryReady: repoReady && binaryReady(),
+    active: active ? { label: active.label, detail: active.detail,
+      percent: active.percent, startedAt: active.startedAt } : null, appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -278,8 +328,10 @@ function registerHandlers() {
   ipcMain.handle('install-port', installPort);
   ipcMain.handle('update-port', updatePort);
   ipcMain.handle('install-eclipse', installEclipse);
+  ipcMain.handle('install-textures', installTextures);
   ipcMain.handle('build', build);
   ipcMain.handle('play', play);
+  ipcMain.handle('launch-game', launchGame);
   ipcMain.handle('clean-preview', () => clean(true));
   ipcMain.handle('backup-saves', () => makeSaveBackup('manual'));
   ipcMain.handle('restore-saves', async (_event, id) => {

@@ -30,6 +30,23 @@ function badge(id, label, good = false, warn = false) {
   element.className = `badge${good ? ' good' : warn ? ' warn' : ''}`;
 }
 
+function renderActivity(active) {
+  const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
+  $('task-progress').hidden = !working;
+  $('task-status').textContent = active ? active.label === 'Play Super Mario Sunshine' ? 'Game running' : active.label : 'Idle';
+  if (!working) return;
+  $('progress-title').textContent = active.label;
+  $('progress-detail').textContent = active.detail || 'Working…';
+  const seconds = Math.max(0, Math.floor((Date.now() - active.startedAt) / 1000));
+  $('progress-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const known = Number.isFinite(active.percent);
+  $('progress-percent').textContent = known ? `${active.percent}%` : '';
+  $('progress-track').classList.toggle('indeterminate', !known);
+  $('progress-fill').style.width = known ? `${active.percent}%` : '';
+  if (known) $('progress-track').setAttribute('aria-valuenow', String(active.percent));
+  else $('progress-track').removeAttribute('aria-valuenow');
+}
+
 function refresh(data) {
   current = data;
   const { config, platform } = data;
@@ -46,12 +63,30 @@ function refresh(data) {
   $('rom-path').title = data.romError || config.rom;
   $('choose-rom').textContent = data.romReady ? 'Change image' : 'Choose image';
   badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Invalid image' : 'Needed', data.romReady, Boolean(data.romError));
-  badge('build-badge', !data.romReady ? 'Image needed' : data.binaryReady ? 'Ready to play' : 'Build needed', data.binaryReady && data.romReady);
+  const texturesNeeded = config.settings.textures && !data.texturesInstalled;
+  const ready = data.repoReady && data.romReady && data.binaryReady && !texturesNeeded;
+  badge('build-badge', !data.repoReady ? 'Port needed' : !data.romReady ? 'Disc needed'
+    : texturesNeeded ? 'Textures needed' : data.binaryReady ? 'Ready' : 'Build needed', ready, texturesNeeded);
+  $('launch-description').textContent = !data.repoReady ? 'Download the port to get started.'
+    : !data.romReady ? 'Choose your own disc image to continue.'
+      : texturesNeeded ? 'HD textures are selected. Install the pack before playing.'
+        : !data.binaryReady ? 'Build the game for this computer, then play.' : 'Your game is ready.';
+  $('play').textContent = !data.repoReady ? 'Download port' : !data.romReady ? 'Choose image'
+    : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play game';
+  $('play').disabled = Boolean(data.active);
+  $('build').hidden = !data.binaryReady || !data.romReady;
+  $('build').disabled = Boolean(data.active);
+  badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
+  $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
+    : 'Downloads from the pack authors: about 1 GB, using about 3 GB after install. Requires 7-Zip.';
+  $('install-textures').hidden = data.texturesInstalled;
+  $('install-textures').disabled = !data.repoReady || Boolean(data.active);
+  $('texture-status').textContent = !data.repoReady ? 'HD textures: choose a port first.'
+    : data.texturesInstalled ? `HD textures: installed, ${config.settings.textures ? 'on' : 'off'}.`
+      : config.settings.textures ? 'HD textures: install required before playing.' : 'HD textures: off and not installed.';
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'The port has only verified Eclipse builds on Linux so far.';
   $('eclipse-note').hidden = !config.settings.eclipse;
-  $('build').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
-  $('play').disabled = !data.binaryReady || !data.romReady || Boolean(data.active);
   $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
   $('clean').disabled = !data.repoReady || Boolean(data.active);
   $('clean-preview').disabled = !data.repoReady || Boolean(data.active);
@@ -59,7 +94,7 @@ function refresh(data) {
   $('choose-repo').disabled = Boolean(data.active);
   $('stop').hidden = !data.active;
   $('activity-label').textContent = data.active ? data.active.label : 'Idle';
-  $('task-status').textContent = data.active ? data.active.label : 'Idle';
+  renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
   $('save-path').textContent = `Save folder: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
   $('backup-saves').disabled = Boolean(data.active);
@@ -90,11 +125,12 @@ function showError(error) { setMessage(error.message || String(error), true); }
 async function action(method) {
   setMessage('');
   try {
-    if (['installPort', 'updatePort', 'installEclipse', 'build', 'clean', 'cleanPreview'].includes(method)) showPage('maintenance');
+    if (['updatePort', 'clean', 'cleanPreview'].includes(method)) showPage('maintenance');
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame'].includes(method)) showPage('home');
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
-    if (['installPort', 'installEclipse', 'build'].includes(method)) showPage('home');
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame'].includes(method)) showPage('home');
   } catch (error) { showError(error); await sync(); }
 }
 
@@ -108,7 +144,7 @@ function settingsValue() {
 
 async function saveSettings() {
   if (changing) return;
-  try { refresh(await window.sms.saveSettings(settingsValue())); setMessage('Settings saved. Build the selected version if needed.'); }
+  try { refresh(await window.sms.saveSettings(settingsValue())); setMessage('Settings saved.'); }
   catch (error) { showError(error); }
 }
 
@@ -122,10 +158,16 @@ function appendLog(line) {
 
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-repo': 'chooseRepo', 'choose-location': 'chooseLocation', 'install-port': 'installPort',
-  'update-port': 'updatePort', 'build': 'build', 'play': 'play', 'install-eclipse': 'installEclipse',
+  'update-port': 'updatePort', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
+$('play').addEventListener('click', () => {
+  if (!current.repoReady) action('installPort');
+  else if (!current.romReady) action('chooseRom');
+  else if (current.config.settings.textures && !current.texturesInstalled) action('installTextures');
+  else action('launchGame');
+});
 $('restore-saves').addEventListener('click', async () => {
   setMessage('');
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
@@ -134,6 +176,12 @@ $('restore-saves').addEventListener('click', async () => {
 for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
   $(key).addEventListener('change', saveSettings);
 window.sms.onLog(appendLog);
-window.sms.onActivity(() => sync().catch(showError));
+window.sms.onActivity(value => {
+  const changed = Boolean(value) !== Boolean(current?.active);
+  if (current) current.active = value;
+  renderActivity(value);
+  if (changed) sync().catch(showError);
+});
 window.sms.onAppUpdate(value => { $('app-update').textContent = value.message; });
+setInterval(() => { if (current?.active) renderActivity(current.active); }, 1000);
 sync().then(() => { for (const line of current.logs) appendLog(line); }).catch(showError);

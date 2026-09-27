@@ -38,8 +38,9 @@
         </div>
 
         <section class="launch-panel" aria-label="Build and play">
-          <div class="launch-copy"><span class="step-label">03 / LAUNCH</span><h2>Super Mario Sunshine <span id="build-badge" class="badge">Build needed</span></h2><p>Build once for this setup, then play whenever you like.</p></div>
-          <div class="launch-actions"><button id="build" class="outline">Build game</button><button id="play" class="play">▶ &nbsp;Play game</button></div>
+          <div class="launch-row"><div class="launch-copy"><span class="step-label">03 / LAUNCH</span><h2>Super Mario Sunshine <span id="build-badge" class="badge">Build needed</span></h2><p id="launch-description">Build once for this setup, then play whenever you like.</p></div>
+          <div class="launch-actions"><button id="build" class="outline" hidden>Rebuild</button><button id="play" class="play">Continue</button></div></div>
+          <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div></div>
         </section>
 
         <section class="panel quick-panel" aria-label="Quick settings">
@@ -49,6 +50,7 @@
             <label class="switch compact"><span><strong>60 fps</strong><small>Gameplay speed</small></span><input id="fps60" type="checkbox"><i></i></label>
             <label class="switch compact eclipse-switch"><span><strong>Super Mario Eclipse <span id="eclipse-badge" class="badge">Optional</span></strong><small>Separate game build</small></span><input id="eclipse" type="checkbox"><i></i></label>
           </div>
+          <div class="texture-summary"><span id="texture-status">Checking HD textures…</span><button class="text-button" data-page="settings">Texture settings →</button></div>
           <div class="quick-note" id="eclipse-note"><span id="eclipse-platform-note"></span><button id="install-eclipse" class="text-button">Install Eclipse mod ↗</button></div>
         </section>
       </section>
@@ -57,7 +59,7 @@
         <div class="page-heading"><p class="eyebrow">PREFERENCES</p><h1>Game settings</h1><p>Changes are saved automatically. Rebuild if a change affects the game build.</p></div>
         <div class="detail-grid">
           <section class="panel detail-panel" aria-label="Build settings"><h2>Build</h2><label class="field"><span>Build architecture</span><select id="arch"></select></label><label class="field"><span>Internal resolution</span><select id="resolution"><option value="1">1× · Original</option><option value="2">2× · Sharper</option><option value="3">3×</option><option value="4">4×</option></select></label></section>
-          <section class="panel detail-panel" aria-label="Visual settings"><h2>Visuals</h2><label class="switch"><span><strong>HUD at screen edges</strong><small>Used with widescreen.</small></span><input id="hudEdges" type="checkbox"><i></i></label><label class="switch"><span><strong>Use installed HD textures</strong><small>Requires a texture pack in the port's mods folder.</small></span><input id="textures" type="checkbox"><i></i></label></section>
+          <section class="panel detail-panel" aria-label="Visual settings"><h2>Visuals</h2><label class="switch"><span><strong>HUD at screen edges</strong><small>Used with widescreen.</small></span><input id="hudEdges" type="checkbox"><i></i></label><label class="switch"><span><strong>HD textures <span id="textures-badge" class="badge">Checking</span></strong><small>Replaces game textures when installed and enabled.</small></span><input id="textures" type="checkbox"><i></i></label><div class="texture-setup"><span id="texture-info">Checking for a texture pack…</span><button class="subtle" id="install-textures">Install UHD pack · ~1 GB</button></div></section>
         </div>
         <p class="detail-hint">Screen format, 60 fps, and Eclipse are on Home for quick access.</p>
       </section>

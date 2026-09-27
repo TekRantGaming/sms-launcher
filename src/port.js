@@ -52,13 +52,31 @@ function normalizeSettings(input = {}, platform = process.platform) {
     arch, widescreen, resolution,
     fps60: input.fps60 !== false,
     hudEdges: Boolean(input.hudEdges),
-    textures: input.textures !== false,
+    textures: Boolean(input.textures),
     eclipse: Boolean(input.eclipse),
     autoUpdate: input.autoUpdate !== false
   };
 }
 
-function buildEnvironment(settings, disc) {
+function texturePackDirectory(root) { return path.join(root, 'mods', 'textures'); }
+
+function texturePackInstalled(root) {
+  const pending = [texturePackDirectory(root)];
+  while (pending.length) {
+    let entries;
+    const directory = pending.pop();
+    try { entries = fs.readdirSync(directory, { withFileTypes: true }); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    for (const entry of entries) {
+      if (entry.isFile() && /^tex1_.*\.(?:dds|png)$/i.test(entry.name)) return true;
+      if (entry.isDirectory()) pending.push(path.join(directory, entry.name));
+    }
+  }
+  return false;
+}
+
+function buildEnvironment(settings, disc, root) {
+  if (!root) throw new Error('The port folder is required to configure texture packs.');
   const env = {
     ...process.env,
     SMS_ARCH: settings.arch,
@@ -68,7 +86,7 @@ function buildEnvironment(settings, disc) {
     SMS_WIDESCREEN_HUD: settings.hudEdges ? 'edges' : 'centre',
     SMS_FRAME_RATE: settings.fps60 ? '60' : '30',
     SMS_GX_SCALE: String(settings.resolution),
-    SMS_TEXTURE_PACKS: settings.textures ? '1' : '0',
+    SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none'
   };
   return env;
@@ -89,14 +107,18 @@ function binaryPath(root, settings, platform = process.platform) {
 
 function commandFor(root, action, args = [], platform = process.platform, environment = process.env) {
   if (platform !== 'win32') {
-    const file = action === 'python' ? 'python3' : path.join(root, `${action}.sh`);
-    return { command: file, args: action === 'python' ? ['tools/mods/get.py', 'eclipse', '--iso', ...args] : args, cwd: root, env: environment };
+    const file = action === 'python' || action === 'textures' ? 'python3' : path.join(root, `${action}.sh`);
+    const commandArgs = action === 'python' ? ['tools/mods/get.py', 'eclipse', '--iso', ...args]
+      : action === 'textures' ? ['tools/mods/get.py', 'textures'] : args;
+    return { command: file, args: commandArgs, cwd: root, env: environment };
   }
   const msys = process.env.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
   const script = action === 'python'
     ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py eclipse --iso "$(cygpath -u "$2")"'
+    : action === 'textures'
+      ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py textures'
     : action === 'clean'
       ? 'cd "$(cygpath -u "$1")" && ./clean.sh "${@:2}"'
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;
@@ -141,4 +163,5 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
 }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
-  buildEnvironment, gameDisc, binaryPath, commandFor, eclipseBuildCommand, eclipseRunCommand };
+  texturePackDirectory, texturePackInstalled, buildEnvironment, gameDisc, binaryPath,
+  commandFor, eclipseBuildCommand, eclipseRunCommand };
