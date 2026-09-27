@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const port = require('./port');
+const saves = require('./saves');
 
 let window;
 let config;
@@ -59,6 +60,15 @@ function requireRepo() {
   return config.repo;
 }
 
+function currentSaveDirectory() { return saves.saveDirectory(config.repo); }
+
+function makeSaveBackup(reason) {
+  if (active) throw new Error('Stop the running game or task before backing up saves.');
+  const result = saves.backupSaves(currentSaveDirectory(), saves.backupRoot(), reason);
+  log(result.empty ? result.message : `Saved ${result.count} memory card file(s) to ${result.directory}`);
+  return result;
+}
+
 function launch(command, args, options = {}, label = 'Task') {
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
   return new Promise((resolve, reject) => {
@@ -109,6 +119,7 @@ async function updatePort() {
   const [ahead, behind] = counts.split(/\s+/).map(Number);
   if (behind === 0) { log('Port source is up to date.'); return { updated: false, behind: 0 }; }
   if (ahead > 0) throw new Error(`Local branch has ${ahead} unpublished commit(s) and ${behind} upstream commit(s). Resolve that branch before updating.`);
+  makeSaveBackup('before-port-update');
   await launch('git', ['merge', '--ff-only', tracking], { cwd: root }, `Update port (${behind} commits)`);
   config.portGeneration += 1;
   saveConfig();
@@ -160,15 +171,22 @@ async function play() {
   if (!fs.existsSync(binary) || (config.portGeneration && config.builtGeneration[binary] !== config.portGeneration))
     throw new Error('Build this configuration before playing.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
-  const env = port.buildEnvironment(settings, disc);
+  makeSaveBackup('before-play');
+  const env = { ...port.buildEnvironment(settings, disc), SMS_SAVE_DIR: currentSaveDirectory() };
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
-  return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine');
+  try {
+    return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine');
+  } finally {
+    try { makeSaveBackup('after-play'); }
+    catch (error) { log(`Save backup failed: ${error.message}`); }
+  }
 }
 
 async function clean(dryRun) {
   const root = requireRepo();
+  if (!dryRun) makeSaveBackup('before-cleanup');
   const env = { ...process.env };
   delete env.SMS_ARCH;
   const cmd = port.commandFor(root, 'clean', dryRun ? ['--dry-run'] : [], process.platform, env);
@@ -186,7 +204,9 @@ function state() {
     eclipseInstalled: port.isPort(config.repo) && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     binaryReady: Boolean(binary) && fs.existsSync(binary)
       && (!config.portGeneration || config.builtGeneration[binary] === config.portGeneration),
-    active: active ? { label: active.label } : null, appUpdate, logs: logLines
+    active: active ? { label: active.label } : null, appUpdate, logs: logLines,
+    saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
+    backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
 }
 
@@ -259,6 +279,25 @@ function registerHandlers() {
   ipcMain.handle('build', build);
   ipcMain.handle('play', play);
   ipcMain.handle('clean-preview', () => clean(true));
+  ipcMain.handle('backup-saves', () => makeSaveBackup('manual'));
+  ipcMain.handle('restore-saves', async (_event, id) => {
+    if (active) throw new Error('Stop the running game or task before restoring saves.');
+    if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))
+      throw new Error('Choose a backup for this memory card.');
+    const answer = await dialog.showMessageBox(window, {
+      type: 'warning', buttons: ['Cancel', 'Restore memory card'], defaultId: 0, cancelId: 0,
+      message: 'Restore this memory card backup?',
+      detail: 'The current memory card will be backed up first. Matching save files will be replaced.'
+    });
+    if (answer.response !== 1) return { cancelled: true };
+    const result = saves.restoreBackup(id, currentSaveDirectory());
+    log(`Restored ${result.restored} memory card file(s) from ${id}.`);
+    return result;
+  });
+  ipcMain.handle('open-backups', () => {
+    fs.mkdirSync(saves.backupRoot(), { recursive: true, mode: 0o700 });
+    return shell.openPath(saves.backupRoot());
+  });
   ipcMain.handle('clean', async () => {
     const answer = await dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Cancel', 'Clean build output'], defaultId: 0, cancelId: 0,

@@ -51,6 +51,7 @@ select { width: 180px; padding: 9px 10px; background: #0c1e2d; color: #ebf7fc; b
 .switch input:checked + i:after { left: 21px; }
 .switch input:focus-visible + i { outline: 2px solid #ffe0a0; outline-offset: 3px; }
 .side .muted { color: #a9c0ce; font-size: 13px; margin-top: 0; }
+.side .tiny { white-space: pre-line; overflow-wrap: anywhere; }
 .eclipse-switch { margin-top: 15px; }
 .wide { width: 100%; }
 hr { border: 0; border-top: 1px solid #294358; margin: 25px 0 20px; }

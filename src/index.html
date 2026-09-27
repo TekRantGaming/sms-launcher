@@ -44,7 +44,14 @@
           <label class="switch"><span><strong>Check for updates automatically</strong><small>Follows this checkout's Git branch.</small></span><input id="autoUpdate" type="checkbox"><i></i></label>
           <p id="app-update" class="tiny"></p>
           <div class="button-row"><button class="quiet" id="clean-preview">Preview cleanup</button><button class="quiet danger" id="clean">Clean builds</button></div>
-          <p class="tiny">Cleanup removes generated builds. Your image and saved games stay in place.</p>
+          <p class="tiny">Cleanup removes generated builds. Your image and saved games stay in place. The launcher backs up saves first.</p>
+          <hr>
+          <p class="eyebrow">MEMORY CARD</p>
+          <p class="tiny" id="save-path"></p>
+          <div class="button-row"><button class="quiet" id="backup-saves">Back up now</button><button class="quiet" id="open-backups">Open backups</button></div>
+          <label class="field"><span>Restore a backup</span><select id="backup-list"></select></label>
+          <button class="quiet wide" id="restore-saves">Restore selected backup</button>
+          <p class="tiny">Backups also run before updates and cleanup, and before and after play. They are stored outside the app and port folders.</p>
         </section>
       </div>
 

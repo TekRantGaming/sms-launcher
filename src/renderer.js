@@ -42,6 +42,18 @@ function refresh(data) {
   $('stop').hidden = !data.active;
   $('activity-label').textContent = data.active ? data.active.label : 'Idle';
   $('app-update').textContent = data.appUpdate.message;
+  $('save-path').textContent = `Save folder: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
+  $('backup-saves').disabled = Boolean(data.active);
+  $('restore-saves').disabled = Boolean(data.active) || !data.backups.length;
+  const selectedBackup = $('backup-list').value;
+  $('backup-list').replaceChildren(...data.backups.map(backup => {
+    const option = document.createElement('option');
+    option.value = backup.id;
+    option.textContent = `${new Date(backup.createdAt).toLocaleString()} · ${backup.reason} · ${backup.count} files`;
+    return option;
+  }));
+  if (data.backups.some(backup => backup.id === selectedBackup)) $('backup-list').value = selectedBackup;
+  $('backup-list').disabled = Boolean(data.active) || !data.backups.length;
 
   changing = true;
   $('arch').replaceChildren(...platform.arches.map(arch => {
@@ -90,8 +102,14 @@ function appendLog(line) {
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-repo': 'chooseRepo', 'choose-location': 'chooseLocation', 'install-port': 'installPort',
   'update-port': 'updatePort', 'build': 'build', 'play': 'play', 'install-eclipse': 'installEclipse',
-  'clean-preview': 'cleanPreview', clean: 'clean', stop: 'stop', docs: 'openDocs'
+  'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
+  'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
+$('restore-saves').addEventListener('click', async () => {
+  setMessage('');
+  try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
+  catch (error) { showError(error); await sync(); }
+});
 for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
   $(key).addEventListener('change', saveSettings);
 window.sms.onLog(appendLog);

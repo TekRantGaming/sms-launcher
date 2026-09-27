@@ -15,8 +15,9 @@ if (requestedTag && requestedTag !== expectedTag) {
   console.error(`Release tag ${requestedTag} does not match package version ${expectedTag}.`);
   process.exit(1);
 }
-const target = process.platform === 'win32' ? '--win' : process.platform === 'darwin' ? '--mac' : '--linux';
-const result = spawnSync(process.execPath, [require.resolve('electron-builder/cli.js'), target,
+const target = process.platform === 'win32' ? ['--win', '--x64']
+  : process.platform === 'darwin' ? ['--mac', '--universal'] : ['--linux', '--x64'];
+const result = spawnSync(process.execPath, [require.resolve('electron-builder/cli.js'), ...target,
   '--publish', 'always', '--config.publish.provider=github',
   `--config.publish.owner=${owner}`, `--config.publish.repo=${repo}`], { stdio: 'inherit' });
 if (result.error) { console.error(result.error); process.exit(1); }
