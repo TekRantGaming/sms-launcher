@@ -1,0 +1,28 @@
+# SMS Launcher
+
+Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev/sms-pc-port). The launcher is a **sibling** of the port checkout (`sms-launcher/` next to `sms-port/`) during development. It does not include game data.
+
+## Start
+
+1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
+2. Choose **Download port**, or **Choose checkout** for an existing port folder. Development runs detect a neighboring `sms-port/` automatically.
+3. Choose your own **North American Super Mario Sunshine GMSE01 Rev 0** `.iso`, `.gcm`, or Dolphin `.ciso` image. The launcher reads it in place and saves only its path in local preferences.
+4. Choose the settings you want, then **Build game** and **Play**.
+
+The port build prerequisites still apply: see its `BUILD.md` (also available via **Build help**). Linux supports 64 and 32 bit builds; macOS supports x86_64 (Rosetta 2 on Apple Silicon); Windows supports MSYS2 MINGW32 32 bit. The launcher offers only supported choices. On Windows install MSYS2 at `C:\msys64`, or set `MSYS2_ROOT` to its location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
+
+## Eclipse
+
+Enable **Play Super Mario Eclipse**, then **Install Eclipse mod** or just **Build game**. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
+
+The Eclipse patcher needs an unmodified 1:1 GMSE01 image; a compressed CISO does not pass its checksum. Eclipse builds have been verified in the port on Linux. The launcher offers the same build path on macOS and Windows, marked experimental until those port builds are verified there.
+
+## Updates and cleanup
+
+The launcher checks the port's tracked Git branch on startup and every 30 minutes, fetches its upstream, and applies only fast forward updates. It never resets local edits; if a merge cannot be applied, the activity log explains why. A **Check updates** button is also available. Rebuild after a source update. **Preview cleanup** shows what the port's `clean.sh` would remove; **Clean builds** asks for confirmation and then runs it. The port script preserves disc images and saves.
+
+Packaged launcher builds support self updates through `electron-updater`. A `package.json` version bump pushed to `main` makes `.github/workflows/release.yml` create its `vX.Y.Z` tag, build Linux AppImage, macOS DMG/ZIP and Windows installer, and publish a release after every build succeeds. Release packages embed their GitHub update feed, check on startup and every 30 minutes, download updates, and install them on quit. Unsigned macOS builds can be downloaded, but macOS automatic updates need the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` signing secrets. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic update feed. Local packages made without a release feed still update the port source, but cannot update the launcher itself.
+
+For a later release, run `npm version patch --no-git-tag-version`, commit the updated `package.json` and `package-lock.json`, and push to `main`. The workflow creates the tag after the push. Version bumps can also use `minor` or `major`.
+
+Build platform packages with `npm run dist`. The package includes only the launcher code, never the port checkout, ROMs, mods, standalone game builds, or saves. `npm test` runs the launcher command and disc selection tests.

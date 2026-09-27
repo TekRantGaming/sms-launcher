@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'">
+  <title>SMS Launcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="brand"><span class="sun" aria-hidden="true">☀</span><span>SMS <strong>Launcher</strong></span></div>
+      <div class="hero-copy"><p class="eyebrow">YOUR SUNSHINE, YOUR DISC</p><h1>Ready when you are.</h1><p>Set up the port, choose your own game image, build, and play.</p></div>
+      <div class="platform-pill" id="platform">Detecting platform…</div>
+    </header>
+
+    <main>
+      <div id="message" class="message" role="status" hidden></div>
+      <section class="card steps" aria-label="Setup steps">
+        <div class="card-heading"><div><p class="eyebrow">GET STARTED</p><h2>Setup</h2></div><button class="quiet" id="docs">Build help ↗</button></div>
+        <div class="step"><div class="step-number">1</div><div class="step-copy"><h3>Port source <span id="repo-badge" class="badge">Checking</span></h3><p id="repo-path">Looking for the port…</p></div><div class="step-actions"><button class="quiet" id="choose-repo">Choose checkout</button><button class="quiet" id="choose-location">Change location</button><button id="install-port">Download port</button><button class="quiet" id="update-port">Check updates</button></div></div>
+        <div class="step"><div class="step-number">2</div><div class="step-copy"><h3>Your disc image <span id="rom-badge" class="badge">Needed</span></h3><p id="rom-path">Choose your own North American GMSE01 Rev 0 .iso, .gcm, or .ciso file. It stays where it is.</p></div><div class="step-actions"><button id="choose-rom">Choose image</button></div></div>
+        <div class="step"><div class="step-number">3</div><div class="step-copy"><h3>Build and play <span id="build-badge" class="badge">Build needed</span></h3><p>Build for this computer. The first build can take a while; later builds reuse completed work.</p></div><div class="step-actions"><button id="build" class="primary">Build game</button><button id="play" class="play">▶ Play</button></div></div>
+      </section>
+
+      <div class="grid">
+        <section class="card" aria-label="Game settings">
+          <div class="card-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h2>Game settings</h2></div><span class="autosave">Saved automatically</span></div>
+          <label class="field"><span>Build architecture</span><select id="arch"></select></label>
+          <label class="field"><span>Screen format</span><select id="widescreen"><option value="off">Original 4:3</option><option value="16:9">Widescreen 16:9</option><option value="16:10">Widescreen 16:10</option><option value="21:9">Ultrawide 21:9</option></select></label>
+          <label class="field"><span>Internal resolution</span><select id="resolution"><option value="1">1× · Original</option><option value="2">2× · Sharper</option><option value="3">3×</option><option value="4">4×</option></select></label>
+          <label class="switch"><span><strong>60 fps gameplay</strong><small>Menus and movies remain at 30 fps.</small></span><input id="fps60" type="checkbox"><i></i></label>
+          <label class="switch"><span><strong>HUD at screen edges</strong><small>Used with widescreen.</small></span><input id="hudEdges" type="checkbox"><i></i></label>
+          <label class="switch"><span><strong>Use installed HD textures</strong><small>Requires a texture pack in the port's mods folder.</small></span><input id="textures" type="checkbox"><i></i></label>
+        </section>
+        <section class="card side" aria-label="Extras and maintenance">
+          <div class="card-heading"><div><p class="eyebrow">EXTRAS</p><h2>Eclipse</h2></div><span id="eclipse-badge" class="badge">Optional</span></div>
+          <p class="muted">Build the Eclipse code and create its disc image from your own original image. The installer downloads the mod patch; it never supplies the game. <span id="eclipse-platform-note"></span></p>
+          <label class="switch eclipse-switch"><span><strong>Play Super Mario Eclipse</strong><small>Uses a separate build so the original stays playable.</small></span><input id="eclipse" type="checkbox"><i></i></label>
+          <button id="install-eclipse" class="wide">Install Eclipse mod</button>
+          <hr>
+          <p class="eyebrow">MAINTENANCE</p>
+          <label class="switch"><span><strong>Check for updates automatically</strong><small>Follows this checkout's Git branch.</small></span><input id="autoUpdate" type="checkbox"><i></i></label>
+          <p id="app-update" class="tiny"></p>
+          <div class="button-row"><button class="quiet" id="clean-preview">Preview cleanup</button><button class="quiet danger" id="clean">Clean builds</button></div>
+          <p class="tiny">Cleanup removes generated builds. Your image and saved games stay in place.</p>
+        </section>
+      </div>
+
+      <section class="card activity-card" aria-label="Activity log"><div class="card-heading"><div><p class="eyebrow">WHAT'S HAPPENING</p><h2>Activity</h2></div><div class="button-row"><span id="activity-label" class="tiny">Idle</span><button class="quiet" id="stop" hidden>Stop task</button></div></div><pre id="log" aria-live="polite">Ready.</pre></section>
+    </main>
+    <footer>Bring your own ROM. No game data is downloaded or included.</footer>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
