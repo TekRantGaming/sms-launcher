@@ -5,7 +5,7 @@ Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev
 ## Start
 
 1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
-2. Download the setup files to the suggested location, change the location, or choose an existing port folder. Development runs detect a neighboring `sms-port/` automatically.
+2. Download the setup files to the suggested location, or choose a different install location first. Development runs detect a neighboring `sms-port/` automatically. An existing setup folder can be selected later in **Settings → Game files**.
 3. Choose a file copied from your own **North American Super Mario Sunshine GMSE01 Rev 0** disc (`.iso`, `.gcm`, or Dolphin `.ciso`). The launcher reads it in place and saves only its path in local preferences.
 4. Select **Begin setup**. The launcher installs any selected HD textures and builds the game. When setup finishes, Home shows **Play**. Use **Settings → Manage game → Rebuild game** when you want a fresh build.
 

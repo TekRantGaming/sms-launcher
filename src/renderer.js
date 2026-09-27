@@ -123,7 +123,6 @@ function refresh(data) {
   $('repo-path').title = config.repo;
   $('settings-repo-path').textContent = config.repo;
   $('settings-repo-path').title = config.repo;
-  $('choose-repo').textContent = data.repoReady ? 'Use another folder' : 'Use existing folder';
   $('choose-location').disabled = Boolean(data.active);
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
   $('rom-path').textContent = data.romError || config.rom || 'No file selected';
@@ -150,7 +149,6 @@ function refresh(data) {
   $('clean').disabled = !data.repoReady || Boolean(data.active);
   $('clean-preview').disabled = !data.repoReady || Boolean(data.active);
   $('choose-rom').disabled = Boolean(data.active);
-  $('choose-repo').disabled = Boolean(data.active);
   $('choose-rom-settings').disabled = Boolean(data.active);
   $('choose-repo-settings').disabled = Boolean(data.active);
   $('stop').hidden = !data.active;
@@ -225,7 +223,7 @@ function appendLog(line) {
 }
 
 for (const [id, method] of Object.entries({
-  'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom', 'choose-repo': 'chooseRepo',
+  'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom',
   'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation',
   'update-port': 'updatePort', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
