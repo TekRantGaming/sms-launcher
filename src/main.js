@@ -12,6 +12,7 @@ const { activityFromLine } = require('./progress');
 let window;
 let config;
 let active = null;
+let preparingTools = false;
 let appUpdate = { state: 'idle', message: '' };
 const logLines = [];
 
@@ -137,11 +138,13 @@ function toolEnv(base = process.env) {
 }
 
 async function ensureBuildTools() {
+  if (preparingTools) throw new Error('Wait for build tools to finish preparing.');
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
   const userData = app.getPath('userData');
   const forcePrivate = process.env.SMS_FORCE_PRIVATE_TOOLS === '1';
   const found = buildTools.status(userData);
   if (found.mode === 'private' || (!forcePrivate && found.ready)) return;
+  preparingTools = true;
   const startedAt = Date.now();
   active = { label: 'Download build tools', child: null, detail: 'Checking download…', percent: null, startedAt };
   broadcast('activity', { label: active.label, detail: active.detail, percent: null, startedAt });
@@ -162,6 +165,7 @@ async function ensureBuildTools() {
     });
     log('Build tools are ready.');
   } finally {
+    preparingTools = false;
     if (active && !active.child && active.startedAt === startedAt) {
       active = null;
       broadcast('activity', null);
@@ -478,11 +482,11 @@ app.whenReady().then(() => {
   registerHandlers();
   setupAppUpdater();
   setTimeout(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active)
+    if (config.settings.autoUpdate && port.isPort(config.repo) && !active && !preparingTools)
       updatePort().catch(error => log(`Update check: ${error.message}`));
   }, 5000);
   setInterval(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active)
+    if (config.settings.autoUpdate && port.isPort(config.repo) && !active && !preparingTools)
       updatePort().catch(error => log(`Update check: ${error.message}`));
   }, 30 * 60 * 1000);
 });

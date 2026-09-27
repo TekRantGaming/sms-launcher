@@ -83,6 +83,12 @@ function showWizardStep(data) {
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready ? 'Ready when you are.' : "Three steps, then you're ready to play.";
+  $('setup-download-title').textContent = data.repoReady ? 'Prepare build tools' : 'Download setup files';
+  $('setup-download-description').textContent = data.repoReady
+    ? 'The setup files are ready. The launcher will prepare any tools this computer still needs.'
+    : "We'll get the files and tools needed to prepare your own disc. The game is not included.";
+  $('repo-location').hidden = data.repoReady;
+  $('choose-location').hidden = data.repoReady;
   for (let step = 1; step <= 3; step++)
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
   if (ready) $('play').textContent = '▶  Play';

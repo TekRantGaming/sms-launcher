@@ -6,7 +6,7 @@ const https = require('node:https');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-const TOOLSET = '2026-09-27.1';
+const TOOLSET = '2026-09-27.2';
 const MAMBA = {
   url: 'https://github.com/mamba-org/micromamba-releases/releases/download/2.8.1-0/micromamba-linux-64',
   sha256: '9689782d863c05a1bf5d2d371ba527104e7a4eb4310c1637d8653b751aed9c82'
@@ -17,7 +17,7 @@ const MSYS2 = {
 };
 const LINUX_PACKAGES = [
   'python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch', 'binutils',
-  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sdl2=2.32.56',
+  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
   'libegl-devel', 'libgl-devel', '7zip=26.03', 'bash', 'coreutils',
   'grep', 'sed', 'gawk', 'findutils', 'curl'
 ];
@@ -39,9 +39,11 @@ function privateReady(userData, platform = process.platform) {
     if (JSON.parse(fs.readFileSync(marker, 'utf8')).toolset !== TOOLSET) return false;
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
-        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'bin', 'g++.exe'))
-      : fs.existsSync(path.join(root, 'env', 'bin', 'g++')) &&
-        fs.existsSync(path.join(root, 'env', 'bin', 'git'));
+        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'bin', 'g++.exe')) &&
+        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'include', 'SDL2', 'SDL.h'))
+      : ['g++', 'git', 'cmake', 'python3', 'make', 'patch', 'objcopy', '7z']
+        .every(name => fs.existsSync(path.join(root, 'env', 'bin', name))) &&
+        fs.existsSync(path.join(root, 'env', 'lib', 'libSDL2-2.0.so.0'));
   } catch (_) { return false; }
 }
 
@@ -62,7 +64,8 @@ function systemReady(platform = process.platform, env = process.env) {
     const root = env.MSYS2_ROOT || 'C:\\msys64';
     return ['usr/bin/bash.exe', 'usr/bin/git.exe', 'usr/bin/patch.exe',
       'mingw32/bin/g++.exe', 'mingw32/bin/cmake.exe', 'mingw32/bin/ninja.exe',
-      'mingw32/bin/python.exe'].every(file => fs.existsSync(path.join(root, file))) &&
+      'mingw32/bin/python.exe', 'mingw32/include/SDL2/SDL.h',
+      'mingw32/lib/libSDL2.dll.a'].every(file => fs.existsSync(path.join(root, file))) &&
       (fs.existsSync(path.join(root, 'mingw64', 'bin', '7z.exe')) || commandWorks('7z', ['-h'], env));
   }
   return false;
