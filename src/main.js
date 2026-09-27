@@ -287,6 +287,23 @@ function setupAppUpdater() {
 }
 
 function registerHandlers() {
+  const senderWindow = event => BrowserWindow.fromWebContents(event.sender);
+  ipcMain.handle('window-state', event => {
+    const target = senderWindow(event);
+    return { fullscreen: target?.isFullScreen() || false, minimized: target?.isMinimized() || false };
+  });
+  ipcMain.handle('window-minimize', event => {
+    const target = senderWindow(event);
+    target?.minimize();
+    return { minimized: target?.isMinimized() || false };
+  });
+  ipcMain.handle('window-toggle-full-screen', event => {
+    const target = senderWindow(event);
+    if (!target) return { fullscreen: false };
+    target.setFullScreen(!target.isFullScreen());
+    return { fullscreen: target.isFullScreen() };
+  });
+  ipcMain.handle('window-close', event => senderWindow(event)?.close());
   ipcMain.handle('state', () => state());
   ipcMain.handle('save-settings', (_event, input) => {
     config.settings = port.normalizeSettings(input);
@@ -371,10 +388,13 @@ function registerHandlers() {
 function createWindow() {
   window = new BrowserWindow({
     width: 1080, height: 760, minWidth: 900, minHeight: 700,
-    backgroundColor: '#f3f5f3', title: 'SMS Launcher',
+    frame: false, backgroundColor: '#0a3045', title: 'SMS Launcher',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   window.setMenuBarVisibility(false);
+  const sendWindowState = () => broadcast('window-state', { fullscreen: window.isFullScreen() });
+  window.on('enter-full-screen', sendWindowState);
+  window.on('leave-full-screen', sendWindowState);
   window.loadFile(path.join(__dirname, 'index.html'));
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 }

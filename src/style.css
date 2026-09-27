@@ -144,12 +144,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
     linear-gradient(90deg, #072d45ac 0%, #072d452e 47%, transparent 80%),
     url('assets/launcher-bg.png') 40% center / cover no-repeat;
 }
-.topbar { flex-basis: 58px; gap: 16px; background: #092e45bb; border-bottom: 1px solid #ffffff2a; color: #fff; backdrop-filter: blur(16px); }
+.topbar { flex-basis: 58px; gap: 16px; background: #092e45bb; border-bottom: 1px solid #ffffff2a; color: #fff; backdrop-filter: blur(16px); -webkit-app-region: drag; user-select: none; }
 .brand-mark { background: #ffc75a; }
 .platform-pill { color: #c9e6ec; }
-.header-actions { display: flex; gap: 8px; }
-.header-button { padding: 8px 14px; border-color: #ffffff38; background: #ffffff16; color: #fff; }
-.header-button:hover { background: #ffffff2b; }
+.window-controls { display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag; }
+.window-control { display: grid; place-items: center; width: 37px; height: 32px; padding: 0; border: 1px solid #ffffff2f; border-radius: 7px; background: #ffffff12; color: #e5f6f9; -webkit-app-region: no-drag; }
+.window-control:hover { background: #ffffff2c; }
+.window-control.close-control:hover { border-color: #d85b5d; background: #cb4149; color: #fff; }
+.window-control svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .viewport { padding: 24px 28px 16px; }
 .home-page { gap: 14px; }
 .intro { flex: none; align-items: start; min-height: 0; color: #fff; text-shadow: 0 2px 18px #082b4599; }
@@ -164,8 +166,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .play { display: block; width: 100%; min-width: 0 !important; min-height: 72px; margin-top: 14px; padding: 10px 20px; border-radius: 11px; background: #ffc75a; color: #143749; font-size: 26px; font-weight: 850; letter-spacing: -.035em; box-shadow: 0 4px 0 #b98127, 0 10px 20px #08273b40; }
 .play:hover:not(:disabled) { background: #ffda86; }
 .play:disabled { opacity: .75; }
-.launch-secondary { margin-top: 10px; }
-.launch-secondary .text-button { color: #e2f9fa; font-weight: 650; }
+.launch-secondary { display: flex; justify-content: center; gap: 8px; margin-top: 11px; }
+.launch-tool { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; padding: 7px 11px; border: 1px solid #b5e6ee70; border-radius: 8px; background: #ffffff17; color: #e6f9fb; font-size: 12px; }
+.launch-tool:hover:not(:disabled) { background: #ffffff2d; }
+.launch-tool svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .task-progress { margin-top: 13px; padding-top: 10px; text-align: left; }
 .setup-grid { flex: none; gap: 12px; }
 .setup-panel { padding: 11px 14px; border-color: #d3f2f54d; background: #072f49d9; color: #fff; box-shadow: 0 8px 25px #061f3555; backdrop-filter: blur(15px); }

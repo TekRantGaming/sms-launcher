@@ -12,7 +12,11 @@
     <header class="topbar">
       <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span><span>SMS <strong>Launcher</strong></span></div>
       <span class="platform-pill" id="platform">Detecting platform…</span>
-      <nav class="header-actions" aria-label="Launcher tools"><button class="header-button" data-modal="settings">Settings</button><button class="header-button" data-modal="maintenance">Maintenance</button></nav>
+      <div class="window-controls" aria-label="Window controls">
+        <button id="window-minimize" class="window-control" aria-label="Minimize window" title="Minimize"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+        <button id="window-fullscreen" class="window-control" aria-label="Enter full screen" aria-pressed="false" title="Enter full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8V4h4m4 0h4v4m0 4v4h-4m-4 0H4v-4"/></svg></button>
+        <button id="window-close" class="window-control close-control" aria-label="Close window" title="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
+      </div>
     </header>
 
     <div id="message" class="message" role="status" hidden></div>
@@ -24,7 +28,11 @@
         <section class="launch-panel" aria-label="Build and play">
           <div class="launch-copy"><span class="step-label">YOUR GAME</span><h2>Super Mario Sunshine <span id="build-badge" class="badge">Build needed</span></h2><p id="launch-description">Build once for this setup, then play whenever you like.</p></div>
           <button id="play" class="play">Continue</button>
-          <div class="launch-secondary" id="launch-secondary" hidden><button id="build" class="text-button" hidden>Rebuild game</button></div>
+          <div class="launch-secondary" id="launch-secondary">
+            <button class="launch-tool" data-modal="settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg><span>Settings</span></button>
+            <button class="launch-tool" data-modal="maintenance"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span>Maintenance</span></button>
+            <button id="build" class="launch-tool" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0 0 4M16 4v4h-4"/></svg><span>Rebuild</span></button>
+          </div>
           <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div></div>
         </section>
 

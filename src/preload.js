@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('sms', {
   stop: () => ipcRenderer.invoke('stop'),
   openDocs: () => ipcRenderer.invoke('open-docs'),
   checkAppUpdate: () => ipcRenderer.invoke('check-app-update'),
+  windowState: () => ipcRenderer.invoke('window-state'),
+  minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
+  toggleFullScreen: () => ipcRenderer.invoke('window-toggle-full-screen'),
+  closeWindow: () => ipcRenderer.invoke('window-close'),
+  onWindowState: callback => ipcRenderer.on('window-state', (_event, value) => callback(value)),
   onLog: callback => ipcRenderer.on('log', (_event, line) => callback(line)),
   onActivity: callback => ipcRenderer.on('activity', (_event, value) => callback(value)),
   onAppUpdate: callback => ipcRenderer.on('app-update', (_event, value) => callback(value))

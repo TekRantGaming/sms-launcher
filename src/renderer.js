@@ -77,7 +77,6 @@ function refresh(data) {
     : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
-  $('launch-secondary').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
   $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
@@ -184,5 +183,16 @@ window.sms.onActivity(value => {
   if (changed) sync().catch(showError);
 });
 window.sms.onAppUpdate(value => { $('app-update').textContent = value.message; });
+function renderWindowState(value) {
+  const fullscreen = Boolean(value.fullscreen);
+  $('window-fullscreen').setAttribute('aria-pressed', String(fullscreen));
+  $('window-fullscreen').setAttribute('aria-label', fullscreen ? 'Exit full screen' : 'Enter full screen');
+  $('window-fullscreen').title = fullscreen ? 'Exit full screen' : 'Enter full screen';
+}
+$('window-minimize').addEventListener('click', () => window.sms.minimizeWindow());
+$('window-fullscreen').addEventListener('click', () => window.sms.toggleFullScreen().then(renderWindowState).catch(showError));
+$('window-close').addEventListener('click', () => window.sms.closeWindow());
+window.sms.onWindowState(renderWindowState);
+window.sms.windowState().then(renderWindowState).catch(showError);
 setInterval(() => { if (current?.active) renderActivity(current.active); }, 1000);
 sync().then(() => { for (const line of current.logs) appendLog(line); }).catch(showError);
