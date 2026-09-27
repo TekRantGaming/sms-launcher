@@ -12,7 +12,7 @@ function closeModal() {
 function showSettingsView(name) {
   $('settings-view').hidden = name !== 'settings';
   $('maintenance-view').hidden = name !== 'maintenance';
-  $('page-settings').setAttribute('aria-label', name === 'settings' ? 'Game settings' : 'Maintenance');
+  $('page-settings').setAttribute('aria-label', name === 'settings' ? 'Game settings' : 'Manage game');
 }
 
 $('settings-cog').addEventListener('click', () => {
@@ -97,6 +97,7 @@ function refresh(data) {
     : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
+  $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
   $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
