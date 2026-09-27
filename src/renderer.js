@@ -50,6 +50,8 @@ function taskName(label) {
   if (label === 'Play Super Mario Sunshine') return 'Game running';
   if (label.startsWith('Build ')) return 'Setting up your game';
   if (label.startsWith('Download port')) return 'Downloading setup files';
+  if (label.startsWith('Download build') || label.startsWith('Prepare build') ||
+      label.startsWith('Unpack build') || label.startsWith('Update private')) return 'Preparing build tools';
   if (label.startsWith('Install UHD')) return 'Downloading HD textures';
   if (label.startsWith('Install Eclipse')) return 'Setting up Eclipse';
   if (label.startsWith('Check for port')) return 'Checking for updates';
@@ -66,7 +68,7 @@ function backupReason(reason) {
 }
 
 function requiredStep(data) {
-  if (!data.repoReady) return 1;
+  if (!data.repoReady || !data.tools.ready) return 1;
   if (!data.romReady) return 2;
   if (!data.binaryReady || (data.config.settings.textures && !data.texturesInstalled)) return 3;
   return 0;
@@ -92,7 +94,8 @@ function showWizardStep(data) {
     });
     $('play').textContent = setupPending
       ? wizardStep === 1 ? 'Downloading…' : wizardStep === 2 ? 'Choosing…' : 'Setting up…'
-      : wizardStep === 1 ? data.repoReady ? 'Continue' : 'Download setup files'
+      : wizardStep === 1 ? data.repoReady && data.tools.ready ? 'Continue'
+        : data.repoReady ? 'Prepare build tools' : 'Download setup files'
         : wizardStep === 2 ? data.romReady ? 'Continue' : 'Choose disc image' : 'Begin setup';
   }
 }
@@ -139,7 +142,7 @@ function refresh(data) {
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
     config.settings.textures && !data.texturesInstalled);
   $('texture-info').textContent = data.texturesInstalled ? 'Ready for the next time you play.'
-    : 'About 1 GB to download; needs about 3 GB of free space and 7-Zip.';
+    : 'About 1 GB to download; needs about 3 GB of free space.';
   $('install-textures').hidden = data.texturesInstalled;
   $('install-textures').disabled = !data.repoReady || Boolean(data.active);
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
@@ -151,7 +154,7 @@ function refresh(data) {
   $('choose-rom').disabled = Boolean(data.active);
   $('choose-rom-settings').disabled = Boolean(data.active);
   $('choose-repo-settings').disabled = Boolean(data.active);
-  $('stop').hidden = !data.active;
+  $('stop').hidden = !data.active?.canStop;
   $('activity-label').textContent = taskName(data.active?.label);
   renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
@@ -188,7 +191,7 @@ async function action(method) {
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
-    if (['installPort', 'chooseRepo'].includes(method) && current.repoReady && wizardStep === 1) wizardStep = 2;
+    if (['installPort', 'chooseRepo'].includes(method) && current.repoReady && current.tools.ready && wizardStep === 1) wizardStep = 2;
     if (method === 'chooseRom' && current.romReady && wizardStep === 2) wizardStep = 3;
     refresh(current);
   } catch (error) { showError(error); await sync(); }
@@ -232,7 +235,7 @@ for (const [id, method] of Object.entries({
 $('play').addEventListener('click', () => {
   if (wizardStep === 0) action('launchGame');
   else if (wizardStep === 1) {
-    if (current.repoReady) { wizardStep = 2; refresh(current); }
+    if (current.repoReady && current.tools.ready) { wizardStep = 2; refresh(current); }
     else runWizardAction('installPort');
   } else if (wizardStep === 2) {
     if (current.romReady) { wizardStep = 3; refresh(current); }

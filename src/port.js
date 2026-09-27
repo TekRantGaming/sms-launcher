@@ -117,7 +117,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       : action === 'textures' ? ['tools/mods/get.py', 'textures'] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
   }
-  const msys = process.env.MSYS2_ROOT || 'C:\\msys64';
+  const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
   const script = action === 'python'
@@ -131,7 +131,8 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
     command: bash,
     args: ['-c', script, 'sms-launcher', root, ...args], cwd: root,
     env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
+      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+        path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 
@@ -140,7 +141,7 @@ function eclipseBuildCommand(root, settings, platform = process.platform, enviro
     ? path.join(process.resourcesPath, 'scripts', 'build-eclipse.sh')
     : path.resolve(__dirname, '..', 'scripts', 'build-eclipse.sh');
   if (platform !== 'win32') return { command: script, args: [root, settings.arch], cwd: root, env: environment };
-  const msys = process.env.MSYS2_ROOT || 'C:\\msys64';
+  const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
   return {
@@ -148,14 +149,15 @@ function eclipseBuildCommand(root, settings, platform = process.platform, enviro
     args: ['-c', 'exec "$(cygpath -u "$1")" "$(cygpath -u "$2")" "$3"', 'sms-launcher', script, root, settings.arch],
     cwd: root,
     env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
+      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+        path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 
 function eclipseRunCommand(root, settings, disc, platform = process.platform, environment = process.env) {
   const binary = binaryPath(root, settings, platform);
   if (platform !== 'win32') return { command: binary, args: [disc], cwd: root, env: environment };
-  const msys = process.env.MSYS2_ROOT || 'C:\\msys64';
+  const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
   if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
   return {
@@ -163,7 +165,8 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
     args: ['-c', 'cd "$(cygpath -u "$1")" && exec "$(cygpath -u "$2")" "$(cygpath -u "$3")"', 'sms-launcher', root, binary, disc],
     cwd: root,
     env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
+      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+        path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 

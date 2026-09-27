@@ -99,11 +99,11 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     fs.writeFileSync(path.join(dir, 'usr', 'bin', 'bash.exe'), '');
     process.env.MSYS2_ROOT = dir;
     const rom = 'C:\\Games\\Sunshine (own copy).iso';
-    const cmd = port.commandFor('C:\\port', 'build', [rom], 'win32', { PATH: 'C:\\Windows' });
+    const cmd = port.commandFor('C:\\port', 'build', [rom], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.equal(cmd.args.at(-1), rom);
     assert.doesNotMatch(cmd.args[1], /Sunshine/);
     assert.match(cmd.env.PATH, /mingw32/);
-    const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows' });
+    const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.match(textures.args[1], /get\.py textures/);
     assert.equal(textures.args.at(-1), 'C:\\port');
   } finally {

@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const port = require('./port');
 const saves = require('./saves');
+const buildTools = require('./build-tools');
 const { activityFromLine } = require('./progress');
 
 let window;
@@ -76,7 +77,8 @@ function launch(command, args, options = {}, label = 'Task') {
     log(`▶ ${label}`);
     const child = spawn(command, args, { ...options, detached: process.platform !== 'win32',
       windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    active = { label, child, detail: 'Starting…', percent: null, startedAt: Date.now() };
+    active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
+      percent: null, startedAt: Date.now() };
     broadcast('activity', { label, detail: active.detail, percent: null, startedAt: active.startedAt });
     const pending = { stdout: '', stderr: '' };
     function line(value) {
@@ -119,9 +121,9 @@ function launch(command, args, options = {}, label = 'Task') {
   });
 }
 
-async function capture(command, args, cwd) {
+async function capture(command, args, cwd, env = process.env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
@@ -130,50 +132,93 @@ async function capture(command, args, cwd) {
   });
 }
 
+function toolEnv(base = process.env) {
+  return buildTools.environment(app.getPath('userData'), base);
+}
+
+async function ensureBuildTools() {
+  if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
+  const userData = app.getPath('userData');
+  const forcePrivate = process.env.SMS_FORCE_PRIVATE_TOOLS === '1';
+  const found = buildTools.status(userData);
+  if (found.mode === 'private' || (!forcePrivate && found.ready)) return;
+  const startedAt = Date.now();
+  active = { label: 'Download build tools', child: null, detail: 'Checking download…', percent: null, startedAt };
+  broadcast('activity', { label: active.label, detail: active.detail, percent: null, startedAt });
+  try {
+    await buildTools.prepare(userData, {
+      forcePrivate,
+      progress(percent) {
+        if (!active || active.child) return;
+        active.detail = percent === null ? 'Downloading tools…' : `Downloading tools: ${percent}%`;
+        active.percent = percent;
+        broadcast('activity', { label: active.label, detail: active.detail, percent, startedAt });
+      },
+      async run(command, args, options, label) {
+        active = null;
+        broadcast('activity', null);
+        return launch(command, args, options, label);
+      }
+    });
+    log('Build tools are ready.');
+  } finally {
+    if (active && !active.child && active.startedAt === startedAt) {
+      active = null;
+      broadcast('activity', null);
+    }
+  }
+}
+
 async function updatePort() {
+  await ensureBuildTools();
   const root = requireRepo();
   if (!fs.existsSync(path.join(root, '.git'))) throw new Error('These setup files cannot update automatically. Download a fresh copy to get updates.');
-  await launch('git', ['fetch', '--recurse-submodules=no'], { cwd: root }, 'Check for port updates');
-  const tracking = await capture('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], root);
-  const counts = await capture('git', ['rev-list', '--left-right', '--count', `HEAD...${tracking}`], root);
+  const env = toolEnv();
+  await launch('git', ['fetch', '--recurse-submodules=no'], { cwd: root, env }, 'Check for port updates');
+  const tracking = await capture('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], root, env);
+  const counts = await capture('git', ['rev-list', '--left-right', '--count', `HEAD...${tracking}`], root, env);
   const [ahead, behind] = counts.split(/\s+/).map(Number);
   if (behind === 0) { log('Your setup files are up to date.'); return { updated: false, behind: 0 }; }
   if (ahead > 0) throw new Error(`Local branch has ${ahead} unpublished commit(s) and ${behind} upstream commit(s). Resolve that branch before updating.`);
   makeSaveBackup('before-port-update');
-  await launch('git', ['merge', '--ff-only', tracking], { cwd: root }, `Update port (${behind} commits)`);
+  await launch('git', ['merge', '--ff-only', tracking], { cwd: root, env }, `Update port (${behind} commits)`);
   config.portGeneration += 1;
   saveConfig();
-  await launch('git', ['submodule', 'update', '--init', 'decomp'], { cwd: root }, 'Update decompilation');
+  await launch('git', ['submodule', 'update', '--init', 'decomp'], { cwd: root, env }, 'Update decompilation');
   log('Setup files updated. Your game will be prepared again the next time you play.');
   return { updated: true, behind };
 }
 
 async function installPort() {
+  await ensureBuildTools();
   const destination = path.resolve(config.repo);
   if (fs.existsSync(destination)) {
-    if (port.isPort(destination)) throw new Error('The setup files are already in this folder.');
+    if (port.isPort(destination)) return { ok: true };
     if (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length)
       throw new Error('That folder has other files in it. Choose a different download folder.');
   }
   fs.mkdirSync(path.dirname(destination), { recursive: true });
-  await launch('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, destination], { cwd: path.dirname(destination) }, 'Download port source');
+  await launch('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, destination],
+    { cwd: path.dirname(destination), env: toolEnv() }, 'Download port source');
   return { ok: true };
 }
 
 async function installEclipse() {
+  await ensureBuildTools();
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
-  const cmd = port.commandFor(root, 'python', [rom]);
+  const cmd = port.commandFor(root, 'python', [rom], process.platform, toolEnv());
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
 }
 
 async function installTextures() {
+  await ensureBuildTools();
   const root = requireRepo();
   if (port.texturePackInstalled(root)) {
     log('HD textures are already installed.');
     return { installed: true };
   }
-  const cmd = port.commandFor(root, 'textures');
+  const cmd = port.commandFor(root, 'textures', [], process.platform, toolEnv());
   await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install UHD textures');
   if (!port.texturePackInstalled(root)) throw new Error('Texture installer finished without a usable texture pack.');
   log('HD textures are ready for the next game launch.');
@@ -186,13 +231,29 @@ function binaryReady(root = config.repo, settings = config.settings) {
   return fs.existsSync(binary) && (!config.portGeneration || config.builtGeneration[binary] === config.portGeneration);
 }
 
+function keepPreviousBuildIfToolchainChanged(root, settings) {
+  if (buildTools.status(app.getPath('userData')).mode !== 'private') return;
+  const buildDirectory = path.dirname(port.binaryPath(root, settings));
+  const cache = path.join(buildDirectory, 'CMakeCache.txt');
+  if (!fs.existsSync(cache)) return;
+  const expected = buildTools.rootFor(app.getPath('userData'));
+  const contents = fs.readFileSync(cache, 'utf8');
+  const compiler = contents.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1] || '';
+  if (compiler.startsWith(expected)) return;
+  const previous = `${buildDirectory}.previous-${Date.now()}`;
+  fs.renameSync(buildDirectory, previous);
+  log(`Kept the earlier build at ${previous} because this setup uses different build tools.`);
+}
+
 async function build() {
+  await ensureBuildTools();
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
   const settings = config.settings;
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse();
   const disc = port.gameDisc(root, rom, settings.eclipse);
-  const env = port.buildEnvironment(settings, disc, root);
+  keepPreviousBuildIfToolchainChanged(root, settings);
+  const env = toolEnv(port.buildEnvironment(settings, disc, root));
   const cmd = settings.eclipse
     ? port.eclipseBuildCommand(root, settings, process.platform, env)
     : port.commandFor(root, 'build', [disc], process.platform, env);
@@ -220,7 +281,7 @@ async function play() {
     throw new Error('HD textures are on but have not been downloaded. Download them or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
-  const env = { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() };
+  const env = toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() });
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
@@ -242,11 +303,12 @@ async function launchGame() {
 }
 
 async function clean(dryRun) {
+  await ensureBuildTools();
   const root = requireRepo();
   if (!dryRun && saves.cleanupWouldRemoveSaves(root, currentSaveDirectory()))
     throw new Error('Your memory card is inside a build folder. Move it outside the build folders before cleanup.');
   if (!dryRun) makeSaveBackup('before-cleanup');
-  const env = { ...process.env };
+  const env = toolEnv();
   delete env.SMS_ARCH;
   const cmd = port.commandFor(root, 'clean', dryRun ? ['--dry-run'] : [], process.platform, env);
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, dryRun ? 'Preview cleanup' : 'Clean build output');
@@ -263,8 +325,9 @@ function state() {
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
     binaryReady: repoReady && binaryReady(),
+    tools: buildTools.status(app.getPath('userData')),
     active: active ? { label: active.label, detail: active.detail,
-      percent: active.percent, startedAt: active.startedAt } : null, appUpdate, logs: logLines,
+      percent: active.percent, startedAt: active.startedAt, canStop: Boolean(active.child) } : null, appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -387,6 +450,7 @@ function registerHandlers() {
   });
   ipcMain.handle('stop', () => {
     if (!active) return false;
+    if (!active.child) return false;
     if (process.platform === 'win32') spawn('taskkill', ['/PID', String(active.child.pid), '/T', '/F'], { windowsHide: true });
     else { try { process.kill(-active.child.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
     return true;
