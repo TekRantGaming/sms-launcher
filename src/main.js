@@ -318,8 +318,8 @@ function registerHandlers() {
 
 function createWindow() {
   window = new BrowserWindow({
-    width: 1080, height: 780, minWidth: 760, minHeight: 600,
-    backgroundColor: '#111c29', title: 'SMS Launcher',
+    width: 1080, height: 760, minWidth: 900, minHeight: 700,
+    backgroundColor: '#f3f5f3', title: 'SMS Launcher',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   window.setMenuBarVisibility(false);

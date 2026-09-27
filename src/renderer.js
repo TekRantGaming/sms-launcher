@@ -4,6 +4,19 @@ const $ = id => document.getElementById(id);
 let current;
 let changing = false;
 
+function showPage(name) {
+  for (const page of ['home', 'settings', 'maintenance']) $('page-' + page).hidden = page !== name;
+  for (const tab of document.querySelectorAll('.tab')) {
+    const selected = tab.dataset.page === name;
+    tab.classList.toggle('active', selected);
+    if (selected) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  }
+}
+
+for (const button of document.querySelectorAll('[data-page]'))
+  button.addEventListener('click', () => showPage(button.dataset.page));
+
 function setMessage(text, error = false) {
   const box = $('message');
   box.textContent = text || '';
@@ -22,16 +35,21 @@ function refresh(data) {
   const { config, platform } = data;
   $('platform').textContent = `${platform.name} · ${platform.arches.join(' / ')} bit`;
   $('repo-path').textContent = config.repo;
+  $('repo-path').title = config.repo;
   badge('repo-badge', data.repoReady ? 'Ready' : 'Needed', data.repoReady);
-  $('install-port').disabled = data.repoReady || Boolean(data.active);
+  $('install-port').hidden = data.repoReady;
+  $('install-port').disabled = Boolean(data.active);
   $('choose-location').hidden = data.repoReady;
   $('choose-location').disabled = Boolean(data.active);
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
-  $('rom-path').textContent = data.romError || config.rom || 'Choose your own North American GMSE01 Rev 0 .iso, .gcm, or .ciso file. It stays where it is.';
+  $('rom-path').textContent = data.romError || config.rom || 'Choose your own GMSE01 Rev 0 ISO, GCM, or CISO.';
+  $('rom-path').title = data.romError || config.rom;
+  $('choose-rom').textContent = data.romReady ? 'Change image' : 'Choose image';
   badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Invalid image' : 'Needed', data.romReady, Boolean(data.romError));
   badge('build-badge', !data.romReady ? 'Image needed' : data.binaryReady ? 'Ready to play' : 'Build needed', data.binaryReady && data.romReady);
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'The port has only verified Eclipse builds on Linux so far.';
+  $('eclipse-note').hidden = !config.settings.eclipse;
   $('build').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
   $('play').disabled = !data.binaryReady || !data.romReady || Boolean(data.active);
   $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
@@ -41,6 +59,7 @@ function refresh(data) {
   $('choose-repo').disabled = Boolean(data.active);
   $('stop').hidden = !data.active;
   $('activity-label').textContent = data.active ? data.active.label : 'Idle';
+  $('task-status').textContent = data.active ? data.active.label : 'Idle';
   $('app-update').textContent = data.appUpdate.message;
   $('save-path').textContent = `Save folder: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
   $('backup-saves').disabled = Boolean(data.active);
@@ -71,9 +90,11 @@ function showError(error) { setMessage(error.message || String(error), true); }
 async function action(method) {
   setMessage('');
   try {
+    if (['installPort', 'updatePort', 'installEclipse', 'build', 'clean', 'cleanPreview'].includes(method)) showPage('maintenance');
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
+    if (['installPort', 'installEclipse', 'build'].includes(method)) showPage('home');
   } catch (error) { showError(error); await sync(); }
 }
 
