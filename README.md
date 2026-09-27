@@ -9,7 +9,7 @@ Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev
 3. Choose your own **North American Super Mario Sunshine GMSE01 Rev 0** `.iso`, `.gcm`, or Dolphin `.ciso` image. The launcher reads it in place and saves only its path in local preferences.
 4. Use the main action on Home. It shows the next step: **Download port**, **Choose image**, **Install textures** (if HD textures are enabled), **Build & play**, or **Play game**. A build starts automatically when your selected game does not have one. **Rebuild** appears after a build exists.
 
-The Home screen keeps setup, build, play, widescreen, frame rate, and Eclipse controls visible without scrolling. **Settings** holds the remaining visual and build choices; **Maintenance** holds updates, cleanup, backups, and the activity log.
+Home uses the supplied seaside artwork as its background and keeps one large launch action plus port and disc status visible without scrolling. **Settings** and **Maintenance** open as dialogs from the top right. Settings holds gameplay, visual, and build choices; Maintenance holds updates, cleanup, backups, and the activity log.
 
 The port build prerequisites still apply: see its `BUILD.md` (also available via **Build help**). Linux supports 64 and 32 bit builds; macOS supports x86_64 (Rosetta 2 on Apple Silicon); Windows supports MSYS2 MINGW32 32 bit. The launcher offers only supported choices. On Windows install MSYS2 at `C:\msys64`, or set `MSYS2_ROOT` to its location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
 

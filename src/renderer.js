@@ -4,18 +4,20 @@ const $ = id => document.getElementById(id);
 let current;
 let changing = false;
 
-function showPage(name) {
-  for (const page of ['home', 'settings', 'maintenance']) $('page-' + page).hidden = page !== name;
-  for (const tab of document.querySelectorAll('.tab')) {
-    const selected = tab.dataset.page === name;
-    tab.classList.toggle('active', selected);
-    if (selected) tab.setAttribute('aria-current', 'page');
-    else tab.removeAttribute('aria-current');
-  }
+function closeModal() {
+  for (const dialog of document.querySelectorAll('.launcher-modal'))
+    if (dialog.open) dialog.close();
 }
 
-for (const button of document.querySelectorAll('[data-page]'))
-  button.addEventListener('click', () => showPage(button.dataset.page));
+function showModal(name) {
+  closeModal();
+  $('page-' + name).showModal();
+}
+
+for (const button of document.querySelectorAll('[data-modal]'))
+  button.addEventListener('click', () => showModal(button.dataset.modal));
+for (const button of document.querySelectorAll('[data-close-modal]'))
+  button.addEventListener('click', closeModal);
 
 function setMessage(text, error = false) {
   const box = $('message');
@@ -72,9 +74,10 @@ function refresh(data) {
       : texturesNeeded ? 'HD textures are selected. Install the pack before playing.'
         : !data.binaryReady ? 'Build the game for this computer, then play.' : 'Your game is ready.';
   $('play').textContent = !data.repoReady ? 'Download port' : !data.romReady ? 'Choose image'
-    : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play game';
+    : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
+  $('launch-secondary').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
   $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
@@ -120,17 +123,15 @@ function refresh(data) {
 
 async function sync() { refresh(await window.sms.state()); }
 
-function showError(error) { setMessage(error.message || String(error), true); }
+function showError(error) { closeModal(); setMessage(error.message || String(error), true); }
 
 async function action(method) {
   setMessage('');
   try {
-    if (['updatePort', 'clean', 'cleanPreview'].includes(method)) showPage('maintenance');
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame'].includes(method)) showPage('home');
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame', 'updatePort', 'clean', 'cleanPreview'].includes(method)) closeModal();
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame'].includes(method)) showPage('home');
   } catch (error) { showError(error); await sync(); }
 }
 
@@ -144,7 +145,7 @@ function settingsValue() {
 
 async function saveSettings() {
   if (changing) return;
-  try { refresh(await window.sms.saveSettings(settingsValue())); setMessage('Settings saved.'); }
+  try { refresh(await window.sms.saveSettings(settingsValue())); }
   catch (error) { showError(error); }
 }
 
