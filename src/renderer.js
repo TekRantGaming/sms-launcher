@@ -9,13 +9,24 @@ function closeModal() {
     if (dialog.open) dialog.close();
 }
 
-function showModal(name) {
-  closeModal();
-  $('page-' + name).showModal();
+function showSettingsView(name) {
+  $('settings-view').hidden = name !== 'settings';
+  $('maintenance-view').hidden = name !== 'maintenance';
+  $('page-settings').setAttribute('aria-label', name === 'settings' ? 'Game settings' : 'Maintenance');
 }
 
-for (const button of document.querySelectorAll('[data-modal]'))
-  button.addEventListener('click', () => showModal(button.dataset.modal));
+$('settings-cog').addEventListener('click', () => {
+  showSettingsView('settings');
+  $('page-settings').showModal();
+});
+$('open-maintenance').addEventListener('click', () => {
+  showSettingsView('maintenance');
+  $('back-to-settings').focus();
+});
+$('back-to-settings').addEventListener('click', () => {
+  showSettingsView('settings');
+  $('open-maintenance').focus();
+});
 for (const button of document.querySelectorAll('[data-close-modal]'))
   button.addEventListener('click', closeModal);
 
@@ -77,6 +88,7 @@ function refresh(data) {
     : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
+  $('launch-secondary').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
   $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'

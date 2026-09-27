@@ -27,10 +27,8 @@
 
         <section class="launch-panel" aria-label="Build and play">
           <div class="launch-copy"><span class="step-label">YOUR GAME</span><h2>Super Mario Sunshine <span id="build-badge" class="badge">Build needed</span></h2><p id="launch-description">Build once for this setup, then play whenever you like.</p></div>
-          <button id="play" class="play">Continue</button>
-          <div class="launch-secondary" id="launch-secondary">
-            <button class="launch-tool" data-modal="settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg><span>Settings</span></button>
-            <button class="launch-tool" data-modal="maintenance"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span>Maintenance</span></button>
+          <div class="launch-primary"><button id="play" class="play">Continue</button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button></div>
+          <div class="launch-secondary" id="launch-secondary" hidden>
             <button id="build" class="launch-tool" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0 0 4M16 4v4h-4"/></svg><span>Rebuild</span></button>
           </div>
           <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div></div>
@@ -53,6 +51,7 @@
     </main>
 
     <dialog id="page-settings" class="launcher-modal" aria-label="Game settings">
+      <section id="settings-view" class="modal-view" aria-label="Game settings">
       <div class="modal-head"><div><p class="eyebrow">PREFERENCES</p><h1>Game settings</h1><p>Changes are saved automatically.</p></div><button class="modal-close" data-close-modal aria-label="Close settings">×</button></div>
       <div class="modal-body">
         <section class="panel quick-panel" aria-label="Gameplay settings">
@@ -69,11 +68,12 @@
           <section class="panel detail-panel" aria-label="Build settings"><h2>Build</h2><label class="field"><span>Build architecture</span><select id="arch"></select></label><label class="field"><span>Internal resolution</span><select id="resolution"><option value="1">1× · Original</option><option value="2">2× · Sharper</option><option value="3">3×</option><option value="4">4×</option></select></label></section>
           <section class="panel detail-panel" aria-label="Visual settings"><h2>Visuals</h2><label class="switch"><span><strong>HUD at screen edges</strong><small>Used with widescreen.</small></span><input id="hudEdges" type="checkbox"><i></i></label><label class="switch"><span><strong>HD textures <span id="textures-badge" class="badge">Checking</span></strong><small>Replaces game textures when installed and enabled.</small></span><input id="textures" type="checkbox"><i></i></label><div class="texture-setup"><span id="texture-info">Checking for a texture pack…</span><button class="subtle" id="install-textures">Install UHD pack · ~1 GB</button></div></section>
         </div>
+        <button id="open-maintenance" class="settings-entry"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span><strong>Maintenance</strong><small>Updates, backups, cleanup, and activity</small></span><span class="settings-entry-arrow" aria-hidden="true">→</span></button>
       </div>
-    </dialog>
+      </section>
 
-    <dialog id="page-maintenance" class="launcher-modal maintenance-modal" aria-label="Maintenance">
-      <div class="modal-head"><div><p class="eyebrow">TOOLS & HISTORY</p><h1>Maintenance</h1><p>Updates, save backups, and build cleanup.</p></div><button class="modal-close" data-close-modal aria-label="Close maintenance">×</button></div>
+      <section id="maintenance-view" class="modal-view" aria-label="Maintenance" hidden>
+      <div class="modal-head"><div><button id="back-to-settings" class="modal-back">← Settings</button><p class="eyebrow">TOOLS & HISTORY</p><h1>Maintenance</h1><p>Updates, save backups, and build cleanup.</p></div><button class="modal-close" data-close-modal aria-label="Close maintenance">×</button></div>
       <div class="modal-body">
         <div class="maintenance-grid">
           <section class="panel maintenance-panel" aria-label="Updates and cleanup"><h2>Updates & builds</h2><label class="switch"><span><strong>Check for updates automatically</strong><small>Checks the port and launcher.</small></span><input id="autoUpdate" type="checkbox"><i></i></label><div class="actions"><button class="subtle" id="update-port">Check port updates</button><button class="subtle" id="clean-preview">Preview cleanup</button><button class="subtle danger" id="clean">Clean builds</button></div><p class="helper">Saves are backed up before updates or cleanup.</p><button class="text-button" id="docs">Open build help ↗</button></section>
@@ -81,9 +81,10 @@
         </div>
         <section class="panel activity-panel" aria-label="Activity log"><div class="activity-heading"><h2>Activity</h2><div><span id="activity-label">Idle</span><button class="subtle" id="stop" hidden>Stop task</button></div></div><pre id="log" aria-live="polite">Ready.</pre></section>
       </div>
+      </section>
     </dialog>
 
-    <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Idle</span><span class="status-separator">·</span><span id="app-update">Checking launcher status…</span><button class="status-link" data-modal="maintenance">View activity →</button><span class="byo">Bring your own ROM · No game data included</span></footer>
+    <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Idle</span><span class="status-separator">·</span><span id="app-update">Checking launcher status…</span><span class="byo">Bring your own ROM · No game data included</span></footer>
   </div>
   <script src="renderer.js"></script>
 </body>
