@@ -1,5 +1,7 @@
 # SMS Launcher
 
+![SMS Launcher ready to play](docs/launcher-ready.png)
+
 Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev/sms-pc-port). The launcher is a **sibling** of the port checkout (`sms-launcher/` next to `sms-port/`) during development. It does not include game data.
 
 ## Start
