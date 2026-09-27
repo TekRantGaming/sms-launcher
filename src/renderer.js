@@ -73,19 +73,6 @@ function requiredStep(data) {
 }
 
 function showWizardStep(data) {
-  const legacyWindowsBuild = !data.platform.buildSupported && data.binaryReady && data.config.settings.arch === '32';
-  if (!data.platform.buildSupported && !legacyWindowsBuild) {
-    wizardStep = -1;
-    $('page-home').classList.remove('ready-mode');
-    $('page-home').classList.add('unsupported-mode');
-    $('setup-flow').hidden = true;
-    $('home-title').textContent = 'Windows setup is coming';
-    $('home-description').textContent = 'We only support 64-bit game builds, and the Windows version is still in development.';
-    $('play').textContent = 'Setup unavailable';
-    return;
-  }
-  $('page-home').classList.remove('unsupported-mode');
-  if (wizardStep === -1) wizardStep = null;
   const required = requiredStep(data);
   if (required === 0) wizardStep = 0;
   else if (wizardStep === null || wizardStep === 0 || wizardStep > required) wizardStep = required;
@@ -114,8 +101,7 @@ function renderActivity(active) {
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
   $('task-status').textContent = active ? taskName(active.label)
-    : $('page-home').classList.contains('unsupported-mode') ? 'Windows setup unavailable'
-      : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
+    : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
   if (!working) return;
   $('progress-title').textContent = taskName(active.label);
   $('progress-detail').textContent = active.detail || 'Working…';
@@ -138,16 +124,16 @@ function refresh(data) {
   $('settings-repo-path').textContent = config.repo;
   $('settings-repo-path').title = config.repo;
   $('choose-location').disabled = Boolean(data.active);
-  $('update-port').disabled = !platform.buildSupported || !data.repoReady || Boolean(data.active);
+  $('update-port').disabled = !data.repoReady || Boolean(data.active);
   $('rom-path').textContent = data.romError || config.rom || 'No file selected';
   $('rom-path').title = data.romError || config.rom;
   $('settings-rom-path').textContent = data.romError || config.rom || 'No disc file selected';
   $('settings-rom-path').title = data.romError || config.rom;
   $('choose-rom').hidden = !data.romReady;
   showWizardStep(data);
-  $('play').disabled = Boolean(data.active) || setupPending || wizardStep === -1;
+  $('play').disabled = Boolean(data.active) || setupPending;
   for (const button of document.querySelectorAll('[data-setup-back]')) button.disabled = Boolean(data.active) || setupPending;
-  $('build').hidden = !platform.buildSupported || !data.binaryReady || !data.romReady;
+  $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
@@ -159,8 +145,8 @@ function refresh(data) {
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
   $('eclipse-note').hidden = !config.settings.eclipse;
-  $('install-eclipse').disabled = !platform.buildSupported || !data.repoReady || !data.romReady || Boolean(data.active);
-  $('clean').disabled = !platform.buildSupported || !data.repoReady || Boolean(data.active);
+  $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
+  $('clean').disabled = !data.repoReady || Boolean(data.active);
   $('clean-preview').disabled = !data.repoReady || Boolean(data.active);
   $('choose-rom').disabled = Boolean(data.active);
   $('choose-rom-settings').disabled = Boolean(data.active);
@@ -183,7 +169,10 @@ function refresh(data) {
   $('backup-list').disabled = Boolean(data.active) || !data.backups.length;
 
   changing = true;
-  for (const key of ['widescreen', 'resolution']) $(key).value = String(config.settings[key]);
+  $('arch').replaceChildren(...platform.arches.map(arch => {
+    const option = document.createElement('option'); option.value = arch; option.textContent = `${arch} bit`; return option;
+  }));
+  for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   changing = false;
 }
@@ -213,7 +202,7 @@ function runWizardAction(method) {
 
 function settingsValue() {
   return {
-    arch: current.config.settings.arch, widescreen: $('widescreen').value, resolution: Number($('resolution').value),
+    arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value),
     fps60: $('fps60').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked
   };
@@ -258,7 +247,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
+for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
   $(key).addEventListener('change', saveSettings);
 window.sms.onLog(appendLog);
 window.sms.onActivity(value => {

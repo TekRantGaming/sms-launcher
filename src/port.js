@@ -7,9 +7,9 @@ const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
 
 function platformInfo(platform = process.platform) {
-  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64'], defaultArch: '64', buildSupported: true };
-  if (platform === 'darwin') return { name: 'macOS', id: 'macos', arches: ['64'], defaultArch: '64', buildSupported: true };
-  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: [], defaultArch: '64', buildSupported: false };
+  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64', '32'], defaultArch: '64' };
+  if (platform === 'darwin') return { name: 'macOS', id: 'macos', arches: ['64'], defaultArch: '64' };
+  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: ['32'], defaultArch: '32' };
   throw new Error(`This port does not support ${platform}.`);
 }
 
@@ -50,9 +50,7 @@ function validateRom(file) {
 
 function normalizeSettings(input = {}, platform = process.platform) {
   const info = platformInfo(platform);
-  // Keep existing Windows 32-bit builds playable, but never offer a new 32-bit build.
-  const arch = platform === 'win32' && String(input.arch) === '32' ? '32'
-    : info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
+  const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
   const widescreen = ['off', '16:9', '16:10', '21:9'].includes(input.widescreen) ? input.widescreen : '16:9';
   const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 2;
   return {
