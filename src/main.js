@@ -61,6 +61,11 @@ function requireRepo() {
   return config.repo;
 }
 
+function requireBuildSupport() {
+  if (!port.platformInfo().buildSupported)
+    throw new Error('A 64-bit Windows game build is not available yet. You can keep using an existing game build.');
+}
+
 function currentSaveDirectory() { return saves.saveDirectory(config.repo); }
 
 function makeSaveBackup(reason) {
@@ -131,6 +136,7 @@ async function capture(command, args, cwd) {
 }
 
 async function updatePort() {
+  requireBuildSupport();
   const root = requireRepo();
   if (!fs.existsSync(path.join(root, '.git'))) throw new Error('These setup files cannot update automatically. Download a fresh copy to get updates.');
   await launch('git', ['fetch', '--recurse-submodules=no'], { cwd: root }, 'Check for port updates');
@@ -149,6 +155,7 @@ async function updatePort() {
 }
 
 async function installPort() {
+  requireBuildSupport();
   const destination = path.resolve(config.repo);
   if (fs.existsSync(destination)) {
     if (port.isPort(destination)) throw new Error('The setup files are already in this folder.');
@@ -161,6 +168,7 @@ async function installPort() {
 }
 
 async function installEclipse() {
+  requireBuildSupport();
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
   const cmd = port.commandFor(root, 'python', [rom]);
@@ -187,6 +195,7 @@ function binaryReady(root = config.repo, settings = config.settings) {
 }
 
 async function build() {
+  requireBuildSupport();
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
   const settings = config.settings;
@@ -205,6 +214,7 @@ async function build() {
 async function setupGame() {
   const root = requireRepo();
   port.validateRom(config.rom);
+  if (!binaryReady()) requireBuildSupport();
   if (config.settings.textures && !port.texturePackInstalled(root)) await installTextures();
   if (!binaryReady()) await build();
   return state();
@@ -235,6 +245,7 @@ async function play() {
 async function launchGame() {
   const root = requireRepo();
   port.validateRom(config.rom);
+  if (!binaryReady(root)) requireBuildSupport();
   if (config.settings.textures && !port.texturePackInstalled(root))
     throw new Error('Download HD textures before playing, or turn them off in Settings.');
   if (!binaryReady(root)) await build();
@@ -242,6 +253,7 @@ async function launchGame() {
 }
 
 async function clean(dryRun) {
+  if (!dryRun) requireBuildSupport();
   const root = requireRepo();
   if (!dryRun && saves.cleanupWouldRemoveSaves(root, currentSaveDirectory()))
     throw new Error('Your memory card is inside a build folder. Move it outside the build folders before cleanup.');
@@ -414,11 +426,11 @@ app.whenReady().then(() => {
   registerHandlers();
   setupAppUpdater();
   setTimeout(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active)
+    if (port.platformInfo().buildSupported && config.settings.autoUpdate && port.isPort(config.repo) && !active)
       updatePort().catch(error => log(`Update check: ${error.message}`));
   }, 5000);
   setInterval(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active)
+    if (port.platformInfo().buildSupported && config.settings.autoUpdate && port.isPort(config.repo) && !active)
       updatePort().catch(error => log(`Update check: ${error.message}`));
   }, 30 * 60 * 1000);
 });

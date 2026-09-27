@@ -36,12 +36,14 @@ test('requires an owned GMSE01 Rev 0 image and supports plain and CISO headers',
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('offers only platform-supported architectures and keeps builds separate', () => {
-  assert.deepEqual(port.platformInfo('linux').arches, ['64', '32']);
+test('offers only 64-bit builds and preserves existing Windows 32-bit settings', () => {
+  assert.deepEqual(port.platformInfo('linux').arches, ['64']);
   assert.deepEqual(port.platformInfo('darwin').arches, ['64']);
-  assert.deepEqual(port.platformInfo('win32').arches, ['32']);
-  const windows = port.normalizeSettings({ arch: '64' }, 'win32');
-  assert.equal(windows.arch, '32');
+  assert.deepEqual(port.platformInfo('win32').arches, []);
+  assert.equal(port.platformInfo('win32').buildSupported, false);
+  assert.equal(port.normalizeSettings({}, 'win32').arch, '64');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'win32').arch, '32');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'linux').arch, '64');
   const settings = port.normalizeSettings({ eclipse: true, arch: '64' }, 'linux');
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_DISC_IMAGE, '/my/disc.iso');
