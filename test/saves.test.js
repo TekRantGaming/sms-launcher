@@ -20,6 +20,16 @@ test('save path follows the port defaults and explicit configuration', () => {
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('cleanup refuses a custom memory card inside a removable build folder', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-clean-'));
+  try {
+    assert.equal(saves.cleanupWouldRemoveSaves(root, path.join(root, 'build', 'linux-64', 'card-a')), true);
+    assert.equal(saves.cleanupWouldRemoveSaves(root, path.join(root, 'build32', 'card-a')), true);
+    assert.equal(saves.cleanupWouldRemoveSaves(root, path.join(root, 'rom', 'card-a')), false);
+    assert.equal(saves.cleanupWouldRemoveSaves(root, path.join(root, 'builds', 'card-a')), false);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('verified backup restores old progress and preserves current files first', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-backup-'));
   const card = path.join(root, 'card-a');

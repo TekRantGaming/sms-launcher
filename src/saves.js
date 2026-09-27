@@ -33,6 +33,13 @@ function backupRoot(home = os.homedir()) { return path.join(home, 'SMS Launcher 
 
 function isCardFile(name) { return name === 'index.txt' || /\.(dat|stat)$/.test(name); }
 
+function cleanupWouldRemoveSaves(root, saveDir) {
+  return ['build', 'build-64', 'build-mac', 'build32'].some(name => {
+    const relative = path.relative(path.join(root, name), saveDir);
+    return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+  });
+}
+
 function saveFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   if (!fs.statSync(dir).isDirectory()) throw new Error(`Memory card path is not a folder: ${dir}`);
@@ -110,4 +117,5 @@ function restoreBackup(id, saveDir, destination = backupRoot()) {
   return { restored: manifest.files.length, previous: current.directory || null };
 }
 
-module.exports = { saveDirectory, backupRoot, backupSaves, listBackups, restoreBackup };
+module.exports = { saveDirectory, backupRoot, cleanupWouldRemoveSaves,
+  backupSaves, listBackups, restoreBackup };

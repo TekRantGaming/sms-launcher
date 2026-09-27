@@ -186,6 +186,8 @@ async function play() {
 
 async function clean(dryRun) {
   const root = requireRepo();
+  if (!dryRun && saves.cleanupWouldRemoveSaves(root, currentSaveDirectory()))
+    throw new Error('Your memory card is inside a build folder. Move it outside the build folders before cleanup.');
   if (!dryRun) makeSaveBackup('before-cleanup');
   const env = { ...process.env };
   delete env.SMS_ARCH;
