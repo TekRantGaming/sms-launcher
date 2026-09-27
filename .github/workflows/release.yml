@@ -52,16 +52,34 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Configure optional macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$MAC_CSC_LINK" && -n "$MAC_CSC_KEY_PASSWORD" ]]; then
+            printf 'CSC_LINK=%s\n' "$MAC_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - name: Configure optional Windows signing
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          WINDOWS_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WINDOWS_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$WINDOWS_CSC_LINK" && -n "$WINDOWS_CSC_KEY_PASSWORD" ]]; then
+            printf 'WIN_CSC_LINK=%s\n' "$WINDOWS_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'WIN_CSC_KEY_PASSWORD=%s\n' "$WINDOWS_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
       - run: npm run release
         env:
           SMS_RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
   finalize:
     needs: [prepare, publish]
     if: needs.prepare.outputs.release == 'true'
