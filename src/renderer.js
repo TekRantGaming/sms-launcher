@@ -66,6 +66,8 @@ function refresh(data) {
   $('platform').textContent = `${platform.name} · ${platform.arches.join(' / ')} bit`;
   $('repo-path').textContent = config.repo;
   $('repo-path').title = config.repo;
+  $('settings-repo-path').textContent = config.repo;
+  $('settings-repo-path').title = config.repo;
   badge('repo-badge', data.repoReady ? 'Ready' : 'Needed', data.repoReady);
   $('install-port').hidden = data.repoReady;
   $('install-port').disabled = Boolean(data.active);
@@ -74,10 +76,17 @@ function refresh(data) {
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
   $('rom-path').textContent = data.romError || config.rom || 'Choose your own GMSE01 Rev 0 ISO, GCM, or CISO.';
   $('rom-path').title = data.romError || config.rom;
+  $('settings-rom-path').textContent = data.romError || config.rom || 'No disc image selected';
+  $('settings-rom-path').title = data.romError || config.rom;
   $('choose-rom').textContent = data.romReady ? 'Change image' : 'Choose image';
   badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Invalid image' : 'Needed', data.romReady, Boolean(data.romError));
   const texturesNeeded = config.settings.textures && !data.texturesInstalled;
   const ready = data.repoReady && data.romReady && data.binaryReady && !texturesNeeded;
+  $('page-home').classList.toggle('ready-mode', ready);
+  $('setup-grid').hidden = ready;
+  $('setup-options').hidden = ready;
+  $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
+  $('home-description').textContent = ready ? 'Ready when you are.' : 'Choose the port, add your own disc image, and set your play options.';
   badge('build-badge', !data.repoReady ? 'Port needed' : !data.romReady ? 'Disc needed'
     : texturesNeeded ? 'Textures needed' : data.binaryReady ? 'Ready' : 'Build needed', ready, texturesNeeded);
   $('launch-description').textContent = !data.repoReady ? 'Download the port to get started.'
@@ -88,7 +97,6 @@ function refresh(data) {
     : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
-  $('launch-secondary').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
   $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
@@ -106,6 +114,8 @@ function refresh(data) {
   $('clean-preview').disabled = !data.repoReady || Boolean(data.active);
   $('choose-rom').disabled = Boolean(data.active);
   $('choose-repo').disabled = Boolean(data.active);
+  $('choose-rom-settings').disabled = Boolean(data.active);
+  $('choose-repo-settings').disabled = Boolean(data.active);
   $('stop').hidden = !data.active;
   $('activity-label').textContent = data.active ? data.active.label : 'Idle';
   renderActivity(data.active);
@@ -129,6 +139,9 @@ function refresh(data) {
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  $('setup-widescreen').value = config.settings.widescreen;
+  $('setup-fps60').checked = config.settings.fps60;
+  $('setup-textures').checked = config.settings.textures;
   changing = false;
 }
 
@@ -169,7 +182,8 @@ function appendLog(line) {
 }
 
 for (const [id, method] of Object.entries({
-  'choose-rom': 'chooseRom', 'choose-repo': 'chooseRepo', 'choose-location': 'chooseLocation', 'install-port': 'installPort',
+  'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom', 'choose-repo': 'chooseRepo',
+  'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation', 'install-port': 'installPort',
   'update-port': 'updatePort', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
@@ -187,6 +201,12 @@ $('restore-saves').addEventListener('click', async () => {
 });
 for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
   $(key).addEventListener('change', saveSettings);
+for (const key of ['widescreen', 'fps60', 'textures']) {
+  $(`setup-${key}`).addEventListener('change', () => {
+    $(key)[key === 'widescreen' ? 'value' : 'checked'] = $(`setup-${key}`)[key === 'widescreen' ? 'value' : 'checked'];
+    saveSettings();
+  });
+}
 window.sms.onLog(appendLog);
 window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);

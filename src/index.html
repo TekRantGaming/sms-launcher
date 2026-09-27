@@ -22,30 +22,37 @@
     <div id="message" class="message" role="status" hidden></div>
     <main class="viewport">
       <section id="page-home" class="page home-page" aria-label="Launch game">
-        <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1>Ready to play?</h1><p>Bring your own disc image. The launcher handles the rest.</p></div></div>
+        <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1 id="home-title">Set up your game</h1><p id="home-description">Choose the port, add your own disc image, and set your play options.</p></div></div>
+
+        <div class="setup-grid" id="setup-grid">
+          <section class="panel setup-panel" aria-label="Port source">
+            <div class="panel-title"><div><span class="step-label">01 / PORT SOURCE</span><h2>Game files <span id="repo-badge" class="badge">Checking</span></h2></div></div>
+            <p class="path" id="repo-path">Looking for the port…</p>
+            <div class="actions"><button id="install-port" class="solid">Download port</button><button id="choose-repo" class="subtle">Choose checkout</button><button id="choose-location" class="subtle">Change location</button></div>
+          </section>
+          <section class="panel setup-panel" aria-label="Disc image">
+            <div class="panel-title"><div><span class="step-label">02 / YOUR DISC</span><h2>Disc image <span id="rom-badge" class="badge">Needed</span></h2></div></div>
+            <p class="path" id="rom-path">Choose your own GMSE01 Rev 0 ISO, GCM, or CISO.</p>
+            <div class="actions"><button id="choose-rom" class="solid">Choose image</button><span class="helper">The image stays on your computer.</span></div>
+          </section>
+        </div>
+
+        <section class="panel setup-options" id="setup-options" aria-label="Initial play options">
+          <div class="setup-options-heading"><span class="step-label">03 / PLAY OPTIONS</span><span>Saved automatically · More options in Settings</span></div>
+          <div class="setup-options-grid">
+            <label class="setup-option"><span>Screen format</span><select id="setup-widescreen"><option value="off">Original 4:3</option><option value="16:9">Widescreen 16:9</option><option value="16:10">Widescreen 16:10</option><option value="21:9">Ultrawide 21:9</option></select></label>
+            <label class="switch setup-switch"><span><strong>60 fps</strong><small>Smoother gameplay</small></span><input id="setup-fps60" type="checkbox"><i></i></label>
+            <label class="switch setup-switch"><span><strong>HD textures</strong><small>Optional ~1 GB download</small></span><input id="setup-textures" type="checkbox"><i></i></label>
+          </div>
+        </section>
+
         <div class="hero-spacer" aria-hidden="true"></div>
 
         <section class="launch-panel" aria-label="Build and play">
           <div class="launch-copy"><span class="step-label">YOUR GAME</span><h2>Super Mario Sunshine <span id="build-badge" class="badge">Build needed</span></h2><p id="launch-description">Build once for this setup, then play whenever you like.</p></div>
           <div class="launch-primary"><button id="play" class="play">Continue</button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button></div>
-          <div class="launch-secondary" id="launch-secondary" hidden>
-            <button id="build" class="launch-tool" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 8a6 6 0 1 0 0 4M16 4v4h-4"/></svg><span>Rebuild</span></button>
-          </div>
           <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div></div>
         </section>
-
-        <div class="setup-grid">
-          <section class="panel setup-panel" aria-label="Port source">
-            <div class="panel-title"><div><span class="step-label">PORT SOURCE</span><h2>Game files <span id="repo-badge" class="badge">Checking</span></h2></div></div>
-            <p class="path" id="repo-path">Looking for the port…</p>
-            <div class="actions"><button id="install-port" class="solid">Download port</button><button id="choose-repo" class="subtle">Choose checkout</button><button id="choose-location" class="subtle">Change location</button></div>
-          </section>
-          <section class="panel setup-panel" aria-label="Disc image">
-            <div class="panel-title"><div><span class="step-label">YOUR DISC</span><h2>Disc image <span id="rom-badge" class="badge">Needed</span></h2></div></div>
-            <p class="path" id="rom-path">Choose your own GMSE01 Rev 0 ISO, GCM, or CISO.</p>
-            <div class="actions"><button id="choose-rom" class="solid">Choose image</button><span class="helper">The image stays on your computer.</span></div>
-          </section>
-        </div>
 
       </section>
     </main>
@@ -64,11 +71,12 @@
           <div class="texture-summary"><span id="texture-status">Checking HD textures…</span></div>
           <div class="quick-note" id="eclipse-note"><span id="eclipse-platform-note"></span><button id="install-eclipse" class="text-button">Install Eclipse mod ↗</button></div>
         </section>
+        <details class="installation-details"><summary><span><strong>Game files & disc image</strong><small>Change the port checkout or your own disc image</small></span><span aria-hidden="true">⌄</span></summary><div class="installation-content"><div class="installation-row"><div><strong>Port source</strong><span class="small-path" id="settings-repo-path"></span></div><button class="subtle" id="choose-repo-settings">Change checkout</button></div><div class="installation-row"><div><strong>Disc image</strong><span class="small-path" id="settings-rom-path"></span></div><button class="subtle" id="choose-rom-settings">Change image</button></div></div></details>
+        <button id="open-maintenance" class="settings-entry"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span><strong>Maintenance</strong><small>Updates, backups, cleanup, and activity</small></span><span class="settings-entry-arrow" aria-hidden="true">→</span></button>
         <div class="detail-grid">
-          <section class="panel detail-panel" aria-label="Build settings"><h2>Build</h2><label class="field"><span>Build architecture</span><select id="arch"></select></label><label class="field"><span>Internal resolution</span><select id="resolution"><option value="1">1× · Original</option><option value="2">2× · Sharper</option><option value="3">3×</option><option value="4">4×</option></select></label></section>
+          <section class="panel detail-panel" aria-label="Build settings"><h2>Build</h2><label class="field"><span>Build architecture</span><select id="arch"></select></label><label class="field"><span>Internal resolution</span><select id="resolution"><option value="1">1× · Original</option><option value="2">2× · Sharper</option><option value="3">3×</option><option value="4">4×</option></select></label><button id="build" class="subtle rebuild-button" hidden>Rebuild game</button></section>
           <section class="panel detail-panel" aria-label="Visual settings"><h2>Visuals</h2><label class="switch"><span><strong>HUD at screen edges</strong><small>Used with widescreen.</small></span><input id="hudEdges" type="checkbox"><i></i></label><label class="switch"><span><strong>HD textures <span id="textures-badge" class="badge">Checking</span></strong><small>Replaces game textures when installed and enabled.</small></span><input id="textures" type="checkbox"><i></i></label><div class="texture-setup"><span id="texture-info">Checking for a texture pack…</span><button class="subtle" id="install-textures">Install UHD pack · ~1 GB</button></div></section>
         </div>
-        <button id="open-maintenance" class="settings-entry"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12M4 10h12M4 16h12"/><circle cx="8" cy="4" r="2"/><circle cx="13" cy="10" r="2"/><circle cx="7" cy="16" r="2"/></svg><span><strong>Maintenance</strong><small>Updates, backups, cleanup, and activity</small></span><span class="settings-entry-arrow" aria-hidden="true">→</span></button>
       </div>
       </section>
 

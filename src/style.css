@@ -186,6 +186,19 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .setup-panel .subtle:hover:not(:disabled) { background: #ffffff35; }
 .setup-panel .solid { background: #eaf9f8; color: #125468; }
 .setup-panel .actions button { padding: 6px 10px; font-size: 11px; }
+.setup-options { flex: none; padding: 11px 14px 12px; border-color: #d3f2f54d; background: #072f49d9; color: #fff; box-shadow: 0 8px 25px #061f3555; backdrop-filter: blur(15px); }
+.setup-options-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 7px; color: #c6e0e5; font-size: 11px; }
+.setup-options .step-label { color: #c1eaf0; }
+.setup-options-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+.setup-option, .setup-switch { min-width: 0; min-height: 56px; padding: 7px 11px; border: 1px solid #c2e5eb55; border-radius: 8px; background: #ffffff12; }
+.setup-option { display: grid; gap: 4px; color: #e4f5f7; font-size: 11px; font-weight: 650; }
+.setup-option select { padding: 5px 8px; border-color: #c2e5eb88; background: #f4fbfc; }
+.setup-switch { border-bottom: 1px solid #c2e5eb55; }
+.setup-switch strong { color: #fff; }
+.setup-switch small { color: #c6e0e5; }
+.ready-mode .launch-copy { display: none; }
+.ready-mode .launch-primary { margin-top: 0; }
+.ready-mode .launch-panel { width: min(100%, 580px); padding: 15px; }
 .statusbar { flex-basis: 36px; padding: 0 28px; border-top: 1px solid #ffffff30; background: #082d45c7; color: #d2eaf0; backdrop-filter: blur(16px); }
 .status-link { color: #fff0bf; }
 .byo { color: #d2eaf0; }
@@ -221,7 +234,24 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal .texture-summary { padding-top: 10px; }
 .launcher-modal .detail-panel, .launcher-modal .maintenance-panel { min-width: 0; }
 .launcher-modal .detail-grid, .launcher-modal .maintenance-grid { gap: 14px; }
+.launcher-modal .detail-grid { margin-top: 12px; }
 .launcher-modal .activity-panel { margin-top: 14px; }
+.rebuild-button { margin-top: 10px; width: 100%; }
+.installation-details { margin-top: 10px; overflow: hidden; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; }
+.installation-details summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; cursor: pointer; list-style: none; }
+.installation-details summary::-webkit-details-marker { display: none; }
+.installation-details summary:hover { background: #f0f9f8; }
+.installation-details summary > span:first-child { display: grid; gap: 3px; }
+.installation-details summary strong { font-size: 13px; }
+.installation-details summary small { color: #72868b; font-size: 11px; }
+.installation-details[open] summary > span:last-child { transform: rotate(180deg); }
+.installation-content { border-top: 1px solid #e6ebea; padding: 0 16px; }
+.installation-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; }
+.installation-row + .installation-row { border-top: 1px solid #e6ebea; }
+.installation-row > div { min-width: 0; }
+.installation-row strong { font-size: 12px; }
+.installation-row .small-path { display: block; min-height: 0; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.installation-row button { flex: none; }
 .message { z-index: 20; }
 @media (max-height: 800px) {
   .viewport { padding-top: 16px; padding-bottom: 12px; }
@@ -233,6 +263,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
   .settings-cog { flex-basis: 64px; min-height: 64px; }
   .setup-panel { padding-top: 8px; padding-bottom: 8px; }
   .setup-panel .path { margin-top: 4px; margin-bottom: 5px; }
+  .setup-options { padding-top: 8px; padding-bottom: 8px; }
+  .setup-option, .setup-switch { min-height: 50px; padding-top: 5px; padding-bottom: 5px; }
 }
 @media (max-height: 720px) { .intro .eyebrow { display: block; } }
 @media (max-width: 920px) { .topbar { padding: 0 18px; } .viewport, .statusbar { padding-left: 18px; padding-right: 18px; } .brand { min-width: 0; } .setup-panel { padding-left: 12px; padding-right: 12px; } }
