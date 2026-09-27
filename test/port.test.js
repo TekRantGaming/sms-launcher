@@ -61,7 +61,7 @@ test('recognizes an installed texture pack and points the game at its folder', (
     assert.equal(port.texturePackInstalled(dir), true);
     const settings = port.normalizeSettings({ textures: true });
     assert.equal(port.buildEnvironment(settings, '/my/disc.iso', dir).SMS_TEXTURE_PACKS, textures);
-    assert.deepEqual(port.commandFor(dir, 'textures').args, ['tools/mods/get.py', 'textures']);
+    assert.deepEqual(port.commandFor(dir, 'textures', [], 'linux').args, ['tools/mods/get.py', 'textures']);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
