@@ -5,11 +5,11 @@ Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev
 ## Start
 
 1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
-2. Choose **Download setup files**, or **Use existing folder** if you already have the port. Development runs detect a neighboring `sms-port/` automatically.
+2. Download the setup files to the suggested location, change the location, or choose an existing port folder. Development runs detect a neighboring `sms-port/` automatically.
 3. Choose a file copied from your own **North American Super Mario Sunshine GMSE01 Rev 0** disc (`.iso`, `.gcm`, or Dolphin `.ciso`). The launcher reads it in place and saves only its path in local preferences.
-4. Use the main action on Home. It shows the next step: **Download setup files**, **Choose game file**, **Download HD textures** (if selected), **Set up & play**, or **Play**. A build starts automatically when your selected game does not have one. After the first build, use **Settings → Manage game → Rebuild game** when you want a fresh build.
+4. Select **Begin setup**. The launcher installs any selected HD textures and builds the game. When setup finishes, Home shows **Play**. Use **Settings → Manage game → Rebuild game** when you want a fresh build.
 
-Home uses the supplied seaside artwork as its background. During setup it shows the setup files, disc file, and basic play options. Once the game is configured and built, Home simplifies to Play and the Settings cog. Open **Settings → Game files** to change the setup folder or disc file later. **Manage game** groups rebuild, updates, space cleanup, backups, and the activity log. Use Back to return to Settings. The frameless window can be dragged by its top bar; its top-right buttons minimize, toggle full screen, and close the window.
+Home uses the supplied seaside artwork as its background. First run has three screens: download setup files, choose your disc image, and begin setup. The step indicator shows where you are; the task progress bar shows downloads and building. Once the game is ready, Home simplifies to Play and the Settings cog. Open **Settings → Game files** to change the setup folder or disc file later. **Manage game** groups rebuild, updates, space cleanup, backups, and the activity log. Use Back to return to Settings. The frameless window can be dragged by its top bar; its top-right buttons minimize, toggle full screen, and close the window.
 
 The port build prerequisites still apply: see its `BUILD.md` (also available via **Build help**). Linux supports 64 and 32 bit builds; macOS supports x86_64 (Rosetta 2 on Apple Silicon); Windows supports MSYS2 MINGW32 32 bit. The launcher offers only supported choices. On Windows install MSYS2 at `C:\msys64`, or set `MSYS2_ROOT` to its location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
 
@@ -17,11 +17,11 @@ Home shows the current task, elapsed time, and a progress bar. It uses the actua
 
 ## HD textures
 
-HD textures are optional and off for new users. Turn them on in **Settings → Visuals**. The launcher detects an existing pack in the port's `mods/textures` folder; otherwise choose **Download HD textures** there or use the main action on Home. The installer downloads the authors' pack (about 1 GB, about 3 GB installed), checks its checksum, and needs Python 3 and 7-Zip. The launcher points the running game at that folder when HD textures are on. Installations and changes take effect on the next game start. The texture pack stays in the port checkout, separate from launcher updates and builds.
+HD textures are optional and off for new users. Turn them on in **Settings → Visuals**. The launcher detects an existing pack in the port's `mods/textures` folder; otherwise choose **Download HD textures** there. If enabled during first run, **Begin setup** downloads them before building the game. The installer downloads the authors' pack (about 1 GB, about 3 GB installed), checks its checksum, and needs Python 3 and 7-Zip. The launcher points the running game at that folder when HD textures are on. Installations and changes take effect on the next game start. The texture pack stays in the port checkout, separate from launcher updates and builds.
 
 ## Eclipse
 
-Enable **Super Mario Eclipse**, then choose **Install Eclipse mod** or use **Set up & play**. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
+Enable **Super Mario Eclipse**, then choose **Install Eclipse mod** or select **Begin setup** if it appears on Home. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
 
 The Eclipse patcher needs an unmodified 1:1 GMSE01 image; a compressed CISO does not pass its checksum. Eclipse builds have been verified in the port on Linux. The launcher offers the same build path on macOS and Windows, marked experimental until those port builds are verified there.
 

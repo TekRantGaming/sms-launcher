@@ -202,6 +202,14 @@ async function build() {
   return result;
 }
 
+async function setupGame() {
+  const root = requireRepo();
+  port.validateRom(config.rom);
+  if (config.settings.textures && !port.texturePackInstalled(root)) await installTextures();
+  if (!binaryReady()) await build();
+  return state();
+}
+
 async function play() {
   const root = requireRepo();
   const settings = config.settings;
@@ -347,6 +355,7 @@ function registerHandlers() {
   ipcMain.handle('install-eclipse', installEclipse);
   ipcMain.handle('install-textures', installTextures);
   ipcMain.handle('build', build);
+  ipcMain.handle('setup-game', setupGame);
   ipcMain.handle('play', play);
   ipcMain.handle('launch-game', launchGame);
   ipcMain.handle('clean-preview', () => clean(true));

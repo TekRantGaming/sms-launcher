@@ -24,27 +24,25 @@
       <section id="page-home" class="page home-page" aria-label="Launch game">
         <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1 id="home-title">Set up your game</h1><p id="home-description">A few quick steps, then you're ready to play.</p></div></div>
 
-        <div class="setup-grid" id="setup-grid">
-          <section class="panel setup-panel" aria-label="Game setup files">
-            <div class="panel-title"><div><span class="step-label">01 / GAME SETUP</span><h2>Setup files <span id="repo-badge" class="badge">Checking</span></h2></div></div>
-            <p class="path" id="repo-path">Files needed to run your own disc.</p>
-            <div class="actions"><button id="install-port" class="solid">Download setup files</button><button id="choose-repo" class="subtle">Use existing folder</button><button id="choose-location" class="subtle">Save elsewhere</button></div>
+        <div id="setup-flow" class="setup-flow">
+          <div class="setup-progress" role="group" aria-label="Setup progress"><span id="step-count">Step 1 of 3</span><div class="setup-progress-track" aria-hidden="true"><i></i><i></i><i></i></div></div>
+          <section id="setup-step-1" class="panel setup-step" aria-label="Download setup files">
+            <h2>Download setup files</h2><p>These let the launcher run your own disc. The game is not included.</p>
+            <div class="setup-file"><span>Install location</span><strong id="repo-path"></strong></div>
+            <div class="actions"><button id="choose-location" class="subtle">Change location</button><button id="choose-repo" class="subtle">Use existing folder</button></div>
           </section>
-          <section class="panel setup-panel" aria-label="Your game disc file">
-            <div class="panel-title"><div><span class="step-label">02 / YOUR DISC</span><h2>Game disc file <span id="rom-badge" class="badge">Needed</span></h2></div></div>
-            <p class="path" id="rom-path">Use a copy of your own North American game disc.</p>
-            <div class="actions"><button id="choose-rom" class="solid">Choose file</button><span class="helper">Your file stays on your computer.</span></div>
+          <section id="setup-step-2" class="panel setup-step" aria-label="Choose disc image" hidden>
+            <div class="setup-step-heading"><h2>Choose your disc image</h2><button class="setup-back" data-setup-back>← Back</button></div>
+            <p>Select a file from your own North American Super Mario Sunshine disc.</p>
+            <div class="setup-file"><span>Selected file</span><strong id="rom-path">No file selected</strong></div>
+            <div class="actions"><button id="choose-rom" class="subtle" hidden>Change file</button><span class="helper">Your disc image stays on your computer.</span></div>
+          </section>
+          <section id="setup-step-3" class="panel setup-step" aria-label="Begin installation" hidden>
+            <div class="setup-step-heading"><h2>Install your game</h2><button class="setup-back" data-setup-back>← Back</button></div>
+            <p>We'll prepare a playable copy using your disc image. This can take a while.</p>
+            <div class="setup-ready-note">Your saved games stay safe and separate from this install.</div>
           </section>
         </div>
-
-        <section class="panel setup-options" id="setup-options" aria-label="Initial play options">
-          <div class="setup-options-heading"><span class="step-label">03 / PLAY OPTIONS</span><span>More options in Settings</span></div>
-          <div class="setup-options-grid">
-            <label class="setup-option"><span>Screen format</span><select id="setup-widescreen"><option value="off">Original 4:3</option><option value="16:9">Widescreen 16:9</option><option value="16:10">Widescreen 16:10</option><option value="21:9">Ultrawide 21:9</option></select></label>
-            <label class="switch setup-switch"><span><strong>60 fps</strong><small>Smoother gameplay</small></span><input id="setup-fps60" type="checkbox"><i></i></label>
-            <label class="switch setup-switch"><span><strong>HD textures</strong><small>Optional ~1 GB download</small></span><input id="setup-textures" type="checkbox"><i></i></label>
-          </div>
-        </section>
 
         <div class="hero-spacer" aria-hidden="true"></div>
 

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('sms', {
   installEclipse: () => ipcRenderer.invoke('install-eclipse'),
   installTextures: () => ipcRenderer.invoke('install-textures'),
   build: () => ipcRenderer.invoke('build'),
+  setupGame: () => ipcRenderer.invoke('setup-game'),
   play: () => ipcRenderer.invoke('play'),
   launchGame: () => ipcRenderer.invoke('launch-game'),
   cleanPreview: () => ipcRenderer.invoke('clean-preview'),

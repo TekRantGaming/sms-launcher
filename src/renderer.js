@@ -3,6 +3,8 @@
 const $ = id => document.getElementById(id);
 let current;
 let changing = false;
+let wizardStep = null;
+let setupPending = false;
 
 function closeModal() {
   for (const dialog of document.querySelectorAll('.launcher-modal'))
@@ -63,6 +65,38 @@ function backupReason(reason) {
     'before-port-update': 'Before update' })[reason] || 'Backup';
 }
 
+function requiredStep(data) {
+  if (!data.repoReady) return 1;
+  if (!data.romReady) return 2;
+  if (!data.binaryReady || (data.config.settings.textures && !data.texturesInstalled)) return 3;
+  return 0;
+}
+
+function showWizardStep(data) {
+  const required = requiredStep(data);
+  if (required === 0) wizardStep = 0;
+  else if (wizardStep === null || wizardStep === 0 || wizardStep > required) wizardStep = required;
+  const ready = wizardStep === 0;
+  $('page-home').classList.toggle('ready-mode', ready);
+  $('setup-flow').hidden = ready;
+  $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
+  $('home-description').textContent = ready ? 'Ready when you are.' : "Three steps, then you're ready to play.";
+  for (let step = 1; step <= 3; step++)
+    $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
+  if (ready) $('play').textContent = '▶  Play';
+  else {
+    $('step-count').textContent = `Step ${wizardStep} of 3`;
+    document.querySelectorAll('.setup-progress-track i').forEach((segment, index) => {
+      segment.classList.toggle('complete', index + 1 < wizardStep);
+      segment.classList.toggle('current', index + 1 === wizardStep);
+    });
+    $('play').textContent = setupPending
+      ? wizardStep === 1 ? 'Downloading…' : wizardStep === 2 ? 'Choosing…' : 'Setting up…'
+      : wizardStep === 1 ? data.repoReady ? 'Continue' : 'Download setup files'
+        : wizardStep === 2 ? data.romReady ? 'Continue' : 'Choose disc image' : 'Begin setup';
+  }
+}
+
 function renderActivity(active) {
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
@@ -85,37 +119,26 @@ function refresh(data) {
   current = data;
   const { config, platform } = data;
   $('platform').textContent = platform.name;
-  $('repo-path').textContent = data.repoReady ? config.repo : 'Files needed to run your own disc.';
+  $('repo-path').textContent = config.repo;
   $('repo-path').title = config.repo;
   $('settings-repo-path').textContent = config.repo;
   $('settings-repo-path').title = config.repo;
-  badge('repo-badge', data.repoReady ? 'Ready' : 'Needed', data.repoReady);
   $('choose-repo').textContent = data.repoReady ? 'Use another folder' : 'Use existing folder';
-  $('install-port').hidden = data.repoReady;
-  $('install-port').disabled = Boolean(data.active);
-  $('choose-location').hidden = data.repoReady;
   $('choose-location').disabled = Boolean(data.active);
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
-  $('rom-path').textContent = data.romError || config.rom || 'Use a copy of your own North American game disc.';
+  $('rom-path').textContent = data.romError || config.rom || 'No file selected';
   $('rom-path').title = data.romError || config.rom;
   $('settings-rom-path').textContent = data.romError || config.rom || 'No disc file selected';
   $('settings-rom-path').title = data.romError || config.rom;
-  $('choose-rom').textContent = data.romReady ? 'Change file' : 'Choose file';
-  badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Choose again' : 'Needed', data.romReady, Boolean(data.romError));
-  const texturesNeeded = config.settings.textures && !data.texturesInstalled;
-  const ready = data.repoReady && data.romReady && data.binaryReady && !texturesNeeded;
-  $('page-home').classList.toggle('ready-mode', ready);
-  $('setup-grid').hidden = ready;
-  $('setup-options').hidden = ready;
-  $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
-  $('home-description').textContent = ready ? 'Ready when you are.' : "A few quick steps, then you're ready to play.";
-  $('play').textContent = !data.repoReady ? 'Download setup files' : !data.romReady ? 'Choose game file'
-    : texturesNeeded ? 'Download HD textures' : !data.binaryReady ? 'Set up & play' : '▶  Play';
-  $('play').disabled = Boolean(data.active);
+  $('choose-rom').hidden = !data.romReady;
+  showWizardStep(data);
+  $('play').disabled = Boolean(data.active) || setupPending;
+  for (const button of document.querySelectorAll('[data-setup-back]')) button.disabled = Boolean(data.active) || setupPending;
   $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
-  badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
+  badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
+    config.settings.textures && !data.texturesInstalled);
   $('texture-info').textContent = data.texturesInstalled ? 'Ready for the next time you play.'
     : 'About 1 GB to download; needs about 3 GB of free space and 7-Zip.';
   $('install-textures').hidden = data.texturesInstalled;
@@ -153,9 +176,6 @@ function refresh(data) {
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
-  $('setup-widescreen').value = config.settings.widescreen;
-  $('setup-fps60').checked = config.settings.fps60;
-  $('setup-textures').checked = config.settings.textures;
   changing = false;
 }
 
@@ -166,11 +186,20 @@ function showError(error) { closeModal(); setMessage(error.message || String(err
 async function action(method) {
   setMessage('');
   try {
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'launchGame', 'updatePort', 'clean', 'cleanPreview'].includes(method)) closeModal();
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updatePort', 'clean', 'cleanPreview'].includes(method)) closeModal();
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
+    if (['installPort', 'chooseRepo'].includes(method) && current.repoReady && wizardStep === 1) wizardStep = 2;
+    if (method === 'chooseRom' && current.romReady && wizardStep === 2) wizardStep = 3;
+    refresh(current);
   } catch (error) { showError(error); await sync(); }
+}
+
+function runWizardAction(method) {
+  setupPending = true;
+  refresh(current);
+  action(method).finally(() => { setupPending = false; if (current) refresh(current); });
 }
 
 function settingsValue() {
@@ -197,16 +226,23 @@ function appendLog(line) {
 
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom', 'choose-repo': 'chooseRepo',
-  'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation', 'install-port': 'installPort',
+  'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation',
   'update-port': 'updatePort', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
 $('play').addEventListener('click', () => {
-  if (!current.repoReady) action('installPort');
-  else if (!current.romReady) action('chooseRom');
-  else if (current.config.settings.textures && !current.texturesInstalled) action('installTextures');
-  else action('launchGame');
+  if (wizardStep === 0) action('launchGame');
+  else if (wizardStep === 1) {
+    if (current.repoReady) { wizardStep = 2; refresh(current); }
+    else runWizardAction('installPort');
+  } else if (wizardStep === 2) {
+    if (current.romReady) { wizardStep = 3; refresh(current); }
+    else runWizardAction('chooseRom');
+  } else runWizardAction('setupGame');
+});
+for (const button of document.querySelectorAll('[data-setup-back]')) button.addEventListener('click', () => {
+  if (wizardStep > 1) { wizardStep -= 1; refresh(current); }
 });
 $('restore-saves').addEventListener('click', async () => {
   setMessage('');
@@ -215,12 +251,6 @@ $('restore-saves').addEventListener('click', async () => {
 });
 for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
   $(key).addEventListener('change', saveSettings);
-for (const key of ['widescreen', 'fps60', 'textures']) {
-  $(`setup-${key}`).addEventListener('change', () => {
-    $(key)[key === 'widescreen' ? 'value' : 'checked'] = $(`setup-${key}`)[key === 'widescreen' ? 'value' : 'checked'];
-    saveSettings();
-  });
-}
 window.sms.onLog(appendLog);
 window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
