@@ -43,12 +43,33 @@ function badge(id, label, good = false, warn = false) {
   element.className = `badge${good ? ' good' : warn ? ' warn' : ''}`;
 }
 
+function taskName(label) {
+  if (!label) return 'Nothing running';
+  if (label === 'Play Super Mario Sunshine') return 'Game running';
+  if (label.startsWith('Build ')) return 'Setting up your game';
+  if (label.startsWith('Download port')) return 'Downloading setup files';
+  if (label.startsWith('Install UHD')) return 'Downloading HD textures';
+  if (label.startsWith('Install Eclipse')) return 'Setting up Eclipse';
+  if (label.startsWith('Check for port')) return 'Checking for updates';
+  if (label.startsWith('Update port') || label.startsWith('Update decompilation')) return 'Updating setup files';
+  if (label === 'Preview cleanup') return 'Checking removable files';
+  if (label === 'Clean build output') return 'Freeing up space';
+  return label;
+}
+
+function backupReason(reason) {
+  return ({ manual: 'Manual backup', 'before-play': 'Before playing', 'after-play': 'After playing',
+    'before-restore': 'Before restoring', 'before-cleanup': 'Before cleanup',
+    'before-port-update': 'Before update' })[reason] || 'Backup';
+}
+
 function renderActivity(active) {
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
-  $('task-status').textContent = active ? active.label === 'Play Super Mario Sunshine' ? 'Game running' : active.label : 'Idle';
+  $('task-status').textContent = active ? taskName(active.label)
+    : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
   if (!working) return;
-  $('progress-title').textContent = active.label;
+  $('progress-title').textContent = taskName(active.label);
   $('progress-detail').textContent = active.detail || 'Working…';
   const seconds = Math.max(0, Math.floor((Date.now() - active.startedAt) / 1000));
   $('progress-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -63,52 +84,44 @@ function renderActivity(active) {
 function refresh(data) {
   current = data;
   const { config, platform } = data;
-  $('platform').textContent = `${platform.name} · ${platform.arches.join(' / ')} bit`;
-  $('repo-path').textContent = config.repo;
+  $('platform').textContent = platform.name;
+  $('repo-path').textContent = data.repoReady ? config.repo : 'Files needed to run your own disc.';
   $('repo-path').title = config.repo;
   $('settings-repo-path').textContent = config.repo;
   $('settings-repo-path').title = config.repo;
   badge('repo-badge', data.repoReady ? 'Ready' : 'Needed', data.repoReady);
+  $('choose-repo').textContent = data.repoReady ? 'Use another folder' : 'Use existing folder';
   $('install-port').hidden = data.repoReady;
   $('install-port').disabled = Boolean(data.active);
   $('choose-location').hidden = data.repoReady;
   $('choose-location').disabled = Boolean(data.active);
   $('update-port').disabled = !data.repoReady || Boolean(data.active);
-  $('rom-path').textContent = data.romError || config.rom || 'Choose your own GMSE01 Rev 0 ISO, GCM, or CISO.';
+  $('rom-path').textContent = data.romError || config.rom || 'Use a copy of your own North American game disc.';
   $('rom-path').title = data.romError || config.rom;
-  $('settings-rom-path').textContent = data.romError || config.rom || 'No disc image selected';
+  $('settings-rom-path').textContent = data.romError || config.rom || 'No disc file selected';
   $('settings-rom-path').title = data.romError || config.rom;
-  $('choose-rom').textContent = data.romReady ? 'Change image' : 'Choose image';
-  badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Invalid image' : 'Needed', data.romReady, Boolean(data.romError));
+  $('choose-rom').textContent = data.romReady ? 'Change file' : 'Choose file';
+  badge('rom-badge', data.romReady ? 'Ready' : data.romError ? 'Choose again' : 'Needed', data.romReady, Boolean(data.romError));
   const texturesNeeded = config.settings.textures && !data.texturesInstalled;
   const ready = data.repoReady && data.romReady && data.binaryReady && !texturesNeeded;
   $('page-home').classList.toggle('ready-mode', ready);
   $('setup-grid').hidden = ready;
   $('setup-options').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
-  $('home-description').textContent = ready ? 'Ready when you are.' : 'Choose the port, add your own disc image, and set your play options.';
-  badge('build-badge', !data.repoReady ? 'Port needed' : !data.romReady ? 'Disc needed'
-    : texturesNeeded ? 'Textures needed' : data.binaryReady ? 'Ready' : 'Build needed', ready, texturesNeeded);
-  $('launch-description').textContent = !data.repoReady ? 'Download the port to get started.'
-    : !data.romReady ? 'Choose your own disc image to continue.'
-      : texturesNeeded ? 'HD textures are selected. Install the pack before playing.'
-        : !data.binaryReady ? 'Build the game for this computer, then play.' : 'Your game is ready.';
-  $('play').textContent = !data.repoReady ? 'Download port' : !data.romReady ? 'Choose image'
-    : texturesNeeded ? 'Install textures' : !data.binaryReady ? 'Build & play' : '▶  Play';
+  $('home-description').textContent = ready ? 'Ready when you are.' : "A few quick steps, then you're ready to play.";
+  $('play').textContent = !data.repoReady ? 'Download setup files' : !data.romReady ? 'Choose game file'
+    : texturesNeeded ? 'Download HD textures' : !data.binaryReady ? 'Set up & play' : '▶  Play';
   $('play').disabled = Boolean(data.active);
   $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled, texturesNeeded);
-  $('texture-info').textContent = data.texturesInstalled ? 'The installed pack will load on your next game start when enabled.'
-    : 'Downloads from the pack authors: about 1 GB, using about 3 GB after install. Requires 7-Zip.';
+  $('texture-info').textContent = data.texturesInstalled ? 'Ready for the next time you play.'
+    : 'About 1 GB to download; needs about 3 GB of free space and 7-Zip.';
   $('install-textures').hidden = data.texturesInstalled;
   $('install-textures').disabled = !data.repoReady || Boolean(data.active);
-  $('texture-status').textContent = !data.repoReady ? 'HD textures: choose a port first.'
-    : data.texturesInstalled ? `HD textures: installed, ${config.settings.textures ? 'on' : 'off'}.`
-      : config.settings.textures ? 'HD textures: install required before playing.' : 'HD textures: off and not installed.';
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
-  $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'The port has only verified Eclipse builds on Linux so far.';
+  $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
   $('eclipse-note').hidden = !config.settings.eclipse;
   $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
   $('clean').disabled = !data.repoReady || Boolean(data.active);
@@ -118,17 +131,17 @@ function refresh(data) {
   $('choose-rom-settings').disabled = Boolean(data.active);
   $('choose-repo-settings').disabled = Boolean(data.active);
   $('stop').hidden = !data.active;
-  $('activity-label').textContent = data.active ? data.active.label : 'Idle';
+  $('activity-label').textContent = taskName(data.active?.label);
   renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
-  $('save-path').textContent = `Save folder: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
+  $('save-path').textContent = `Saved games: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
   $('backup-saves').disabled = Boolean(data.active);
   $('restore-saves').disabled = Boolean(data.active) || !data.backups.length;
   const selectedBackup = $('backup-list').value;
   $('backup-list').replaceChildren(...data.backups.map(backup => {
     const option = document.createElement('option');
     option.value = backup.id;
-    option.textContent = `${new Date(backup.createdAt).toLocaleString()} · ${backup.reason} · ${backup.count} files`;
+    option.textContent = `${new Date(backup.createdAt).toLocaleString()} · ${backupReason(backup.reason)} · ${backup.count} files`;
     return option;
   }));
   if (data.backups.some(backup => backup.id === selectedBackup)) $('backup-list').value = selectedBackup;

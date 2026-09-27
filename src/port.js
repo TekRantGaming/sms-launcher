@@ -19,26 +19,31 @@ function isPort(root) {
 }
 
 function validateRom(file) {
-  if (!file || typeof file !== 'string') throw new Error('Choose your own GMSE01 Rev 0 disc image first.');
+  if (!file || typeof file !== 'string') throw new Error('Choose your own game disc file first.');
   const absolute = path.resolve(file);
   if (!['.iso', '.gcm', '.ciso'].includes(path.extname(absolute).toLowerCase()))
-    throw new Error('Choose an .iso, .gcm, or Dolphin .ciso image.');
-  const stat = fs.statSync(absolute);
-  if (!stat.isFile()) throw new Error('The selected disc image is not a file.');
+    throw new Error('Choose an ISO, GCM, or CISO game disc file.');
+  let stat;
+  try { stat = fs.statSync(absolute); }
+  catch (error) {
+    if (error.code === 'ENOENT') throw new Error('That game file cannot be found. Choose it again.');
+    throw error;
+  }
+  if (!stat.isFile()) throw new Error('Choose a game disc file, not a folder.');
   const fd = fs.openSync(absolute, 'r');
   try {
     const first = Buffer.alloc(0x20);
-    if (fs.readSync(fd, first, 0, first.length, 0) !== first.length) throw new Error('The image is too short.');
+    if (fs.readSync(fd, first, 0, first.length, 0) !== first.length) throw new Error('This file is too small to be a game disc copy.');
     let offset = 0;
     if (first.toString('ascii', 0, 4) === 'CISO') {
       const blockSize = first.readUInt32LE(4);
       if (blockSize < 0x20 || blockSize > 0x200000 || first[8] !== 1)
-        throw new Error('The CISO header does not contain a valid first disc block.');
+        throw new Error('This compressed game disc file appears to be damaged.');
       offset = 0x8000;
-      if (fs.readSync(fd, first, 0, first.length, offset) !== first.length) throw new Error('The CISO disc header is missing.');
+      if (fs.readSync(fd, first, 0, first.length, offset) !== first.length) throw new Error('This compressed game disc file appears to be incomplete.');
     }
     if (first.toString('ascii', 0, 6) !== 'GMSE01' || first[7] !== 0 || first.readUInt32BE(0x1c) !== 0xc2339f3d)
-      throw new Error('Use your own North American Super Mario Sunshine disc image (GMSE01, Rev 0).');
+      throw new Error('Use a copy of your own North American Super Mario Sunshine disc (GMSE01, original revision).');
     return absolute;
   } finally { fs.closeSync(fd); }
 }
@@ -95,7 +100,7 @@ function buildEnvironment(settings, disc, root) {
 function gameDisc(root, rom, eclipse) {
   if (!eclipse) return validateRom(rom);
   const modDisc = path.join(root, ECLIPSE_ISO);
-  if (!fs.existsSync(modDisc)) throw new Error('Install Eclipse from your own disc image first.');
+  if (!fs.existsSync(modDisc)) throw new Error('Set up Eclipse using your own game disc file first.');
   return modDisc;
 }
 

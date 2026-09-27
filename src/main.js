@@ -57,7 +57,7 @@ function loadConfig() {
 }
 
 function requireRepo() {
-  if (!port.isPort(config.repo)) throw new Error('Install the port or choose an existing sms-port checkout first.');
+  if (!port.isPort(config.repo)) throw new Error('Download the setup files or choose a folder that already has them.');
   return config.repo;
 }
 
@@ -132,28 +132,28 @@ async function capture(command, args, cwd) {
 
 async function updatePort() {
   const root = requireRepo();
-  if (!fs.existsSync(path.join(root, '.git'))) throw new Error('This port folder is not a Git checkout, so it cannot update automatically.');
+  if (!fs.existsSync(path.join(root, '.git'))) throw new Error('These setup files cannot update automatically. Download a fresh copy to get updates.');
   await launch('git', ['fetch', '--recurse-submodules=no'], { cwd: root }, 'Check for port updates');
   const tracking = await capture('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], root);
   const counts = await capture('git', ['rev-list', '--left-right', '--count', `HEAD...${tracking}`], root);
   const [ahead, behind] = counts.split(/\s+/).map(Number);
-  if (behind === 0) { log('Port source is up to date.'); return { updated: false, behind: 0 }; }
+  if (behind === 0) { log('Your setup files are up to date.'); return { updated: false, behind: 0 }; }
   if (ahead > 0) throw new Error(`Local branch has ${ahead} unpublished commit(s) and ${behind} upstream commit(s). Resolve that branch before updating.`);
   makeSaveBackup('before-port-update');
   await launch('git', ['merge', '--ff-only', tracking], { cwd: root }, `Update port (${behind} commits)`);
   config.portGeneration += 1;
   saveConfig();
   await launch('git', ['submodule', 'update', '--init', 'decomp'], { cwd: root }, 'Update decompilation');
-  log('Port updated. Rebuild before playing. Restart the launcher if its source changed.');
+  log('Setup files updated. Your game will be prepared again the next time you play.');
   return { updated: true, behind };
 }
 
 async function installPort() {
   const destination = path.resolve(config.repo);
   if (fs.existsSync(destination)) {
-    if (port.isPort(destination)) throw new Error('The port is already installed here.');
+    if (port.isPort(destination)) throw new Error('The setup files are already in this folder.');
     if (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length)
-      throw new Error('The selected port folder has other files. Change the download location.');
+      throw new Error('That folder has other files in it. Choose a different download folder.');
   }
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   await launch('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, destination], { cwd: path.dirname(destination) }, 'Download port source');
@@ -207,9 +207,9 @@ async function play() {
   const settings = config.settings;
   const rom = port.validateRom(config.rom);
   if (!binaryReady(root, settings))
-    throw new Error('Build this configuration before playing.');
+    throw new Error('Set up this version of the game before playing.');
   if (settings.textures && !port.texturePackInstalled(root))
-    throw new Error('HD textures are enabled but not installed. Install the UHD pack or turn off HD textures.');
+    throw new Error('HD textures are on but have not been downloaded. Download them or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
   const env = { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() };
@@ -228,7 +228,7 @@ async function launchGame() {
   const root = requireRepo();
   port.validateRom(config.rom);
   if (config.settings.textures && !port.texturePackInstalled(root))
-    throw new Error('Install the UHD texture pack before playing, or turn off HD textures.');
+    throw new Error('Download HD textures before playing, or turn them off in Settings.');
   if (!binaryReady(root)) await build();
   return play();
 }
@@ -266,7 +266,7 @@ function setupAppUpdater() {
   const url = process.env.SMS_LAUNCHER_UPDATE_URL;
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
   if (!app.isPackaged || (!url && !bundledFeed) || (process.platform === 'linux' && !process.env.APPIMAGE)) {
-    appUpdate = { state: 'unconfigured', message: app.isPackaged ? 'Launcher update feed is not configured.' : 'Port source updates automatically; launcher release feed is not configured.' };
+    appUpdate = { state: 'unconfigured', message: app.isPackaged ? 'Launcher updates are unavailable for this install.' : 'Launcher updates come with new releases.' };
     return;
   }
   const { autoUpdater } = require('electron-updater');
@@ -312,8 +312,8 @@ function registerHandlers() {
   });
   ipcMain.handle('choose-rom', async () => {
     const chosen = await dialog.showOpenDialog(window, {
-      title: 'Choose your own Super Mario Sunshine disc image',
-      properties: ['openFile'], filters: [{ name: 'GameCube disc image', extensions: ['iso', 'gcm', 'ciso'] }]
+      title: 'Choose a file from your own Super Mario Sunshine disc',
+      properties: ['openFile'], filters: [{ name: 'Game disc files', extensions: ['iso', 'gcm', 'ciso'] }]
     });
     if (chosen.canceled) return state();
     config.rom = port.validateRom(chosen.filePaths[0]);
@@ -321,9 +321,9 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('choose-repo', async () => {
-    const chosen = await dialog.showOpenDialog(window, { title: 'Choose an existing sms-port checkout', properties: ['openDirectory'] });
+    const chosen = await dialog.showOpenDialog(window, { title: 'Choose a folder with setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
-    if (!port.isPort(chosen.filePaths[0])) throw new Error('That folder is not an sms-port checkout.');
+    if (!port.isPort(chosen.filePaths[0])) throw new Error('That folder does not have the setup files this launcher needs.');
     config.repo = chosen.filePaths[0];
     config.portGeneration = 0;
     config.builtGeneration = {};
@@ -331,11 +331,11 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('choose-location', async () => {
-    const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download the port', properties: ['openDirectory'] });
+    const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
     const destination = path.join(chosen.filePaths[0], 'sms-pc-port');
     if (fs.existsSync(destination) && (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length))
-      throw new Error('That location already contains an sms-pc-port folder. Choose another parent folder.');
+      throw new Error('That location already has a game setup folder. Choose another location.');
     config.repo = destination;
     config.portGeneration = 0;
     config.builtGeneration = {};
@@ -357,8 +357,8 @@ function registerHandlers() {
       throw new Error('Choose a backup for this memory card.');
     const answer = await dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Cancel', 'Restore memory card'], defaultId: 0, cancelId: 0,
-      message: 'Restore this memory card backup?',
-      detail: 'The current memory card will be backed up first. Matching save files will be replaced.'
+      message: 'Restore this backup?',
+      detail: "We'll back up your current saves first, then replace matching files."
     });
     if (answer.response !== 1) return { cancelled: true };
     const result = saves.restoreBackup(id, currentSaveDirectory());
@@ -371,8 +371,8 @@ function registerHandlers() {
   });
   ipcMain.handle('clean', async () => {
     const answer = await dialog.showMessageBox(window, {
-      type: 'warning', buttons: ['Cancel', 'Clean build output'], defaultId: 0, cancelId: 0,
-      message: 'Remove generated builds?', detail: 'The port clean script keeps your disc image and saved games.'
+      type: 'warning', buttons: ['Cancel', 'Free up space'], defaultId: 0, cancelId: 0,
+      message: 'Remove files the launcher can make again?', detail: 'The next play may take longer. Your disc file and saved games will be kept.'
     });
     return answer.response === 1 ? clean(false) : { cancelled: true };
   });

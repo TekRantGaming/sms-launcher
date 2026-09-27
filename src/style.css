@@ -196,8 +196,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .setup-switch { border-bottom: 1px solid #c2e5eb55; }
 .setup-switch strong { color: #fff; }
 .setup-switch small { color: #c6e0e5; }
-.ready-mode .launch-copy { display: none; }
-.ready-mode .launch-primary { margin-top: 0; }
+.launch-primary { margin-top: 0; }
 .ready-mode .launch-panel { width: min(100%, 580px); padding: 15px; }
 .statusbar { flex-basis: 36px; padding: 0 28px; border-top: 1px solid #ffffff30; background: #082d45c7; color: #d2eaf0; backdrop-filter: blur(16px); }
 .status-link { color: #fff0bf; }
@@ -225,7 +224,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-entry strong { font-size: 13px; }
 .settings-entry small { color: #72868b; font-size: 11px; }
 .settings-entry-arrow { margin-left: auto; color: #198092; font-size: 20px; }
-.modal-view .modal-body { padding-bottom: 18px; }
+.modal-view .modal-body { padding-bottom: 12px; }
 #maintenance-view pre { height: 96px; }
 .launcher-modal .panel { background: #fff; border-color: #dfe9e8; }
 .launcher-modal .quick-panel { margin-bottom: 14px; padding: 16px 18px 12px; }
@@ -259,7 +258,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
   .intro { min-height: 0; }
   .launch-panel { padding: 12px 16px 11px; }
   .play { min-height: 64px; margin-top: 11px; font-size: 24px; }
-  .launch-primary { margin-top: 11px; }
+  .launch-primary { margin-top: 0; }
   .settings-cog { flex-basis: 64px; min-height: 64px; }
   .setup-panel { padding-top: 8px; padding-bottom: 8px; }
   .setup-panel .path { margin-top: 4px; margin-bottom: 5px; }
