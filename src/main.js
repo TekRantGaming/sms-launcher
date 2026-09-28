@@ -281,7 +281,8 @@ async function build() {
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
   if (process.platform === 'darwin') {
-    const compatible = () => fs.existsSync(path.join(root, 'decomp-patches', 'modhook-zz-macos-data-exports.patch')) &&
+    const compatible = () => fs.existsSync(path.join(root, 'src', 'port_include', 'JSystem', 'JSupport', 'JSUStreamEnum.hpp')) &&
+      fs.existsSync(path.join(root, 'decomp-patches', 'modhook-zz-macos-data-exports.patch')) &&
       fs.readFileSync(path.join(root, 'build.sh'), 'utf8').includes('/usr/bin/arch') &&
       ['MarioJump', 'MarioRun'].every(name => {
         const patch = path.join(root, 'decomp-patches', `modhook-32-${name}.patch`);
