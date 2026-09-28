@@ -43,11 +43,6 @@ async function main() {
   if (fs.existsSync(root)) throw new Error(`Smoke build folder already exists: ${root}`);
   await game.checkout(root, { git, run, capture, env });
   if (process.platform === 'win32') {
-    for (const name of ['Python3_EXECUTABLE', 'CMAKE_MAKE_PROGRAM', 'CMAKE_OBJCOPY']) {
-      const selected = cache.match(new RegExp(`^${name}:[^=]*=(.+)$`, 'm'))?.[1];
-      if (!selected || !fs.realpathSync.native(selected).replaceAll('\\', '/').toLowerCase().startsWith(privatePrefix))
-        throw new Error(`Build used a tool outside the private archive: ${name}=${selected || 'unknown'}`);
-    }
     const bash = path.join(env.MSYS2_ROOT, 'usr', 'bin', 'bash.exe');
     await run(bash, ['-lc', 'cd "$(cygpath -u "$1")" && ./build.sh', 'sms-launcher', root],
       { cwd: root, env }, 'Build port using private Windows tools');
@@ -63,6 +58,11 @@ async function main() {
   if (!compiler || !fs.realpathSync.native(compiler).toLowerCase().replaceAll('\\', '/').startsWith(privatePrefix))
     throw new Error(`Port was not compiled with the private C++ toolchain: ${compiler || 'unknown'}`);
   if (process.platform === 'win32') {
+    for (const name of ['Python3_EXECUTABLE', 'CMAKE_MAKE_PROGRAM', 'CMAKE_OBJCOPY']) {
+      const selected = cache.match(new RegExp(`^${name}:[^=]*=(.+)$`, 'm'))?.[1];
+      if (!selected || !fs.realpathSync.native(selected).replaceAll('\\', '/').toLowerCase().startsWith(privatePrefix))
+        throw new Error(`Build used a tool outside the private archive: ${name}=${selected || 'unknown'}`);
+    }
     const machine = await capture(compiler, ['-dumpmachine'], root, env);
     if (machine !== 'x86_64-w64-mingw32') throw new Error(`Expected the Windows x64 compiler, got ${machine}`);
     const fd = fs.openSync(binary, 'r');
