@@ -7,8 +7,9 @@ const os = require('node:os');
 const path = require('node:path');
 const tar = require('tar');
 const tools = require('../src/build-tools');
+const x64Tools = { skip: process.arch !== 'x64' && 'Linux/Windows tool archives require an x64 host.' };
 
-test('a corrupt tool archive preserves the existing tools', async () => {
+test('a corrupt tool archive preserves the existing tools', x64Tools, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-tools-test-'));
   try {
     const root = tools.rootFor(dir, 'linux');
@@ -22,7 +23,7 @@ test('a corrupt tool archive preserves the existing tools', async () => {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('failed archive relocation restores the previous tools', async () => {
+test('failed archive relocation restores the previous tools', x64Tools, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-tools-test-'));
   try {
     const root = tools.rootFor(dir, 'linux');
