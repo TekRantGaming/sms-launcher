@@ -110,7 +110,7 @@ test('download selects exact port and decomp commits even when the branch has ne
   const git = (cwd, args) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }).trim();
   function repo(name) {
     const dir = path.join(root, name); fs.mkdirSync(dir);
-    git(dir, ['init', '-b', 'eclipse']);
+    git(dir, ['init', '-b', game.release.branch]);
     git(dir, ['config','user.name','CI']); git(dir, ['config','user.email','ci@example.invalid']);
     fs.writeFileSync(path.join(dir,'file.txt'),'one'); git(dir,['add','.']); git(dir,['commit','-m','first']);
     return dir;

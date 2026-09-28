@@ -5,7 +5,7 @@ repo=$1
 arch=$2
 cd "$repo"
 
-[[ -f cmake/eclipse.cmake ]] || { echo "This checkout does not have Eclipse support. Choose the port's eclipse branch." >&2; exit 1; }
+[[ -f cmake/eclipse.cmake ]] || { echo "This checkout does not have Eclipse support. Update the game from the launcher." >&2; exit 1; }
 case "$(uname -s)" in
   Linux) os=linux ;;
   Darwin) os=macos; [[ "$arch" == 64 ]] || { echo "macOS supports 64 bit only." >&2; exit 1; } ;;
