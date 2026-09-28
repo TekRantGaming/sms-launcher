@@ -30,7 +30,17 @@ async function main() {
     env.PATH = `${env.SMS_BUILD_TOOLS_BIN}:/usr/bin:/bin:/usr/sbin:/sbin`;
     const root = path.join(userData, 'port');
     await run('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, root], { env });
-    await run(path.join(root, 'build.sh'), [], { cwd: root, env }, 'Compile Sunshine on Mac without a ROM');
+    try {
+      await run(path.join(root, 'build.sh'), [], { cwd: root, env }, 'Compile Sunshine on Mac without a ROM');
+    } catch (error) {
+      // Finish independent compilation units to report every compiler error.
+      // The original failed build still fails this test.
+      const build = path.dirname(port.binaryPath(root, { arch: '64', eclipse: false }));
+      if (fs.existsSync(path.join(build, 'build.ninja')))
+        await run(path.join(env.SMS_BUILD_TOOLS_BIN, 'ninja'), ['-C', build, '-k', '0', 'sms'],
+          { env }, 'Collect remaining Mac compiler errors').catch(() => {});
+      throw error;
+    }
     {
       const binary = port.binaryPath(root, { arch: '64', eclipse: false });
       if (!fs.existsSync(binary)) throw new Error(`Missing binary: ${binary}`);
