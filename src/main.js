@@ -401,7 +401,6 @@ function registerHandlers() {
   ipcMain.handle('window-close', event => senderWindow(event)?.close());
   ipcMain.handle('state', async () => { await checkTools(); return state(); });
   ipcMain.handle('check-tools', async () => { await checkTools(true); return state(); });
-  ipcMain.handle('open-mac-tool-help', () => shell.openExternal('https://docs.brew.sh/Installation'));
   ipcMain.handle('copy-mac-command', (_event, index) => {
     if (process.platform !== 'darwin') throw new Error('This help is for macOS.');
     const commands = toolsStatus().commands.split('\n').filter(Boolean);

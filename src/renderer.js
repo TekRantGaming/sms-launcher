@@ -233,7 +233,6 @@ function renderMacTools(tools) {
   });
   $('mac-apple-note').hidden = !commands.some(command => command.startsWith('xcode-select'));
   $('mac-extra-note').hidden = !commands.some(command => !command.startsWith('xcode-select'));
-  $('mac-homebrew-help').hidden = !tools.needsHomebrew;
   $('mac-check-result').textContent = tools.appleReady || tools.ready ? 'Ready. Close this help and continue setup.'
     : tools.checked ? 'Some tools still need to be installed.' : 'Checking tools…';
 }
@@ -244,7 +243,6 @@ function showMacHelp() {
 }
 
 for (const id of ['mac-setup-help', 'mac-tools-settings']) $(id).addEventListener('click', showMacHelp);
-$('open-homebrew-help').addEventListener('click', () => action('openMacToolHelp'));
 $('check-mac-tools').addEventListener('click', async () => {
   $('check-mac-tools').disabled = true;
   $('mac-check-result').textContent = 'Checking tools…';

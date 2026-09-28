@@ -31,11 +31,11 @@ const SOURCE_MIRRORS = {
 };
 
 function flattenLinks(prefix, toolTree = fs.realpathSync(prefix)) {
-  if (platform === 'linux') fs.chmodSync(prefix, fs.statSync(prefix).mode | 0o700);
+  if (platform !== 'win32') fs.chmodSync(prefix, fs.statSync(prefix).mode | 0o700);
   for (const entry of fs.readdirSync(prefix, { withFileTypes: true })) {
     const file = path.join(prefix, entry.name);
     if (entry.isDirectory()) flattenLinks(file, toolTree);
-    else if (entry.isFile() && platform === 'linux') fs.chmodSync(file, fs.statSync(file).mode | 0o200);
+    else if (entry.isFile() && platform !== 'win32') fs.chmodSync(file, fs.statSync(file).mode | 0o200);
     else if (entry.isSymbolicLink()) {
       const target = fs.readlinkSync(file);
       let resolved;

@@ -38,6 +38,7 @@ jobs:
         env:
           SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-macos-${{ matrix.arch }}.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: tools-macos-${{ matrix.arch }}
           path: tool-assets/*

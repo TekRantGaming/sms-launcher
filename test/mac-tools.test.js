@@ -72,3 +72,13 @@ test('supports an explicit Homebrew prefix for tools installed outside the defau
   const fake = fixture({ prefix: '/custom/brew', silicon: false });
   assert.equal(mac.report(await mac.inspect({ HOMEBREW_PREFIX: '/custom/brew' }, fake)).ready, true);
 });
+
+test('private tools take priority and managed setup asks only for Apple installs', async () => {
+  const fake = fixture({ sdk: false, rosetta: false, missing: ['cmake', 'python3', 'llvm-objcopy', '7zz', 'brew'] });
+  const report = mac.report(await mac.inspect({ PATH: '/usr/bin:/bin' }, fake), { archives: true, managed: true });
+  assert.equal(report.commands, 'xcode-select --install\nsoftwareupdate --install-rosetta');
+  assert.equal(report.needsHomebrew, false);
+  assert.ok(!fake.calls.some(call => ['/usr/bin/git', '/usr/bin/python3', '/usr/bin/clang', '/usr/bin/clang++'].includes(call.command)));
+  const env = mac.environment({ PATH: '/usr/bin:/bin', SMS_BUILD_TOOLS_BIN: '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin' }, fixture().exists);
+  assert.equal(env.PATH.split(':')[0], '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin');
+});

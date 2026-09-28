@@ -241,7 +241,6 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .mac-requirements li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
 .mac-command { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 16px; padding: 10px 12px; border: 1px solid #d5dfde; border-radius: 8px; background: #fff; }
 .mac-command code { overflow-wrap: anywhere; font-size: 12px; }
-#mac-homebrew-help { margin-bottom: 16px; }
 .mac-check-actions { margin-top: 18px; font-size: 12px; color: #526e77; }
 @media (max-height: 800px) {
   .viewport { padding-top: 16px; padding-bottom: 12px; }
