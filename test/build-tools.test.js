@@ -41,3 +41,26 @@ test('failed archive relocation restores the previous tools', x64Tools, async ()
     assert.equal(fs.existsSync(path.join(root, 'env')), false);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('matching legacy tools are reused, while changed archives get a separate root and leave old tools intact', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-tool-versions-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const legacy = tools.legacyRootFor(dir, 'linux');
+  fs.mkdirSync(legacy, { recursive: true });
+  fs.writeFileSync(path.join(legacy, 'ready.json'), JSON.stringify({ toolset: tools.toolsetFor('linux'), archiveSha256: tools.assetFor('linux').sha256 }));
+  fs.writeFileSync(path.join(legacy, 'keep.txt'), 'libraries for my older game');
+  assert.equal(tools.rootFor(dir, 'linux'), legacy);
+  fs.writeFileSync(path.join(legacy, 'ready.json'), JSON.stringify({ toolset: 'older', archiveSha256: '0'.repeat(64) }));
+  assert.notEqual(tools.rootFor(dir, 'linux'), legacy);
+  assert.equal(fs.readFileSync(path.join(legacy, 'keep.txt'), 'utf8'), 'libraries for my older game');
+});
+
+test('fallback play can use a recorded older Windows toolset without downloading the current tools', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-old-tools-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(dir, 'msys64'));
+  const env = tools.environmentAtRoot(dir, { PATH: 'existing path' }, 'win32');
+  assert.equal(env.MSYS2_ROOT, path.join(dir, 'msys64'));
+  assert.equal(env.MSYSTEM, 'MINGW32');
+  assert.ok(env.PATH.includes(path.join(dir, 'msys64', 'usr', 'bin')));
+});

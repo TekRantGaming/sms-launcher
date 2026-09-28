@@ -133,3 +133,18 @@ test('download selects exact port and decomp commits even when the branch has ne
   assert.equal(fs.existsSync(failed),false);
   assert.equal(fs.readdirSync(root).some(name => name.startsWith('failed.download-')),false);
 });
+
+test('build records the matching tool location and requests preparation again if those tools are removed', async t => {
+  const { root, directory, binary, backups } = fixture(t);
+  const toolRoot = path.join(root, 'private-tools');
+  fs.mkdirSync(toolRoot);
+  await game.buildSafely(root, settings, path.join(root, 'saves'), async () => {
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(binary, 'new executable');
+    fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), `CMAKE_CXX_COMPILER:FILEPATH=${toolRoot.replaceAll('\\','/')}/env/bin/clang++\n`);
+  }, backups);
+  assert.equal(game.installed(root, settings).toolRoot, toolRoot.replaceAll('\\','/'));
+  assert.equal(game.isCurrent(root, settings), true);
+  fs.rmSync(toolRoot, { recursive: true });
+  assert.equal(game.isCurrent(root, settings), false);
+});

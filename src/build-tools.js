@@ -36,6 +36,18 @@ function platformId(platform = process.platform, arch = process.arch) {
 }
 
 function rootFor(userData, platform = process.platform) {
+  const legacy = legacyRootFor(userData, platform);
+  const expected = platform === 'darwin' ? macAssets.platforms[process.arch] : assets.platforms[platform];
+  // Reuse an existing matching installation in place. Its compiled games may
+  // embed this path. New archives get their own immutable location.
+  try {
+    const marker = JSON.parse(fs.readFileSync(path.join(legacy, 'ready.json'), 'utf8'));
+    if (marker.toolset === toolsetFor(platform) && marker.archiveSha256 === expected.sha256) return legacy;
+  } catch (_) { /* new tool installation */ }
+  return `${legacy}-${expected.sha256.slice(0, 12)}`;
+}
+
+function legacyRootFor(userData, platform = process.platform) {
   return path.join(userData, 'build-tools', platformId(platform));
 }
 
@@ -98,10 +110,15 @@ function status(userData, platform = process.platform, env = process.env, option
 }
 
 function environment(userData, base = process.env, platform = process.platform) {
+  return environmentAtRoot(privateReady(userData, platform) ? rootFor(userData, platform) : null, base, platform);
+}
+
+function environmentAtRoot(root, base = process.env, platform = process.platform) {
   if (platform === 'darwin') {
-    const bin = path.join(rootFor(userData, platform), 'env', 'bin');
-    const result = macTools.environment(privateReady(userData, platform) ? { ...base, SMS_BUILD_TOOLS_BIN: bin } : base);
-    if (privateReady(userData, platform)) {
+    const bin = root && path.join(root, 'env', 'bin');
+    const available = Boolean(bin && fs.existsSync(bin));
+    const result = macTools.environment(available ? { ...base, SMS_BUILD_TOOLS_BIN: bin } : base);
+    if (available) {
       result.SMS_LLVM_BIN = bin;
       // GNU Make's recursive command cannot quote its own executable path.
       // Application Support always contains a space, so use Ninja on Mac.
@@ -110,8 +127,7 @@ function environment(userData, base = process.env, platform = process.platform) 
     if (macInspection?.sdkPath) result.SDKROOT = macInspection.sdkPath;
     return result;
   }
-  if (!privateReady(userData, platform)) return { ...base };
-  const root = rootFor(userData, platform);
+  if (!root || !fs.existsSync(path.join(root, platform === 'win32' ? 'msys64' : 'env'))) return { ...base };
   if (platform === 'linux') {
     const prefix = path.join(root, 'env');
     const bin = path.join(prefix, 'bin');
@@ -270,5 +286,5 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   }
 }
 
-module.exports = { TOOLSET, toolsetFor, platformId, rootFor, privateReady, systemReady, status, environment, check,
+module.exports = { TOOLSET, toolsetFor, platformId, rootFor, legacyRootFor, privateReady, systemReady, status, environment, environmentAtRoot, check,
   fetchVerified, hashFile, assetFor, prepare };

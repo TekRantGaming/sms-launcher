@@ -48,11 +48,20 @@ function installed(root, settings) {
   catch (_) { return null; }
 }
 
+function compilerToolRoot(root, settings) {
+  try {
+    const cache = fs.readFileSync(path.join(path.dirname(port.binaryPath(root, settings)), 'CMakeCache.txt'), 'utf8');
+    const compiler = cache.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1].trim().replaceAll('\\', '/');
+    return compiler?.match(/^(.*)\/(?:env\/bin|msys64\/mingw(?:32|64)\/bin)\/[^/]+$/)?.[1] || null;
+  } catch (_) { return null; }
+}
+
 function isCurrent(root, settings) {
   if (!fs.existsSync(port.binaryPath(root, settings))) return false;
   const record = installed(root, settings);
   const expected = identity(settings);
   return Boolean(record && Object.keys(expected).every(key => record[key] === expected[key]) &&
+    (!record.toolRoot || fs.existsSync(record.toolRoot)) &&
     gitRevision(root) === release.commit && gitRevision(path.join(root, 'decomp')) === release.decomp);
 }
 
@@ -118,7 +127,7 @@ async function buildSafely(root, settings, saveDir, compile, backups = saves.bac
     if (!fs.existsSync(port.binaryPath(root, settings))) throw new Error('Setup finished without a playable game. Please retry.');
     if (gitRevision(root) !== release.commit || gitRevision(path.join(root, 'decomp')) !== release.decomp)
       throw new Error('Game files changed during setup. Please retry.');
-    const record = { ...identity(settings), builtAt: new Date().toISOString() };
+    const record = { ...identity(settings), toolRoot: compilerToolRoot(root, settings), builtAt: new Date().toISOString() };
     const file = metadataPath(root, settings);
     fs.writeFileSync(`${file}.tmp`, JSON.stringify(record, null, 2));
     fs.renameSync(`${file}.tmp`, file);
@@ -150,4 +159,4 @@ function recoverBuild(root, settings) {
   return true;
 }
 
-module.exports = { release, gitRevision, identity, installed, isCurrent, snapshotPath, checkout, carryUserFiles, buildSafely, recoverBuild };
+module.exports = { release, gitRevision, identity, installed, compilerToolRoot, isCurrent, snapshotPath, checkout, carryUserFiles, buildSafely, recoverBuild };

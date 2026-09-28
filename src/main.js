@@ -17,6 +17,14 @@ let preparingTools = false;
 let operation = null;
 let appUpdate = { state: 'idle', message: '' };
 const logLines = [];
+const ownsInstance = app.requestSingleInstanceLock();
+if (!ownsInstance) app.quit();
+app.on('second-instance', () => {
+  if (!window) return;
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+});
 
 function broadcast(channel, data) {
   if (window && !window.isDestroyed()) window.webContents.send(channel, data);
@@ -328,7 +336,10 @@ async function play(installation = null) {
     throw new Error('HD textures are on but have not been downloaded. Download them or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
-  const env = toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() });
+  const recordedTools = game.installed(root, settings)?.toolRoot || game.compilerToolRoot(root, settings);
+  const env = recordedTools
+    ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() })
+    : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() });
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
@@ -540,7 +551,7 @@ function createWindow() {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 }
 
-app.whenReady().then(() => {
+if (ownsInstance) app.whenReady().then(() => {
   loadConfig();
   createWindow();
   registerHandlers();
