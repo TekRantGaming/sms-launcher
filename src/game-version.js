@@ -14,7 +14,11 @@ function gitRevision(root) {
     if (fs.statSync(directory).isFile()) {
       const match = fs.readFileSync(directory, 'utf8').match(/^gitdir: (.+)\s*$/);
       if (!match) return null;
-      directory = path.resolve(root, match[1]);
+      let location = match[1];
+      // MSYS Git can write absolute /c/... paths, while Electron uses native
+      // Windows paths. Relative and native Git paths work without conversion.
+      if (process.platform === 'win32') location = location.replace(/^\/([a-zA-Z])\//, '$1:/');
+      directory = path.resolve(root, location);
     }
     const head = fs.readFileSync(path.join(directory, 'HEAD'), 'utf8').trim();
     if (/^[a-f0-9]{40}$/.test(head)) return head;
@@ -60,6 +64,7 @@ function snapshotPath(base, settings) {
 async function checkout(root, { git = 'git', run, capture, env, source = release, reference } = {}) {
   fs.mkdirSync(path.dirname(root), { recursive: true });
   const temporary = `${root}.download-${crypto.randomUUID()}`;
+  let promoted = false;
   try {
     const args = ['clone', '--config', 'core.longpaths=true', '--no-checkout', '--branch', source.branch];
     if (reference && fs.existsSync(path.join(reference, '.git')))
@@ -68,12 +73,22 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
     await run(git, args, { env }, 'Download port source');
     await run(git, ['fetch', 'origin', source.commit], { cwd: temporary, env }, 'Get game release');
     await run(git, ['checkout', '--detach', source.commit], { cwd: temporary, env }, 'Select game release');
-    await run(git, ['-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive'], { cwd: temporary, env }, 'Prepare game release');
     const actual = await capture(git, ['rev-parse', 'HEAD'], temporary, env);
-    const decomp = await capture(git, ['rev-parse', 'HEAD'], path.join(temporary, 'decomp'), env);
-    if (actual !== source.commit || decomp !== source.decomp) throw new Error('The downloaded game files did not match this release. Please retry.');
-    fs.writeFileSync(path.join(temporary, 'launcher-source.json'), JSON.stringify(source, null, 2));
+    const tree = await capture(git, ['ls-tree', 'HEAD', 'decomp'], temporary, env);
+    if (actual !== source.commit || !tree.startsWith(`160000 commit ${source.decomp}\t`))
+      throw new Error('The downloaded game files did not match this release. Please retry.');
+    // MSYS submodules may use absolute gitdir/worktree paths. Initialize them
+    // after promotion so none of their paths refer to the temporary checkout.
     fs.renameSync(temporary, root);
+    promoted = true;
+    await run(git, ['-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive'], { cwd: root, env }, 'Prepare game release');
+    const decomp = await capture(git, ['rev-parse', 'HEAD'], path.join(root, 'decomp'), env);
+    if (decomp !== source.decomp || gitRevision(root) !== source.commit || gitRevision(path.join(root, 'decomp')) !== source.decomp)
+      throw new Error('The downloaded game files did not match this release. Please retry.');
+    fs.writeFileSync(path.join(root, 'launcher-source.json'), JSON.stringify(source, null, 2));
+  } catch (error) {
+    if (promoted) fs.rmSync(root, { recursive: true, force: true });
+    throw error;
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 

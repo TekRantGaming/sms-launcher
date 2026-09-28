@@ -126,6 +126,7 @@ test('download selects exact port and decomp commits even when the branch has ne
   await game.checkout(destination, { source, env, run, capture });
   assert.equal(game.gitRevision(destination), source.commit);
   assert.equal(game.gitRevision(path.join(destination,'decomp')), source.decomp);
+  assert.equal(git(destination, ['submodule', 'status']).trim().slice(0, 40), source.decomp);
   assert.equal(fs.readFileSync(path.join(destination,'file.txt'),'utf8'),'one');
   const failed = path.join(root,'failed');
   await assert.rejects(game.checkout(failed, { source: { ...source, decomp:'0'.repeat(40) }, env, run, capture }), /did not match/);
