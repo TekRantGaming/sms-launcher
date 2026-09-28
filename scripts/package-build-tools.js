@@ -8,7 +8,7 @@ const tar = require('tar');
 const YAML = require('yaml');
 const tools = require('../src/build-tools');
 const { prepareFromUpstream } = require('./bootstrap-build-tools');
-const { run } = require('./tool-run');
+const { run, runMain } = require('./tool-run');
 
 const platform = process.platform;
 const id = platform === 'win32' ? 'windows-x64' : 'linux-x64';
@@ -156,6 +156,7 @@ async function main() {
     fs.writeFileSync(path.join(root, 'msys64', 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
     flattenLinks(path.join(root, 'msys64'));
     // Preserve the prepared tree, but exclude package downloads, caches, and machine-specific homes.
+    process.stdout.write('\nPack Windows build tools\n');
     tar.c({ sync: true, gzip: true, file: archive, cwd: root, portable: true,
       filter: name => !/^msys64\/(?:var\/cache|home|tmp)(?:\/|$)/.test(name.replaceAll('\\', '/')) }, ['msys64']);
   }
@@ -163,6 +164,7 @@ async function main() {
   fs.writeFileSync(path.join(sourceRoot, 'packages.json'), `${JSON.stringify(packages, null, 2)}\n`);
   fs.copyFileSync(path.join(output, noticesFile), path.join(sourceRoot, 'THIRD-PARTY-NOTICES.md'));
   const sourcesName = `sms-build-tools-${id}-${tools.TOOLSET}-sources.tar.gz`;
+  process.stdout.write('\nPack corresponding source files\n');
   tar.c({ sync: true, gzip: true, file: path.join(output, sourcesName), cwd: sourceRoot, portable: true }, fs.readdirSync(sourceRoot));
   for (const file of [archive, path.join(output, sourcesName)])
     if (fs.statSync(file).size >= 2 ** 31) throw new Error(`Release asset exceeds GitHub's size limit: ${file}`);
@@ -177,4 +179,4 @@ async function main() {
   process.stdout.write(`Tool asset ready: ${archive}\n`);
 }
 
-main().catch(error => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });
+runMain(main);

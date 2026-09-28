@@ -6,14 +6,19 @@ const os = require('node:os');
 const path = require('node:path');
 const buildTools = require('../src/build-tools');
 const port = require('../src/port');
-const { run } = require('./tool-run');
+const { run, runMain } = require('./tool-run');
 
 async function main() {
   const userData = path.join(os.tmpdir(), 'sms-launcher-private-tools-ci');
   const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
   const source = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).platforms[process.platform] : null;
   const archiveFile = source ? path.join(path.dirname(manifestFile), source.name) : null;
-  await buildTools.prepare(userData, { forcePrivate: true, run, source, archiveFile });
+  await buildTools.prepare(userData, { forcePrivate: true, run, source, archiveFile,
+    progress(percent, detail) {
+      if (detail) process.stdout.write(`${detail}\n`);
+      else if (percent !== null && percent % 10 === 0) process.stdout.write(`Download tools: ${percent}%\n`);
+    }
+  });
   if (buildTools.status(userData).mode !== 'private') throw new Error('Private tools were not prepared.');
   const env = buildTools.environment(userData, { ...process.env, SMS_ARCH: process.platform === 'win32' ? '32' : '64' });
   const toolRoot = buildTools.rootFor(userData);
@@ -43,4 +48,4 @@ async function main() {
   process.stdout.write(`Private tool build succeeded: ${binary}\n`);
 }
 
-main().catch(error => { process.stderr.write(`${error.stack}\n${error.path || ''}\n`); process.exitCode = 1; });
+runMain(main);

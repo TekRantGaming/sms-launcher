@@ -98,10 +98,12 @@ function fetchVerified(url, destination, expected, onProgress = () => {}, redire
       const hash = crypto.createHash('sha256');
       const total = Number(response.headers['content-length']) || 0;
       let received = 0;
+      let reported;
       response.on('data', chunk => {
         hash.update(chunk);
         received += chunk.length;
-        onProgress(total ? Math.min(99, Math.floor(100 * received / total)) : null);
+        const percent = total ? Math.min(99, Math.floor(100 * received / total)) : null;
+        if (percent !== reported) { reported = percent; onProgress(percent); }
       });
       response.on('error', reject);
       output.on('error', reject);
@@ -161,7 +163,11 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   try {
     progress(null, 'Unpacking build tools…');
     const top = platform === 'win32' ? 'msys64' : 'env';
+    let entries = 0;
     await require('tar').x({ file: archive, cwd: staging, strict: true,
+      onReadEntry() {
+        if (++entries % 1000 === 0) progress(null, `Unpacking build tools… ${entries.toLocaleString()} files`);
+      },
       filter(name) {
         const entry = name.replace(/^\.\//, '');
         return entry === top || entry.startsWith(`${top}/`) || entry === 'THIRD-PARTY-NOTICES.md' ||
@@ -176,9 +182,14 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       const prefix = path.join(root, 'env');
       await run(path.join(prefix, 'bin', 'python3'), [path.join(prefix, 'bin', 'conda-unpack')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare build tools');
+    } else {
+      // Machine-specific contents are excluded from the archive; MSYS2 still needs these folders.
+      for (const directory of ['tmp', 'home'])
+        fs.mkdirSync(path.join(root, 'msys64', directory), { recursive: true });
     }
     fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: TOOLSET, platform,
       archiveSha256: source.sha256 }), { mode: 0o600 });
+    progress(null, 'Checking build tools…');
     if (!privateReady(userData, platform)) throw new Error('Downloaded build tools are incomplete or do not match this release.');
     const env = environment(userData, process.env, platform);
     const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');

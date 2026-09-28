@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Prepare tool archives and corresponding sources
         run: node scripts/package-build-tools.js
       - name: Compile with the relocated archive
@@ -32,6 +32,7 @@ jobs:
           name: tools-${{ matrix.platform }}
           path: tool-assets/*
           compression-level: 0
+          retention-days: 7
           if-no-files-found: error
   publish:
     needs: prepare-tools

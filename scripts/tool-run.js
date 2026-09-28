@@ -11,4 +11,19 @@ function run(command, args, options = {}, label = command) {
   });
 }
 
-module.exports = { run };
+function runMain(main) {
+  let finished = false;
+  process.once('beforeExit', () => {
+    if (!finished) {
+      process.stderr.write('The tool operation did not finish.\n');
+      process.exitCode = 1;
+    }
+  });
+  Promise.resolve().then(main).then(() => { finished = true; }, error => {
+    finished = true;
+    process.stderr.write(`${error.stack}\n${error.path || ''}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { run, runMain };

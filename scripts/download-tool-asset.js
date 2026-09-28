@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const tools = require('../src/build-tools');
+const { runMain } = require('./tool-run');
 
 async function main() {
   if (process.platform === 'darwin') return;
@@ -17,4 +18,4 @@ async function main() {
       '--repo', process.env.GITHUB_REPOSITORY || 'chasem-dev/sms-launcher'], { stdio: 'inherit' });
 }
 
-main().catch(error => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });
+runMain(main);
