@@ -6,10 +6,10 @@ The installer does not contain the toolchain. Each launcher release also attache
 
 ## Publish a new toolset
 
-1. Set a new `toolset` in `src/tool-assets.json` and clear its `platforms` object. Update the pinned bootstrap or package requirements in `scripts/bootstrap-build-tools.js` as needed. Never reuse a published toolset version.
-2. Commit and push, then run **Publish build tool archives** in GitHub Actions. Only this workflow runs micromamba/pacman. It builds both toolchains, packages them, unpacks each into a different folder, and compiles the port with the relocated tools and no ROM. Linux uses conda-pack and runs conda-unpack at its final destination. Windows archives exclude package caches and machine-specific home/temp folders.
+1. On a preparation branch, set a new `toolset` in `src/tool-assets.json` and clear its `platforms` object. Update the pinned bootstrap or package requirements in `scripts/bootstrap-build-tools.js` as needed. Never reuse a published toolset version.
+2. Commit and push that branch, then run **Publish build tool archives** in GitHub Actions with that branch selected. Only this workflow runs micromamba/pacman. It builds both toolchains, packages them, unpacks each into a different folder, and compiles the port with the relocated tools and no ROM. Linux uses conda-pack and runs conda-unpack at its final destination. Windows archives exclude package caches and machine-specific home/temp folders; setup recreates the empty folders it needs and uses Windows' built-in extractor when available.
 3. Both OS jobs must pass before publication. The workflow publishes `build-tools-<toolset>` as a tooling prerelease, so it does not become the launcher's latest stable update. It includes tool archives, corresponding source archives, notices, and a merged `tool-assets.json`.
-4. Download that merged manifest and replace `src/tool-assets.json` with it. Commit the pins and bump the launcher version to ship the updated setup behavior. The normal launcher release workflow verifies the matching archive before attaching it to each OS release.
+4. Download that merged manifest and replace `src/tool-assets.json` with it. Commit the pins and bump the launcher version, then merge the completed branch into `main` to ship the updated setup behavior. The normal launcher release workflow verifies the matching archive before attaching it to each OS release.
 
 The tool archives contain only build dependencies. Port executables, disc images, game assets, texture packs, and user saves never enter the publishing directory. The source archives contain package build recipes, patches, upstream source downloads, license information, and package metadata. Keep these assets available while distributing their toolset.
 
