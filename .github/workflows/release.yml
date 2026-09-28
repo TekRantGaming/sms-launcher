@@ -4,6 +4,9 @@ on:
     branches: [main]
 permissions:
   contents: write
+concurrency:
+  group: launcher-release
+  cancel-in-progress: false
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -22,6 +25,7 @@ jobs:
         run: node scripts/version-change.js
         env:
           GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create tag and draft release
         if: steps.version.outputs.release == 'true'
         env:

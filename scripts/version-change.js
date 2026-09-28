@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const current = require('../package.json').version;
 function parts(version) {
@@ -24,8 +24,17 @@ function previousVersion(before) {
 
 parts(current);
 const previous = previousVersion(process.env.GITHUB_EVENT_BEFORE);
-const changed = !previous || compare(current, previous) > 0;
+let changed = !previous || compare(current, previous) > 0;
 if (previous && compare(current, previous) < 0) throw new Error(`Version went backwards: ${previous} → ${current}`);
+// Serialized duplicate push events must not upload to an already public release.
+// Drafts remain eligible so a failed release can be resumed.
+if (changed && process.env.GITHUB_ACTIONS === 'true') {
+  const release = spawnSync('gh', ['release', 'view', `v${current}`, '--repo', process.env.GITHUB_REPOSITORY,
+    '--json', 'isDraft'], { encoding: 'utf8' });
+  if (release.status === 0) changed = JSON.parse(release.stdout).isDraft;
+  else if (release.error || !/release not found/i.test(release.stderr))
+    throw new Error(`Cannot check the existing release: ${release.error?.message || release.stderr}`);
+}
 const output = `release=${changed}\ntag=v${current}\n`;
 if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, output);
 console.log(previous ? `${previous} → ${current}: ${changed ? 'release' : 'no release'}` : `First version ${current}: release`);
