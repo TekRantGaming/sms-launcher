@@ -51,6 +51,9 @@ jobs:
           path: tool-assets
           run-id: ${{ inputs.reuse_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Normalize retained Linux archive headers
+        if: (inputs.platform == 'all' || inputs.platform == matrix.platform) && matrix.platform == 'linux' && inputs.reuse_run != ''
+        run: node scripts/normalize-linux-tool-archive.js
       - name: Compile with the relocated archive
         if: inputs.platform == 'all' || inputs.platform == matrix.platform
         run: node scripts/smoke-build-tools.js
