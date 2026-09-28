@@ -11,6 +11,12 @@ async function main() {
   const mac = process.env.SMS_MAC_TOOL_ASSETS === '1';
   const manifestName = mac ? 'mac-tool-assets.json' : 'tool-assets.json';
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', manifestName), 'utf8'));
+  // A publisher branch may stage the next tool version while still pointing
+  // at an older asset. Unselected platforms must retain their actual version.
+  for (const asset of Object.values(manifest.platforms)) {
+    const publishedVersion = asset.name.match(/-(\d{4}-\d{2}-\d{2}\.\d+)\.tar\.gz$/)?.[1];
+    if (publishedVersion) asset.toolset = publishedVersion;
+  }
   const groups = new Map();
   for (const platform of mac ? ['x64', 'arm64'] : ['linux', 'win32']) {
     const file = path.join(directory, `manifest-${mac ? `macos-${platform}` : platform}.json`);
