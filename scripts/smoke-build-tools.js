@@ -57,6 +57,20 @@ async function main() {
     ? 'SMS Port Private Tools CI' : 'sms-port-private-tools-ci');
   if (fs.existsSync(root)) throw new Error(`Smoke build folder already exists: ${root}`);
   await game.checkout(root, { git, run, capture, env: checkoutEnv });
+  if (process.platform === 'win32') {
+    const env = buildTools.environment(userData, { ...base, SMS_ARCH: '32' });
+    const probe = path.join(userData, 'Cross compiler path check');
+    fs.mkdirSync(probe, { recursive: true });
+    const header = path.join(probe, 'include with spaces.h');
+    const input = path.join(probe, 'main.cpp');
+    const output = path.join(probe, 'probe.exe');
+    fs.writeFileSync(header, '#define EXPECTED_VALUE 0\n');
+    fs.writeFileSync(input, 'int main(){return EXPECTED_VALUE;}\n');
+    await run(path.join(env.MSYS2_ROOT, 'mingw64', 'bin', 'python.exe'),
+      [path.join(root, 'tools', 'msys_cross_compile.py'), env.CXX, '-v', '-include', header, input, '-o', output],
+      { cwd: probe, env }, 'Check 32-bit cross compiler with native Windows paths and spaces');
+    if (executableType(output).bits !== '32') throw new Error('The cross compiler path check did not produce a 32-bit game target.');
+  }
   const canonical = file => fs.realpathSync.native(file).replaceAll('\\', '/').toLowerCase();
   const privatePrefix = `${canonical(toolRoot)}/`;
   const arches = process.env.SMS_SMOKE_ARCHES?.split(',') || ['64', '32'];
