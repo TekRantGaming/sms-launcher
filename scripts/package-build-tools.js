@@ -25,9 +25,11 @@ const packages = [];
 const downloaded = new Map();
 
 function flattenLinks(prefix, toolTree = fs.realpathSync(prefix)) {
+  if (platform === 'linux') fs.chmodSync(prefix, fs.statSync(prefix).mode | 0o700);
   for (const entry of fs.readdirSync(prefix, { withFileTypes: true })) {
     const file = path.join(prefix, entry.name);
     if (entry.isDirectory()) flattenLinks(file, toolTree);
+    else if (entry.isFile() && platform === 'linux') fs.chmodSync(file, fs.statSync(file).mode | 0o200);
     else if (entry.isSymbolicLink()) {
       const target = fs.readlinkSync(file);
       let resolved;
@@ -89,7 +91,7 @@ async function linuxSources() {
         if (url.endsWith('.rpm')) {
           // Sysroot recipes repack binary RPMs; distribute their source RPMs instead.
           const rpm = url.match(/\/rocky\/([^/]+)\/.*\/(glibc|kernel)(?:-[a-z-]+)?-(\d[^/]+)\.x86_64\.rpm$/);
-          const centos = url.match(/vault\.centos\.org\/(?:centos\/)?([^/]+)\/(os|updates)\/.*\/(glibc|kernel)(?:-[a-z-]+)?-(\d[^/]+)\.x86_64\.rpm$/);
+          const centos = url.match(/vault\.centos\.org\/(?:centos\/)?([^/]+)\/(os|updates)\/.*\/(glibc|kernel|nss-softokn)(?:-[a-z-]+)?-(\d[^/]+)\.x86_64\.rpm$/);
           if (!rpm && !centos) throw new Error(`Add a corresponding source RPM for ${url}`);
           const filename = rpm ? `${rpm[2]}-${rpm[3]}.src.rpm` : `${centos[3]}-${centos[4]}.src.rpm`;
           const sourceUrl = rpm ? `https://download.rockylinux.org/vault/rocky/${rpm[1]}/BaseOS/source/tree/Packages/${rpm[2][0]}/${filename}`
