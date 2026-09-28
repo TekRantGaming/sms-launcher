@@ -118,10 +118,13 @@ function playableInstall(saved, platform = process.platform) {
 }
 
 function commandFor(root, action, args = [], platform = process.platform, environment = process.env) {
+  const textureProgress = __dirname.includes('app.asar')
+    ? path.join(process.resourcesPath, 'scripts', 'texture-progress.py')
+    : path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
   if (platform !== 'win32') {
     const file = action === 'python' || action === 'textures' ? 'python3' : path.join(root, `${action}.sh`);
     const commandArgs = action === 'python' ? ['tools/mods/get.py', 'eclipse', '--iso', ...args]
-      : action === 'textures' ? ['tools/mods/get.py', 'textures'] : args;
+      : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
   }
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
@@ -130,13 +133,13 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   const script = action === 'python'
     ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py eclipse --iso "$(cygpath -u "$2")"'
     : action === 'textures'
-      ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py textures'
+      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py'
     : action === 'clean'
       ? 'cd "$(cygpath -u "$1")" && ./clean.sh "${@:2}"'
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;
   return {
     command: bash,
-    args: ['-c', script, 'sms-launcher', root, ...args], cwd: root,
+    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' ? [textureProgress] : args)], cwd: root,
     env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
       PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }

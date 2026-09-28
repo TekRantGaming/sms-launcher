@@ -1,6 +1,6 @@
 {
   "name": "sms-launcher",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "private": true,
   "author": "sms-port contributors",
   "license": "MIT",
@@ -29,7 +29,8 @@
         "from": "scripts",
         "to": "scripts",
         "filter": [
-          "build-eclipse.sh"
+          "build-eclipse.sh",
+          "texture-progress.py"
         ]
       }
     ],

@@ -77,11 +77,15 @@ function backupReason(reason) {
     'before-port-update': 'Before update', 'before-tools-change': 'Before changing build tools' })[reason] || 'Backup';
 }
 
+function needsTextureDownload(data) {
+  return data.config.settings.textures && !data.texturesInstalled;
+}
+
 function requiredStep(data) {
   if (data.repoReady && data.romReady && (data.config.completedSetup || data.binaryReady)) return 0;
   if (!data.repoReady || !data.tools.ready) return 1;
   if (!data.romReady) return 2;
-  if (!data.binaryReady || (data.config.settings.textures && !data.texturesInstalled)) return 3;
+  if (!data.binaryReady || needsTextureDownload(data)) return 3;
   return 0;
 }
 
@@ -90,11 +94,13 @@ function showWizardStep(data) {
   if (required === 0) wizardStep = 0;
   else if (wizardStep === null || wizardStep === 0 || wizardStep > required) wizardStep = required;
   const ready = wizardStep === 0;
+  const downloadTextures = ready && data.binaryReady && needsTextureDownload(data);
   $('page-home').classList.toggle('ready-mode', ready);
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
-    ? data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
+    ? downloadTextures ? 'Download HD textures to finish setup.'
+      : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
@@ -114,8 +120,10 @@ function showWizardStep(data) {
   $('choose-location').hidden = data.repoReady;
   for (let step = 1; step <= 3; step++)
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
-  if (ready) $('play').textContent = data.game.needsUpdate && data.config.settings.autoUpdate
-    ? '↻  Update & play' : !data.binaryReady ? '▶  Prepare & play' : '▶  Play';
+  if (ready) $('play').textContent = downloadTextures
+    ? setupPending || data.active?.label === 'Install UHD textures' ? 'Downloading…' : 'Download HD textures'
+    : data.game.needsUpdate && data.config.settings.autoUpdate
+      ? '↻  Update & play' : !data.binaryReady ? '▶  Prepare & play' : '▶  Play';
   else {
     $('step-count').textContent = `Step ${wizardStep} of 3`;
     document.querySelectorAll('.setup-progress-track i').forEach((segment, index) => {
@@ -139,6 +147,7 @@ function renderActivity(active) {
     : active?.label.startsWith('Build ') ? 'Stop build' : 'Stop task';
   $('view-build-log').textContent = active?.label.startsWith('Build ') ? 'View build log' : 'View activity';
   $('task-status').textContent = active ? taskName(active.label)
+    : current?.binaryReady && needsTextureDownload(current) ? 'HD textures need a download'
     : current?.game.needsUpdate && current.config.settings.autoUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
   if (!working) return;
@@ -178,10 +187,10 @@ function refresh(data) {
   $('build').disabled = Boolean(data.active);
   badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
     config.settings.textures && !data.texturesInstalled);
-  $('texture-info').textContent = data.texturesInstalled ? 'Ready for the next time you play.'
-    : 'About 1 GB to download; needs about 3 GB of free space.';
-  $('install-textures').hidden = data.texturesInstalled;
-  $('install-textures').disabled = !data.repoReady || Boolean(data.active);
+  $('texture-info').textContent = data.texturesInstalled
+    ? config.settings.textures ? 'Ready for the next time you play.' : 'Already downloaded. Turn on to use them.'
+    : config.settings.textures ? `${data.binaryReady ? 'Close Settings and choose Download HD textures.' : 'HD textures will download during setup.'} About 1 GB to download; needs about 3 GB of free space.`
+      : 'About 1 GB to download; needs about 3 GB of free space.';
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
   $('eclipse-note').hidden = !config.settings.eclipse;
@@ -337,12 +346,12 @@ function appendLog(line) {
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom',
   'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation',
-  'update-port': 'updatePort', 'play-installed': 'play', 'play-previous': 'playPrevious', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
+  'update-port': 'updatePort', 'play-installed': 'play', 'play-previous': 'playPrevious', 'build': 'build', 'install-eclipse': 'installEclipse',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
 $('play').addEventListener('click', () => {
-  if (wizardStep === 0) runWizardAction('launchGame');
+  if (wizardStep === 0) runWizardAction(current.binaryReady && needsTextureDownload(current) ? 'installTextures' : 'launchGame');
   else if (wizardStep === 1) {
     if (current.platform.id === 'macos' && !current.tools.appleReady) { showMacHelp(); return; }
     if (current.repoReady && current.tools.ready) { wizardStep = 2; refresh(current); }

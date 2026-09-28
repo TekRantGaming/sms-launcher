@@ -51,3 +51,16 @@ test('reports texture install phases without inventing a download percentage', (
   assert.deepEqual(activityFromLine('Installed 2180 textures in mods/textures/GMS.'),
     { detail: 'HD textures installed', percent: 100 });
 });
+
+test('reports texture download bytes, handles unknown file sizes, and separates checksum checking', () => {
+  assert.deepEqual(activityFromLine('Texture download: 500000000/1000000000 bytes'),
+    { detail: 'Downloading HD textures · 500 MB of 1,000 MB', percent: 50 });
+  assert.deepEqual(activityFromLine('Texture download: 1000000000/1000000000 bytes'),
+    { detail: 'Downloading HD textures · 1,000 MB of 1,000 MB', percent: 100 });
+  assert.deepEqual(activityFromLine('Texture download: 500000000/0 bytes'),
+    { detail: 'Downloading HD textures · 500 MB downloaded', percent: null });
+  assert.deepEqual(activityFromLine('Checking HD texture download'),
+    { detail: 'Checking HD textures', percent: null });
+  for (const invalid of ['Texture download: 4/3 bytes', 'Texture download: 9007199254740992/0 bytes'])
+    assert.equal(activityFromLine(invalid), null);
+});

@@ -336,7 +336,7 @@ async function play(installation = null) {
   const rom = port.validateRom(installation?.rom || config.rom);
   if (!binaryReady(root, settings)) throw new Error('Set up this version of the game before playing.');
   if (settings.textures && !port.texturePackInstalled(root))
-    throw new Error('HD textures are on but have not been downloaded. Download them or turn them off in Settings.');
+    throw new Error('HD textures need to be downloaded. Return to the main screen to finish setup, or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
   const recordedTools = game.installed(root, settings)?.toolRoot || game.compilerToolRoot(root, settings);

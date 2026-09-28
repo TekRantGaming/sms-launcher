@@ -92,7 +92,10 @@ test('recognizes an installed texture pack and points the game at its folder', (
     assert.equal(port.texturePackInstalled(dir), true);
     const settings = port.normalizeSettings({ textures: true });
     assert.equal(port.buildEnvironment(settings, '/my/disc.iso', dir).SMS_TEXTURE_PACKS, textures);
-    assert.deepEqual(port.commandFor(dir, 'textures', [], 'linux').args, ['tools/mods/get.py', 'textures']);
+    const progressScript = path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
+    for (const platform of ['linux', 'darwin'])
+      assert.deepEqual(port.commandFor(dir, 'textures', [], platform).args,
+        [progressScript, path.join(dir, 'tools', 'mods', 'get.py')]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -135,8 +138,9 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.doesNotMatch(cmd.args[1], /Sunshine/);
     assert.match(cmd.env.PATH, /mingw64/);
     const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
-    assert.match(textures.args[1], /get\.py textures/);
-    assert.equal(textures.args.at(-1), 'C:\\port');
+    assert.match(textures.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py/);
+    assert.equal(textures.args[3], 'C:\\port');
+    assert.equal(textures.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
   } finally {
     if (old === undefined) delete process.env.MSYS2_ROOT;
     else process.env.MSYS2_ROOT = old;

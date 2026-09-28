@@ -80,9 +80,7 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .text-button { padding: 2px 0; border: 0; background: transparent; color: #17737a; font-size: 12px; }
 .text-button:hover:not(:disabled) { text-decoration: underline; }
 .texture-summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 1px 0; color: #61767a; font-size: 11px; }
-.texture-setup { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 3px; color: #6e8183; font-size: 11px; }
-.texture-setup span { max-width: 300px; line-height: 1.4; }
-.texture-setup button { flex: none; }
+.texture-setup { margin: 0; padding: 12px 0 3px; color: #6e8183; font-size: 11px; line-height: 1.4; }
 .statusbar { flex: 0 0 40px; display: flex; align-items: center; gap: 10px; padding: 0 26px; border-top: 1px solid #e8e3d8; background: #fffdf8; color: #728287; font-size: 11px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4aa98a; }
 .status-separator { color: #b7c2c2; }

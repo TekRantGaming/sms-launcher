@@ -49,6 +49,16 @@ function activityFromLine(line) {
   if (git) return { detail: git[1] === 'Receiving objects' ? 'Downloading files' : 'Preparing downloaded files', percent: Math.min(100, Number(git[2])) };
   if (/^Downloading Super Mario Sunshine UHD Texture Pack/.test(value))
     return { detail: 'Downloading HD textures (about 1 GB)', percent: null };
+  const textureDownload = value.match(/^Texture download: (\d+)\/(\d+) bytes$/);
+  if (textureDownload) {
+    const received = Number(textureDownload[1]), total = Number(textureDownload[2]);
+    if (!Number.isSafeInteger(received) || !Number.isSafeInteger(total) || (total && received > total)) return null;
+    const mb = bytes => `${(bytes / 1e6).toLocaleString('en-US', { maximumFractionDigits: 1 })} MB`;
+    return { detail: `Downloading HD textures · ${mb(received)}${total ? ` of ${mb(total)}` : ' downloaded'}`,
+      percent: total ? Math.floor(received / total * 100) : null };
+  }
+  if (value === 'Checking HD texture download')
+    return { detail: 'Checking HD textures', percent: null };
   if (/^Unpacking GMS\.7z/.test(value))
     return { detail: 'Installing HD textures', percent: null };
   if (/^Installed \d+ textures/.test(value))
