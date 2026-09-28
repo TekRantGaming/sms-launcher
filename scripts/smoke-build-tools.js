@@ -36,11 +36,18 @@ async function main() {
     : path.join(toolRoot, 'env', 'bin', 'git');
   if (!fs.existsSync(git)) throw new Error(`Private Git is missing: ${git}`);
   if (process.platform === 'linux') env.PATH = path.join(toolRoot, 'env', 'bin');
+  if (process.platform === 'win32') env.PATH = [path.join(env.MSYS2_ROOT, 'mingw64', 'bin'),
+    path.join(env.MSYS2_ROOT, 'usr', 'bin'), path.join(process.env.SystemRoot, 'System32')].join(path.delimiter);
   const root = path.join(os.tmpdir(), process.platform === 'win32'
     ? 'SMS Port Private Tools CI' : 'sms-port-private-tools-ci');
   if (fs.existsSync(root)) throw new Error(`Smoke build folder already exists: ${root}`);
   await game.checkout(root, { git, run, capture, env });
   if (process.platform === 'win32') {
+    for (const name of ['Python3_EXECUTABLE', 'CMAKE_MAKE_PROGRAM', 'CMAKE_OBJCOPY']) {
+      const selected = cache.match(new RegExp(`^${name}:[^=]*=(.+)$`, 'm'))?.[1];
+      if (!selected || !fs.realpathSync.native(selected).replaceAll('\\', '/').toLowerCase().startsWith(privatePrefix))
+        throw new Error(`Build used a tool outside the private archive: ${name}=${selected || 'unknown'}`);
+    }
     const bash = path.join(env.MSYS2_ROOT, 'usr', 'bin', 'bash.exe');
     await run(bash, ['-lc', 'cd "$(cygpath -u "$1")" && ./build.sh', 'sms-launcher', root],
       { cwd: root, env }, 'Build port using private Windows tools');

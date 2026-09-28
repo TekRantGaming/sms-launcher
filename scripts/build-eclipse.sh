@@ -14,7 +14,9 @@ case "$(uname -s)" in
 esac
 bdir="build/$os-$arch-eclipse"
 cmake_args=(-DSMS_ARCH="$arch" -DSMS_ECLIPSE=ON -DSMS_BUNDLE_DISC= -DSMS_GX_BUILD_TESTS=OFF)
-if [[ "$os" == windows ]]; then cmake_args+=(-G Ninja); fi
+if [[ "$os" == windows ]]; then
+  cmake_args+=(-G Ninja -DPython3_EXECUTABLE="$(cygpath -m "$(command -v python)")")
+fi
 
 if [[ "$os" == macos ]]; then
   objcopy=""

@@ -11,13 +11,13 @@
       "toolset": "2026-09-27.3"
     },
     "win32": {
-      "name": "sms-build-tools-windows-x64-2026-09-27.3.tar.gz",
-      "url": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-2026-09-27.3/sms-build-tools-windows-x64-2026-09-27.3.tar.gz",
-      "sha256": "b838a6783b002b5523d8355aa57e5ef83ba7201548a572036d337bd6e9a98e4c",
-      "size": 421138433,
-      "sources": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-2026-09-27.3/sms-build-tools-windows-x64-2026-09-27.3-sources.tar.gz",
-      "notices": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-2026-09-27.3/sms-build-tools-windows-x64-2026-09-27.3-NOTICES.md",
-      "toolset": "2026-09-28.1"
+      "toolset": "2026-09-28.1",
+      "name": "sms-build-tools-windows-x64-2026-09-28.1.tar.gz",
+      "url": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-windows-x64-2026-09-28.1/sms-build-tools-windows-x64-2026-09-28.1.tar.gz",
+      "sha256": "6615d9531ff106ac96d8a993a1c11ed65d48b30a269008b7105c67d4b042d118",
+      "size": 415491712,
+      "sources": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-windows-x64-2026-09-28.1/sms-build-tools-windows-x64-2026-09-28.1-sources.tar.gz",
+      "notices": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-windows-x64-2026-09-28.1/sms-build-tools-windows-x64-2026-09-28.1-NOTICES.md"
     }
   }
 }
