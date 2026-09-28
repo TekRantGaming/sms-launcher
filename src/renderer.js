@@ -89,11 +89,11 @@ function showWizardStep(data) {
   $('setup-download-description').textContent = data.repoReady
     ? 'The setup files are ready. Download the tools needed to prepare your game.'
     : "We'll get the files and tools needed to prepare your own disc. The game is not included.";
-  const needsMacTools = data.platform.id === 'macos' && !data.tools.ready;
+  const needsMacTools = data.platform.id === 'macos' && !data.tools.appleReady;
   $('mac-setup-help').hidden = !needsMacTools;
   $('mac-tools-settings').hidden = data.platform.id !== 'macos';
   $('tool-location-note').textContent = data.platform.id === 'macos'
-    ? data.tools.ready ? 'Mac tools are ready.' : 'This Mac needs a one-time tools setup. Open Mac setup help to get started.'
+    ? data.tools.appleReady ? 'Build tools download to the launcher’s own folder.' : 'This Mac needs Apple’s tools first. Open Mac setup help to get started.'
     : "Any tools we download stay in the launcher's own folder.";
   if (needsMacTools) {
     $('setup-download-title').textContent = 'Prepare this Mac';
@@ -202,14 +202,15 @@ function refresh(data) {
 async function sync() { refresh(await window.sms.state()); }
 
 function renderMacTools(tools) {
-  const requirements = tools.requirements || [];
+  const requirements = (tools.requirements || []).filter(item => !tools.managed || !item.package);
+  if (tools.managed) requirements.push({ label: 'Launcher build tools', ready: tools.privateInstalled, automatic: true });
   $('mac-requirements').replaceChildren(...requirements.map(item => {
     const row = document.createElement('li');
     const name = document.createElement('span');
     name.textContent = item.label;
     const status = document.createElement('span');
     status.className = `badge${item.ready ? ' good' : item.optional ? '' : ' warn'}`;
-    status.textContent = item.ready ? 'Ready' : item.optional ? 'Optional' : 'Needed';
+    status.textContent = item.ready ? 'Ready' : item.automatic ? 'Download in Step 1' : item.optional ? 'Optional' : 'Needed';
     row.append(name, status);
     return row;
   }));
@@ -233,7 +234,7 @@ function renderMacTools(tools) {
   $('mac-apple-note').hidden = !commands.some(command => command.startsWith('xcode-select'));
   $('mac-extra-note').hidden = !commands.some(command => !command.startsWith('xcode-select'));
   $('mac-homebrew-help').hidden = !tools.needsHomebrew;
-  $('mac-check-result').textContent = tools.ready ? 'Ready. Close this help and continue setup.'
+  $('mac-check-result').textContent = tools.appleReady || tools.ready ? 'Ready. Close this help and continue setup.'
     : tools.checked ? 'Some tools still need to be installed.' : 'Checking tools…';
 }
 
@@ -305,7 +306,7 @@ for (const [id, method] of Object.entries({
 $('play').addEventListener('click', () => {
   if (wizardStep === 0) action('launchGame');
   else if (wizardStep === 1) {
-    if (current.platform.id === 'macos' && !current.tools.ready) { showMacHelp(); return; }
+    if (current.platform.id === 'macos' && !current.tools.appleReady) { showMacHelp(); return; }
     if (current.repoReady && current.tools.ready) { wizardStep = 2; refresh(current); }
     else runWizardAction('installPort');
   } else if (wizardStep === 2) {

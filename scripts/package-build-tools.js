@@ -11,7 +11,8 @@ const { prepareFromUpstream } = require('./bootstrap-build-tools');
 const { run, runMain } = require('./tool-run');
 
 const platform = process.platform;
-const id = platform === 'win32' ? 'windows-x64' : 'linux-x64';
+const id = tools.platformId();
+const toolset = tools.toolsetFor();
 const output = path.resolve(process.env.SMS_TOOL_ASSET_OUTPUT || 'tool-assets');
 const userData = process.env.SMS_TOOLS_PREPARED_DATA || path.join(os.tmpdir(), 'sms-tools-publisher');
 const root = tools.rootFor(userData);
@@ -20,7 +21,7 @@ const notices = ['# Build tool notices and source code', '',
   'These assets contain third-party build tools, not game code or game data.',
   'Each package retains its own license. See the installed license files and the corresponding source asset.',
   'The source asset contains upstream sources, build recipes, patches, and package metadata.',
-  `Source download: https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-${tools.TOOLSET}/sms-build-tools-${id}-${tools.TOOLSET}-sources.tar.gz`, ''];
+  `Source download: https://github.com/chasem-dev/sms-launcher/releases/download/${platform === 'darwin' ? 'mac-' : ''}build-tools-${toolset}/sms-build-tools-${id}-${toolset}-sources.tar.gz`, ''];
 const packages = [];
 const downloaded = new Map();
 // Use a mirror only when the recipe pins these exact upstream bytes.
@@ -86,10 +87,12 @@ async function downloadSource(url, name, expected = null) {
   return item;
 }
 
-async function linuxSources() {
+async function condaSources() {
   const metaDir = path.join(root, 'env', 'conda-meta');
   for (const file of fs.readdirSync(metaDir).filter(name => name.endsWith('.json')).sort()) {
     const meta = JSON.parse(fs.readFileSync(path.join(metaDir, file), 'utf8'));
+    if (platform === 'darwin' && /(?:^|[-_])(?:sdk|sysroot)(?:$|[-_])/.test(meta.name))
+      throw new Error(`Apple SDKs must not enter the Mac archive: ${meta.name}`);
     const info = path.join(meta.link.source, 'info');
     if (fs.existsSync(path.join(info, 'licenses')))
       fs.cpSync(path.join(info, 'licenses'), path.join(root, 'env', 'share', 'sms-launcher-licenses', `${meta.name}-${meta.version}`), { recursive: true });
@@ -149,15 +152,15 @@ async function windowsSources() {
 }
 
 async function main() {
-  if (!['linux', 'win32'].includes(platform)) throw new Error('Build tool assets cover Linux and Windows only.');
+  if (!['linux', 'win32', 'darwin'].includes(platform)) throw new Error('Unsupported tool asset platform.');
   fs.mkdirSync(output, { recursive: true });
   fs.mkdirSync(path.join(sourceRoot, 'upstream'), { recursive: true });
   if (!process.env.SMS_TOOLS_PREPARED_DATA) await prepareFromUpstream(userData, { forcePrivate: true, run });
-  const name = `sms-build-tools-${id}-${tools.TOOLSET}.tar.gz`;
+  const name = `sms-build-tools-${id}-${toolset}.tar.gz`;
   const archive = path.join(output, name);
-  const noticesFile = `sms-build-tools-${id}-${tools.TOOLSET}-NOTICES.md`;
-  if (platform === 'linux') {
-    await linuxSources();
+  const noticesFile = `sms-build-tools-${id}-${toolset}-NOTICES.md`;
+  if (platform !== 'win32') {
+    await condaSources();
     const prefix = path.join(root, 'env');
     fs.writeFileSync(path.join(prefix, 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
     flattenLinks(prefix);
@@ -165,7 +168,7 @@ async function main() {
     const env = { ...process.env, PATH: [path.join(prefix, 'bin'), process.env.PATH].join(path.delimiter), PYTHONPATH: helper };
     await run(path.join(prefix, 'bin', 'python3'), ['-m', 'pip', 'install', '--target', helper, 'conda-pack==0.9.1'], { env }, 'Prepare archive packer');
     await run(path.join(prefix, 'bin', 'python3'), [path.join(__dirname, 'pack-conda-env.py'),
-      prefix, archive], { env }, 'Pack relocatable Linux build tools');
+      prefix, archive], { env }, 'Pack relocatable build tools');
   } else {
     await windowsSources();
     fs.writeFileSync(path.join(root, 'msys64', 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
@@ -178,17 +181,17 @@ async function main() {
   fs.writeFileSync(path.join(output, noticesFile), `${notices.join('\n')}\n`);
   fs.writeFileSync(path.join(sourceRoot, 'packages.json'), `${JSON.stringify(packages, null, 2)}\n`);
   fs.copyFileSync(path.join(output, noticesFile), path.join(sourceRoot, 'THIRD-PARTY-NOTICES.md'));
-  const sourcesName = `sms-build-tools-${id}-${tools.TOOLSET}-sources.tar.gz`;
+  const sourcesName = `sms-build-tools-${id}-${toolset}-sources.tar.gz`;
   process.stdout.write('\nPack corresponding source files\n');
   tar.c({ sync: true, gzip: true, file: path.join(output, sourcesName), cwd: sourceRoot, portable: true }, fs.readdirSync(sourceRoot));
   for (const file of [archive, path.join(output, sourcesName)])
     if (fs.statSync(file).size >= 2 ** 31) throw new Error(`Release asset exceeds GitHub's size limit: ${file}`);
-  const tag = `build-tools-${tools.TOOLSET}`;
+  const tag = `${platform === 'darwin' ? 'mac-' : ''}build-tools-${toolset}`;
   const base = `https://github.com/chasem-dev/sms-launcher/releases/download/${tag}`;
-  const manifest = { toolset: tools.TOOLSET, platforms: { [platform]: { name, url: `${base}/${name}`,
+  const manifest = { toolset, platforms: { [platform === 'darwin' ? process.arch : platform]: { name, url: `${base}/${name}`,
     sha256: await tools.hashFile(archive), size: fs.statSync(archive).size, sources: `${base}/${sourcesName}`,
     notices: `${base}/${noticesFile}` } } };
-  fs.writeFileSync(path.join(output, `manifest-${platform}.json`), `${JSON.stringify(manifest, null, 2)}\n`);
+  fs.writeFileSync(path.join(output, `manifest-${platform === 'darwin' ? id : platform}.json`), `${JSON.stringify(manifest, null, 2)}\n`);
   fs.rmSync(path.join(output, 'source-work'), { recursive: true, force: true });
   fs.rmSync(path.join(output, 'conda-pack-helper'), { recursive: true, force: true });
   process.stdout.write(`Tool asset ready: ${archive}\n`);

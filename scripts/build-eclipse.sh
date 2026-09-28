@@ -18,7 +18,7 @@ if [[ "$os" == windows ]]; then cmake_args+=(-G Ninja); fi
 
 if [[ "$os" == macos ]]; then
   objcopy=""
-  for candidate in "$(brew --prefix llvm 2>/dev/null)/bin/llvm-objcopy" /opt/homebrew/opt/llvm/bin/llvm-objcopy /usr/local/opt/llvm/bin/llvm-objcopy; do
+  for candidate in "${SMS_LLVM_BIN:-}/llvm-objcopy" "$(brew --prefix llvm 2>/dev/null)/bin/llvm-objcopy" /opt/homebrew/opt/llvm/bin/llvm-objcopy /usr/local/opt/llvm/bin/llvm-objcopy; do
     if [[ -x "$candidate" ]]; then objcopy="$candidate"; break; fi
   done
   [[ -n "$objcopy" ]] || objcopy=$(command -v llvm-objcopy || true)

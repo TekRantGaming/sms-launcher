@@ -20,7 +20,7 @@ function environment(base = process.env, exists = executable) {
   const prefixes = [...new Set([base.HOMEBREW_PREFIX, '/opt/homebrew', '/usr/local'].filter(Boolean))];
   const llvm = prefixes.map(prefix => `${prefix}/opt/llvm/bin`)
     .filter(bin => exists(`${bin}/llvm-objcopy`));
-  const bins = [...llvm, ...prefixes.map(prefix => `${prefix}/bin`),
+  const bins = [base.SMS_BUILD_TOOLS_BIN, ...llvm, ...prefixes.map(prefix => `${prefix}/bin`),
     '/Applications/CMake.app/Contents/bin', ...(base.PATH || '').split(':'),
     '/usr/bin', '/bin', '/usr/sbin', '/sbin'];
   return { ...base, PATH: [...new Set(bins.filter(Boolean))].join(':') };
@@ -69,7 +69,7 @@ async function inspect(base = process.env, { run = probe, exists = executable } 
   const cmakeReady = cmake.ok && Boolean(cmakeVersion) &&
     (Number(cmakeVersion[1]) > 3 || Number(cmakeVersion[1]) === 3 && Number(cmakeVersion[2]) >= 20);
   return {
-    checked: true, homebrew: brew,
+    checked: true, homebrew: brew, sdkPath: sdk.ok ? sdk.stdout : '',
     requirements: [
       { id: 'apple', label: 'Apple Command Line Tools', ready: sdk.ok && Boolean(sdk.stdout) &&
         appleCommands.length === 3 && appleCommands.every(result => result.ok) &&
@@ -84,19 +84,19 @@ async function inspect(base = process.env, { run = probe, exists = executable } 
   };
 }
 
-function report(inspection = { checked: false, requirements: [] }, { archives = false } = {}) {
+function report(inspection = { checked: false, requirements: [] }, { archives = false, managed = false } = {}) {
   const requirements = inspection.requirements.map(item => ({ ...item, optional: item.id === 'zip' && !archives }));
   const missing = requirements.filter(item => !item.ready && !item.optional);
   const commands = [];
   if (missing.some(item => item.id === 'apple')) commands.push('xcode-select --install');
   if (missing.some(item => item.id === 'rosetta')) commands.push('softwareupdate --install-rosetta');
-  const packages = missing.filter(item => item.package).map(item => item.package);
+  const packages = managed ? [] : missing.filter(item => item.package).map(item => item.package);
   if (packages.length) commands.push(`brew install ${packages.join(' ')}`);
   return { ...inspection, requirements, ready: inspection.checked && missing.length === 0,
-    mode: inspection.checked && missing.length === 0 ? 'system' : 'missing',
+    mode: inspection.checked && missing.length === 0 ? 'system' : 'missing', managed,
     needsHomebrew: packages.length > 0 && !inspection.homebrew, commands: commands.join('\n'),
     message: inspection.checked
-      ? missing.length ? `Install ${missing.map(item => item.label).join(', ')} to continue. Open Mac setup help in Step 1.`
+      ? missing.length ? `Install ${missing.filter(item => !managed || !item.package).map(item => item.label).join(', ') || 'the downloaded build tools'} to continue. Open Mac setup help in Step 1.`
         : 'Mac tools are ready.'
       : 'Check the tools needed to prepare your game on this Mac.' };
 }

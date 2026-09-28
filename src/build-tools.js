@@ -8,6 +8,7 @@ const { spawnSync } = require('node:child_process');
 
 const assets = require('./tool-assets.json');
 const TOOLSET = assets.toolset;
+const macAssets = require('./mac-tool-assets.json');
 const macTools = require('./mac-tools');
 let macInspection;
 let macCheck;
@@ -16,28 +17,35 @@ let macCheckedAt = 0;
 async function check(userData, { platform = process.platform, env = process.env, refresh = false, archives = false } = {}) {
   if (platform !== 'darwin') return status(userData, platform, env);
   if (refresh || !macInspection || Date.now() - macCheckedAt > 15000) {
-    if (!macCheck) macCheck = macTools.inspect(env).then(result => {
+    if (!macCheck) macCheck = macTools.inspect(environment(userData, env, platform)).then(result => {
       macInspection = result;
       macCheckedAt = Date.now();
     }).finally(() => { macCheck = null; });
     await macCheck;
   }
-  return macTools.report(macInspection, { archives });
+  return status(userData, platform, env, { archives });
+}
+
+function toolsetFor(platform = process.platform) { return platform === 'darwin' ? macAssets.toolset : TOOLSET; }
+
+function platformId(platform = process.platform, arch = process.arch) {
+  return platform === 'darwin' ? `macos-${arch}` : platform === 'win32' ? 'windows-x64' : 'linux-x64';
 }
 
 function rootFor(userData, platform = process.platform) {
-  return path.join(userData, 'build-tools', platform === 'win32' ? 'windows-x64' : 'linux-x64');
+  return path.join(userData, 'build-tools', platformId(platform));
 }
 
 function privateReady(userData, platform = process.platform) {
-  if (platform === 'darwin') return false;
   const root = rootFor(userData, platform);
   const marker = path.join(root, 'ready.json');
   try {
     const installed = JSON.parse(fs.readFileSync(marker, 'utf8'));
-    if (installed.toolset !== TOOLSET) return false;
-    const expected = assets.platforms[platform];
+    if (installed.toolset !== toolsetFor(platform)) return false;
+    const expected = platform === 'darwin' ? macAssets.platforms[process.arch] : assets.platforms[platform];
     if (expected && installed.archiveSha256 !== expected.sha256) return false;
+    if (platform === 'darwin') return ['clang', 'clang++', 'git', 'cmake', 'python3', 'make', 'patch', 'llvm-objcopy', '7z']
+      .every(name => fs.existsSync(path.join(root, 'env', 'bin', name)));
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
         fs.existsSync(path.join(root, 'msys64', 'mingw32', 'bin', 'g++.exe')) &&
@@ -73,13 +81,27 @@ function systemReady(platform = process.platform, env = process.env) {
 }
 
 function status(userData, platform = process.platform, env = process.env, options = {}) {
-  if (platform === 'darwin') return macTools.report(macInspection, options);
+  if (platform === 'darwin') {
+    const found = macTools.report(macInspection, { ...options, managed: true });
+    const installed = privateReady(userData, platform);
+    const appleReady = found.checked && found.requirements.filter(item => ['apple', 'rosetta'].includes(item.id))
+      .every(item => item.ready);
+    return { ...found, ready: appleReady && installed && found.ready,
+      mode: appleReady && installed && found.ready ? 'private' : 'missing',
+      privateInstalled: installed, appleReady };
+  }
   if (privateReady(userData, platform)) return { ready: true, mode: 'private' };
   return { ready: false, mode: 'missing' };
 }
 
 function environment(userData, base = process.env, platform = process.platform) {
-  if (platform === 'darwin') return macTools.environment(base);
+  if (platform === 'darwin') {
+    const bin = path.join(rootFor(userData, platform), 'env', 'bin');
+    const result = macTools.environment(privateReady(userData, platform) ? { ...base, SMS_BUILD_TOOLS_BIN: bin } : base);
+    if (privateReady(userData, platform)) result.SMS_LLVM_BIN = bin;
+    if (macInspection?.sdkPath) result.SDKROOT = macInspection.sdkPath;
+    return result;
+  }
   if (!privateReady(userData, platform)) return { ...base };
   const root = rootFor(userData, platform);
   if (platform === 'linux') {
@@ -150,8 +172,8 @@ function hashFile(file) {
   });
 }
 
-function assetFor(platform = process.platform) {
-  const source = assets.platforms[platform];
+function assetFor(platform = process.platform, arch = process.arch) {
+  const source = platform === 'darwin' ? macAssets.platforms[arch] : assets.platforms[platform];
   if (!source || !/^https:\/\//.test(source.url) || !/^[a-f0-9]{64}$/.test(source.sha256) ||
       !/^[a-zA-Z0-9._-]+\.tar\.gz$/.test(source.name))
     throw new Error('The build tools for this release are not available yet.');
@@ -160,13 +182,13 @@ function assetFor(platform = process.platform) {
 
 async function prepare(userData, { platform = process.platform, run, progress = () => {},
   forcePrivate = false, source = null, archiveFile = null, archives = false } = {}) {
+  if (!['linux', 'win32', 'darwin'].includes(platform)) throw new Error('This operating system is not supported.');
+  if (platform === 'darwin' ? !['x64', 'arm64'].includes(process.arch) : process.arch !== 'x64')
+    throw new Error('Setup tools require a supported 64-bit computer.');
   if (platform === 'darwin') {
     const found = await check(userData, { platform, refresh: true, archives });
-    if (!found.ready) throw new Error(found.message);
-    return found;
+    if (!found.appleReady) throw new Error(found.message);
   }
-  if (!['linux', 'win32'].includes(platform)) throw new Error('This operating system is not supported.');
-  if (process.arch !== 'x64') throw new Error('Setup tools require a 64-bit Intel or AMD computer.');
   if (!forcePrivate && privateReady(userData, platform)) return status(userData, platform);
   source = source || assetFor(platform);
   if (!/^[a-f0-9]{64}$/.test(source.sha256) || !/^[a-zA-Z0-9._-]+\.tar\.gz$/.test(source.name))
@@ -206,7 +228,7 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     if (fs.existsSync(root)) { fs.renameSync(root, previous); keptPrevious = true; }
     fs.renameSync(staging, root);
     replaced = true;
-    if (platform === 'linux') {
+    if (platform !== 'win32') {
       const prefix = path.join(root, 'env');
       await run(path.join(prefix, 'bin', 'python3'), [path.join(prefix, 'bin', 'conda-unpack')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare build tools');
@@ -215,14 +237,18 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       for (const directory of ['tmp', 'home'])
         fs.mkdirSync(path.join(root, 'msys64', directory), { recursive: true });
     }
-    fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: TOOLSET, platform,
+    fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: toolsetFor(platform), platform,
       archiveSha256: source.sha256 }), { mode: 0o600 });
     progress(null, 'Checking build tools…');
     if (!privateReady(userData, platform)) throw new Error('Downloaded build tools are incomplete or do not match this release.');
     const env = environment(userData, process.env, platform);
     const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');
-    if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : 'g++'), ['--version'], env))
+    if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : platform === 'darwin' ? 'clang++' : 'g++'), ['--version'], env))
       throw new Error('The downloaded compiler could not start on this computer.');
+    if (platform === 'darwin') {
+      const found = await check(userData, { platform, refresh: true, archives });
+      if (!found.ready) throw new Error(found.message);
+    }
     if (keptPrevious) void fs.promises.rm(previous, { recursive: true, force: true,
       maxRetries: 5, retryDelay: 200 }).catch(() => {});
     return status(userData, platform);
@@ -236,5 +262,5 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   }
 }
 
-module.exports = { TOOLSET, rootFor, privateReady, systemReady, status, environment, check,
+module.exports = { TOOLSET, toolsetFor, platformId, rootFor, privateReady, systemReady, status, environment, check,
   fetchVerified, hashFile, assetFor, prepare };

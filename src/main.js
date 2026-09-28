@@ -158,11 +158,11 @@ async function ensureBuildTools() {
     preparingTools = true;
     try {
       const found = await checkTools(true);
-      if (!found.ready) throw new Error(found.message);
-      return;
+      if (!found.appleReady) throw new Error(found.message);
+      if (found.ready && !forcePrivate) return;
     } finally { preparingTools = false; }
   }
-  const found = buildTools.status(userData);
+  const found = toolsStatus();
   if (found.mode === 'private' || (!forcePrivate && found.ready)) return;
   preparingTools = true;
   const startedAt = Date.now();
