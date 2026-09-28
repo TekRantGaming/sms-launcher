@@ -21,6 +21,8 @@ The game opens in a centered, resizable window on the monitor containing the poi
 
 Home shows the current task, elapsed time, and a progress bar. It uses the actual percentage when the port or Git reports one; downloads and unpacking show their current phase while the source tool does not report a percentage.
 
+The top bar shows the launcher version and the installed game version. **Settings → Versions** also shows the build tool version and any available game update. Before setup, the game is marked **Not installed**; older builds without a version record are marked **Version unavailable**.
+
 ## HD textures
 
 HD textures are optional and off for new users. Turn them on in **Settings → Visuals**. The launcher detects an existing pack in the port's `mods/textures` folder; otherwise choose **Download HD textures** there. If enabled during first run, **Begin setup** downloads them before building the game. The installer downloads the authors' pack (about 1 GB, about 3 GB installed) and checks its checksum. Python 3 and 7-Zip come from the prepared tools when system copies are missing. The launcher points the running game at that folder when HD textures are on. Installations and changes take effect on the next game start. The texture pack stays in the port checkout, separate from launcher updates and builds.

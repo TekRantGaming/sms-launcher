@@ -180,8 +180,19 @@ function refresh(data) {
   $('activity-label').textContent = taskName(data.active?.label);
   renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
-  $('game-versions').textContent = `Launcher ${data.game.launcherVersion} · Game ${data.game.installedVersion || 'earlier installation'} · Build tools ${data.game.toolVersion}`;
-  $('game-update-note').textContent = data.game.needsUpdate
+  const installedVersion = data.binaryReady ? data.game.installedVersion : null;
+  const gameVersion = installedVersion || (data.binaryReady ? 'Version unavailable' : 'Not installed');
+  $('version-summary').textContent = `Launcher v${data.game.launcherVersion} · Game ${installedVersion || (data.binaryReady ? 'version unavailable' : 'not installed')}`;
+  $('launcher-version').textContent = `v${data.game.launcherVersion}`;
+  $('installed-game-version').textContent = gameVersion;
+  $('available-game-version-row').hidden = installedVersion === data.game.availableVersion;
+  $('available-game-version').textContent = data.game.availableVersion;
+  $('tool-version').textContent = data.game.toolVersion;
+  $('tool-version-note').textContent = [data.tools.ready || data.tools.privateInstalled ? 'Downloaded' : 'Not downloaded',
+    data.game.installedToolVersion && data.game.installedToolVersion !== data.game.toolVersion
+      ? `Game built with ${data.game.installedToolVersion}` : ''].filter(Boolean).join(' · ');
+  $('game-update-note').textContent = !data.binaryReady
+    ? `Game ${data.game.availableVersion} will be installed during setup.` : data.game.needsUpdate
     ? `Game ${data.game.availableVersion} is ready to set up. Your current version stays available until setup succeeds.`
     : 'Your game is up to date.';
   $('play-installed').hidden = !data.binaryReady || !data.game.needsUpdate;

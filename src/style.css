@@ -10,6 +10,8 @@ button:focus-visible, select:focus-visible, .switch input:focus-visible + i { ou
 .topbar { flex: 0 0 62px; display: flex; align-items: center; gap: 38px; padding: 0 26px; background: #fffdf8; border-bottom: 1px solid #e8e3d8; }
 .brand { display: flex; align-items: center; gap: 9px; min-width: 180px; font-size: 15px; font-weight: 650; letter-spacing: -.02em; }
 .brand strong { font-weight: 800; }
+.brand-copy { display: grid; gap: 3px; }
+.version-summary { color: #d2eaf0; font-size: 11px; font-weight: 500; letter-spacing: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #ffc75a; color: #173d51; font-size: 20px; }
 .tabs { align-self: stretch; display: flex; gap: 4px; }
 .tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 0 14px; background: transparent; color: #61727a; }
@@ -218,6 +220,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal .detail-panel, .launcher-modal .maintenance-panel { min-width: 0; }
 .launcher-modal .detail-grid, .launcher-modal .maintenance-grid { gap: 14px; }
 .launcher-modal .detail-grid { margin-top: 12px; }
+.versions-panel { margin-top: 14px; padding: 14px 18px; }
+.versions-panel h2 { font-size: 14px; }
+.version-list { margin: 7px 0 0; font-size: 12px; }
+.version-list > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 7px 0; }
+.version-list > div + div { border-top: 1px solid #e6ebea; }
+.version-list dt { color: #526e77; }
+.version-list dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.version-list small { display: block; margin-top: 3px; color: #637980; font-size: 11px; }
 .launcher-modal .activity-panel { margin-top: 14px; }
 .rebuild-button { margin-top: 10px; width: 100%; }
 .installation-details { margin-top: 10px; overflow: hidden; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; }

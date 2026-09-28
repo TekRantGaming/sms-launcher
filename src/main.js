@@ -376,15 +376,18 @@ function state() {
   let romError = '';
   if (config.rom) { try { port.validateRom(config.rom); } catch (error) { romError = error.message; } }
   const repoReady = port.isPort(config.repo);
+  const ready = repoReady && binaryReady();
+  const installedBuild = ready ? game.installed(config.repo, config.settings) : null;
   return {
     config, platform: info, repoReady,
     romReady: Boolean(config.rom) && !romError, romError,
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
-    binaryReady: repoReady && binaryReady(),
+    binaryReady: ready,
     tools: toolsStatus(),
     game: { launcherVersion: app.getVersion(), availableVersion: game.release.version,
-      installedVersion: game.installed(config.repo, config.settings)?.gameVersion || null,
+      installedVersion: installedBuild?.gameVersion || null,
+      installedToolVersion: installedBuild?.toolVersion || null,
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
     active: active ? { label: active.label, detail: active.detail,
