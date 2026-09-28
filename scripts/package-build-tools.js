@@ -147,22 +147,21 @@ async function main() {
     const helper = path.join(output, 'conda-pack-helper');
     const env = { ...process.env, PATH: [path.join(prefix, 'bin'), process.env.PATH].join(path.delimiter), PYTHONPATH: helper };
     await run(path.join(prefix, 'bin', 'python3'), ['-m', 'pip', 'install', '--target', helper, 'conda-pack==0.9.1'], { env }, 'Prepare archive packer');
-    await run(path.join(prefix, 'bin', 'python3'), ['-c',
-      'import conda_pack,sys; conda_pack.pack(prefix=sys.argv[1], output=sys.argv[2], arcroot="env", force=True)',
+    await run(path.join(prefix, 'bin', 'python3'), [path.join(__dirname, 'pack-conda-env.py'),
       prefix, archive], { env }, 'Pack relocatable Linux build tools');
   } else {
     await windowsSources();
     fs.writeFileSync(path.join(root, 'msys64', 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
     flattenLinks(path.join(root, 'msys64'));
     // Preserve the prepared tree, but exclude package downloads, caches, and machine-specific homes.
-    await tar.c({ gzip: true, file: archive, cwd: root, portable: true,
+    tar.c({ sync: true, gzip: true, file: archive, cwd: root, portable: true,
       filter: name => !/^msys64\/(?:var\/cache|home|tmp)(?:\/|$)/.test(name.replaceAll('\\', '/')) }, ['msys64']);
   }
   fs.writeFileSync(path.join(output, noticesFile), `${notices.join('\n')}\n`);
   fs.writeFileSync(path.join(sourceRoot, 'packages.json'), `${JSON.stringify(packages, null, 2)}\n`);
   fs.copyFileSync(path.join(output, noticesFile), path.join(sourceRoot, 'THIRD-PARTY-NOTICES.md'));
   const sourcesName = `sms-build-tools-${id}-${tools.TOOLSET}-sources.tar.gz`;
-  await tar.c({ gzip: true, file: path.join(output, sourcesName), cwd: sourceRoot, portable: true }, fs.readdirSync(sourceRoot));
+  tar.c({ sync: true, gzip: true, file: path.join(output, sourcesName), cwd: sourceRoot, portable: true }, fs.readdirSync(sourceRoot));
   for (const file of [archive, path.join(output, sourcesName)])
     if (fs.statSync(file).size >= 2 ** 31) throw new Error(`Release asset exceeds GitHub's size limit: ${file}`);
   const tag = `build-tools-${tools.TOOLSET}`;

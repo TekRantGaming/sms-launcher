@@ -43,4 +43,4 @@ async function main() {
   process.stdout.write(`Private tool build succeeded: ${binary}\n`);
 }
 
-main().catch(error => { process.stderr.write(`${error.stack}\n`); process.exitCode = 1; });
+main().catch(error => { process.stderr.write(`${error.stack}\n${error.path || ''}\n`); process.exitCode = 1; });
