@@ -19,7 +19,7 @@
       </div>
     </header>
 
-    <div id="message" class="message" role="status" hidden></div>
+    <div id="message" class="message" role="status" hidden><span id="message-text"></span><button id="message-view-log" class="message-log-button" hidden>View activity</button></div>
     <main class="viewport">
       <section id="page-home" class="page home-page" aria-label="Launch game">
         <div class="intro"><div><p class="eyebrow">SUPER MARIO SUNSHINE</p><h1 id="home-title">Set up your game</h1><p id="home-description">A few quick steps, then you're ready to play.</p></div></div>
@@ -50,7 +50,7 @@
 
         <section class="launch-panel" aria-label="Play game">
           <div class="launch-primary"><button id="play" class="play">Continue</button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button></div>
-          <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div></div>
+          <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div><button id="view-build-log" class="progress-log-button">View build log</button></div>
         </section>
 
       </section>
@@ -87,9 +87,14 @@
           <section class="panel maintenance-panel" aria-label="Saved game backups"><h2>Saved games</h2><p class="small-path" id="save-path"></p><div class="actions"><button class="subtle" id="backup-saves">Back up saves</button><button class="subtle" id="open-backups">Open backup folder</button></div><label class="backup-picker"><span>Restore a backup</span><select id="backup-list"></select></label><button class="subtle" id="restore-saves">Restore backup</button></section>
         </div>
         <button id="mac-tools-settings" class="subtle" hidden>Mac setup help</button>
-        <section class="panel activity-panel" aria-label="Activity log"><div class="activity-heading"><h2>Activity</h2><div><span id="activity-label">Nothing running</span><button class="subtle" id="stop" hidden>Stop task</button></div></div><pre id="log" aria-live="polite">Ready.</pre></section>
+        <button id="view-activity-log" class="subtle activity-log-entry">View activity log</button>
       </div>
       </section>
+    </dialog>
+
+    <dialog id="activity-log" class="launcher-modal activity-modal" aria-label="Setup activity">
+      <div class="modal-head"><div><h1>Setup activity</h1><p id="activity-label">Nothing running</p></div><button class="modal-close" data-close-modal aria-label="Close activity log">×</button></div>
+      <div class="modal-body"><pre id="log" tabindex="0" aria-label="Setup output">Ready.</pre><div class="activity-log-actions"><span class="helper">Closing this view keeps your task running.</span><button class="subtle danger" id="stop" hidden>Stop task</button></div></div>
     </dialog>
 
     <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">

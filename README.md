@@ -19,7 +19,7 @@ The launcher requires a 64-bit computer. **Settings → Game build** offers both
 
 The game opens in a centered, resizable window on the monitor containing the pointer. It starts at up to 1280×720 and shrinks to fit smaller screens, keeping the title bar and resize edges accessible. Higher render quality improves the game's image without making the window larger.
 
-Home shows the current task, elapsed time, and a progress bar. It uses the actual percentage when the port or Git reports one; downloads and unpacking show their current phase while the source tool does not report a percentage.
+Home shows the current task, elapsed time, and a progress bar. It reads both Make's percentages and Ninja's completed/total build steps, including Windows builds. These describe the current build phase, rather than an estimated download or install time. Disc preparation has its own status after compilation. **View build log** opens the live output in a separate modal; closing it keeps setup running. The log follows new output unless you scroll up. It is also available from Manage game and from an error message. Downloads and unpacking show their current phase while the source tool does not report a percentage.
 
 The top bar shows the launcher version and the installed game version. **Settings → Versions** also shows the build tool version and any available game update. Before setup, the game is marked **Not installed**; older builds without a version record are marked **Version unavailable**.
 

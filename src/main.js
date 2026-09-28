@@ -8,7 +8,7 @@ const port = require('./port');
 const saves = require('./saves');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
-const { activityFromLine } = require('./progress');
+const { activityFromLine, cleanOutputLine, createLineReader } = require('./progress');
 
 let window;
 let config;
@@ -30,13 +30,20 @@ function broadcast(channel, data) {
   if (window && !window.isDestroyed()) window.webContents.send(channel, data);
 }
 
+function activityState() {
+  const task = active || operation;
+  return task ? { label: task.label, detail: task.detail, percent: task.percent,
+    startedAt: task.startedAt, canStop: Boolean(active?.child) } : null;
+}
+
 function log(message) {
   const lines = String(message).replace(/\r/g, '').split('\n');
   for (const line of lines) {
     if (!line) continue;
-    logLines.push(line);
+    const value = cleanOutputLine(line);
+    logLines.push(value);
     if (logLines.length > 700) logLines.shift();
-    broadcast('log', line);
+    broadcast('log', value);
   }
 }
 
@@ -109,30 +116,25 @@ function launch(command, args, options = {}, label = 'Task') {
       windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
       percent: null, startedAt: Date.now() };
-    broadcast('activity', { label, detail: active.detail, percent: null, startedAt: active.startedAt });
-    const pending = { stdout: '', stderr: '' };
+    broadcast('activity', activityState());
     function line(value) {
       if (!value) return;
       log(value);
       const progress = activityFromLine(value);
       if (progress && active && active.child === child) {
         Object.assign(active, progress);
-        broadcast('activity', { label, detail: active.detail, percent: active.percent, startedAt: active.startedAt });
+        broadcast('activity', activityState());
       }
     }
-    function consume(stream, bytes) {
-      const parts = (pending[stream] + bytes.toString()).split(/[\r\n]/);
-      pending[stream] = parts.pop();
-      for (const part of parts) line(part);
-    }
-    child.stdout.on('data', bytes => consume('stdout', bytes));
-    child.stderr.on('data', bytes => consume('stderr', bytes));
+    const stdout = createLineReader(line), stderr = createLineReader(line);
+    child.stdout.on('data', bytes => stdout.write(bytes));
+    child.stderr.on('data', bytes => stderr.write(bytes));
     let settled = false;
     function done(error, code) {
       if (settled) return;
       settled = true;
       active = null;
-      broadcast('activity', null);
+      broadcast('activity', activityState());
       if (error || code !== 0) {
         const message = error ? error.message : `${label} exited with code ${code}. See the activity log.`;
         log(`✕ ${message}`);
@@ -144,8 +146,8 @@ function launch(command, args, options = {}, label = 'Task') {
     }
     child.on('error', error => done(error));
     child.on('close', code => {
-      line(pending.stdout);
-      line(pending.stderr);
+      stdout.end();
+      stderr.end();
       done(null, code);
     });
   });
@@ -301,6 +303,7 @@ async function build(forceFresh = false) {
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
   const disc = port.gameDisc(root, rom, settings.eclipse);
   const env = toolEnv(port.buildEnvironment(settings, disc, root));
+  env.NINJA_STATUS = '[%f/%t] ';
   const cmd = settings.eclipse
     ? port.eclipseBuildCommand(root, settings, process.platform, env)
     : port.commandFor(root, 'build', [disc], process.platform, env);
@@ -390,8 +393,7 @@ function state() {
       installedToolVersion: installedBuild?.toolVersion || null,
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
-    active: active ? { label: active.label, detail: active.detail,
-      percent: active.percent, startedAt: active.startedAt, canStop: Boolean(active.child) } : operation, appUpdate, logs: logLines,
+    active: activityState(), appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };

@@ -30,11 +30,21 @@ $('back-to-settings').addEventListener('click', () => {
   $('open-maintenance').focus();
 });
 for (const button of document.querySelectorAll('[data-close-modal]'))
-  button.addEventListener('click', closeModal);
+  button.addEventListener('click', () => button.closest('dialog').close());
+
+function showActivityLog() {
+  if (!$('activity-log').open) $('activity-log').showModal();
+  const log = $('log');
+  log.scrollTop = log.scrollHeight;
+  log.focus();
+}
+for (const id of ['view-build-log', 'view-activity-log', 'message-view-log'])
+  $(id).addEventListener('click', showActivityLog);
 
 function setMessage(text, error = false) {
   const box = $('message');
-  box.textContent = text || '';
+  $('message-text').textContent = text || '';
+  $('message-view-log').hidden = !error || !text;
   box.hidden = !text;
   box.classList.toggle('error', error);
 }
@@ -123,6 +133,11 @@ function showWizardStep(data) {
 function renderActivity(active) {
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
+  $('activity-label').textContent = taskName(active?.label);
+  $('stop').hidden = !active?.canStop;
+  $('stop').textContent = active?.label === 'Play Super Mario Sunshine' ? 'Stop game'
+    : active?.label.startsWith('Build ') ? 'Stop build' : 'Stop task';
+  $('view-build-log').textContent = active?.label.startsWith('Build ') ? 'View build log' : 'View activity';
   $('task-status').textContent = active ? taskName(active.label)
     : current?.game.needsUpdate && current.config.settings.autoUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
@@ -176,8 +191,6 @@ function refresh(data) {
   $('choose-rom').disabled = Boolean(data.active);
   $('choose-rom-settings').disabled = Boolean(data.active);
   $('choose-repo-settings').disabled = Boolean(data.active);
-  $('stop').hidden = !data.active?.canStop;
-  $('activity-label').textContent = taskName(data.active?.label);
   renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
   const installedVersion = data.binaryReady ? data.game.installedVersion : null;
@@ -314,10 +327,11 @@ async function saveSettings() {
 
 function appendLog(line) {
   const log = $('log');
+  const following = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
   if (log.textContent === 'Ready.') log.textContent = '';
   log.textContent += `${line}\n`;
   if (log.textContent.length > 50000) log.textContent = log.textContent.slice(-40000);
-  log.scrollTop = log.scrollHeight;
+  if (following) log.scrollTop = log.scrollHeight;
 }
 
 for (const [id, method] of Object.entries({

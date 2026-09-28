@@ -52,6 +52,8 @@ h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
 #progress-time { margin-left: auto; color: #d1e9e8; font-variant-numeric: tabular-nums; }
 #progress-percent { min-width: 34px; text-align: right; color: #ffda91; font-weight: 750; font-variant-numeric: tabular-nums; }
 #progress-detail { margin: 5px 0 9px 23px; color: #d1e9e8; font-size: 11px; }
+.progress-log-button { margin-top: 8px; padding: 3px 0; border: 0; border-radius: 0; background: transparent; color: #f5fafb; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
+.progress-log-button:hover { color: #ffda91; }
 .spinner { width: 14px; height: 14px; border: 2px solid #ffffff66; border-top-color: #ffce6d; border-radius: 50%; animation: spin .8s linear infinite; }
 .progress-track { height: 5px; overflow: hidden; border-radius: 10px; background: #ffffff38; }
 #progress-fill { display: block; height: 100%; border-radius: inherit; background: #ffce6d; transition: width .25s ease; }
@@ -89,6 +91,7 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .byo { margin-left: auto; }
 .message { position: fixed; z-index: 10; top: 70px; right: 26px; max-width: 430px; padding: 11px 14px; border: 1px solid #bcd8d4; border-radius: 9px; background: #e9f5f2; color: #255a5c; box-shadow: 0 8px 24px #20353618; font-size: 12px; }
 .message.error { border-color: #e8b7b0; background: #fff0ee; color: #9b433c; }
+.message-log-button { display: block; margin-top: 7px; padding: 0; border: 0; background: transparent; color: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .detail-page { overflow: auto; }
 .page-heading { margin-bottom: 16px; }
 .detail-grid, .maintenance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -211,7 +214,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-entry small { color: #72868b; font-size: 11px; }
 .settings-entry-arrow { margin-left: auto; color: #198092; font-size: 20px; }
 .modal-view .modal-body { padding-bottom: 12px; }
-#maintenance-view pre { height: 96px; }
+.activity-log-entry { margin-top: 14px; }
+.activity-modal .modal-body { padding: 16px 24px; }
+.activity-modal pre { height: min(380px, calc(100vh - 220px)); background: #102d40; color: #e1eef3; font-size: 11px; }
+.activity-log-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
 .launcher-modal .panel { background: #fff; border-color: #dfe9e8; }
 .launcher-modal .quick-panel { margin-bottom: 14px; padding: 16px 18px 12px; }
 .launcher-modal .quick-head { margin-bottom: 11px; }
