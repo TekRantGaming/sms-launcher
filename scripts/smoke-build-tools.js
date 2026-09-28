@@ -150,9 +150,19 @@ async function main() {
       throw new Error(`${arch}-bit game did not reach the disc check: ${JSON.stringify({
         error: start.error?.message, status: start.status, signal: start.signal, stdout: start.stdout, stderr: start.stderr })}`);
     }
+    const cmake = process.platform === 'win32'
+      ? path.join(env.MSYS2_ROOT, 'mingw64', 'bin', 'cmake.exe') : path.join(toolRoot, 'env', 'bin', 'cmake');
+    await run(cmake, ['-S', root, '-B', path.dirname(binary), '-DSMS_GX_BUILD_TESTS=ON'], { cwd: root, env });
+    await run(cmake, ['--build', path.dirname(binary), '--target', 'gx_windowtest', '--parallel', '2'], { cwd: root, env });
+    const windowTest = path.join(path.dirname(binary), 'platform', 'gx', process.platform === 'win32' ? 'gx_windowtest.exe' : 'gx_windowtest');
+    if (process.platform === 'win32') {
+      await run(path.join(env.MSYS2_ROOT, 'usr', 'bin', 'bash.exe'),
+        ['-c', '"$(cygpath -u "$1")"', 'sms-window-check', windowTest], { cwd: root, env }, 'Verify game window placement');
+    } else {
+      await run(loader || windowTest, loader ? ['--library-path', env.SMS_LINUX32_LIBRARY_PATH, windowTest] : [],
+        { cwd: root, env }, 'Verify game window placement');
+    }
     if (process.platform === 'linux' && arch === '32') {
-      const cmake = path.join(toolRoot, 'env', 'bin', 'cmake');
-      await run(cmake, ['-S', root, '-B', path.dirname(binary), '-DSMS_GX_BUILD_TESTS=ON'], { cwd: root, env });
       await run(cmake, ['--build', path.dirname(binary), '--target', 'gx_selftest', '--parallel', '2'], { cwd: root, env });
       const graphicsTest = path.join(path.dirname(binary), 'platform', 'gx', 'gx_selftest');
       await run(loader, ['--library-path', env.SMS_LINUX32_LIBRARY_PATH, graphicsTest, '--headless'],

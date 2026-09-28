@@ -17,6 +17,8 @@ Linux and Windows use prepared build tool archives published as separate GitHub 
 
 The launcher requires a 64-bit computer. **Settings → Game build** offers both **64-bit** (the default) and **32-bit** games on Windows and Linux. macOS games remain x86_64, with Rosetta 2 on Apple Silicon. An existing game build choice is preserved. Switching the choice keeps the previous game available through **Play previous version** until the new build succeeds; saves keep the same location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
 
+The game opens in a centered, resizable window on the monitor containing the pointer. It starts at up to 1280×720 and shrinks to fit smaller screens, keeping the title bar and resize edges accessible. Higher render quality improves the game's image without making the window larger.
+
 Home shows the current task, elapsed time, and a progress bar. It uses the actual percentage when the port or Git reports one; downloads and unpacking show their current phase while the source tool does not report a percentage.
 
 ## HD textures

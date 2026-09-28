@@ -69,6 +69,11 @@ async function main() {
       if (start.error || start.signal || start.status !== 1 || !start.stderr.includes('not a usable GameCube disc image'))
         throw new Error(`The Mac executable did not reach the expected missing-disc check: ${start.error?.message || start.stderr}`);
       process.stdout.write('Mac executable loaded successfully and correctly requires a disc image.\n');
+      const cmake = path.join(env.SMS_BUILD_TOOLS_BIN, 'cmake');
+      await run(cmake, ['-S', root, '-B', path.dirname(binary), '-DSMS_GX_BUILD_TESTS=ON'], { cwd: root, env });
+      await run(cmake, ['--build', path.dirname(binary), '--target', 'gx_windowtest', '--parallel', '2'], { cwd: root, env });
+      await run(path.join(path.dirname(binary), 'platform', 'gx', 'gx_windowtest'), [], { cwd: root, env },
+        'Verify game window placement on Mac');
       process.stdout.write(`Mac build succeeded: ${binary}\n`);
     }
   } finally { fs.rmSync(userData, { recursive: true, force: true }); }
