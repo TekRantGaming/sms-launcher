@@ -129,12 +129,27 @@ async function main() {
     }
     const loader = process.platform === 'linux' && arch === '32'
       ? path.join(env.SMS_LINUX32_ROOT, 'i686-buildroot-linux-gnu', 'sysroot', 'lib', 'ld-linux.so.2') : null;
-    const start = spawnSync(loader || binary, loader ? ['--library-path', env.SMS_LINUX32_LIBRARY_PATH, binary] : [],
-      { cwd: root, timeout: 15000, encoding: 'utf8', windowsHide: true,
-        env: { ...env, SMS_GAME_EXECUTABLE: binary, SMS_SAVE_DIR: path.join(userData, 'test-saves'),
-          SMS_DISC_IMAGE: path.join(userData, 'intentionally-missing.iso') } });
-    if (start.error || start.signal || start.status !== 1 || !start.stderr.includes('not a usable GameCube disc image'))
-      throw new Error(`${arch}-bit game did not reach the missing-disc check: ${start.error?.message || start.stderr}`);
+    const invalidDisc = path.join(userData, 'intentionally-invalid.iso');
+    // A tiny invalid fixture lets run.sh reach the game's own disc check.
+    fs.writeFileSync(invalidDisc, Buffer.alloc(32));
+    const startEnv = { ...env, SMS_GAME_EXECUTABLE: binary,
+      SMS_SAVE_DIR: path.join(userData, 'test-saves'), SMS_DISC_IMAGE: invalidDisc };
+    const launch = process.platform === 'win32'
+      ? port.commandFor(root, 'run', [invalidDisc], process.platform, startEnv)
+      : { command: loader || binary,
+        args: loader ? ['--library-path', env.SMS_LINUX32_LIBRARY_PATH, binary] : [], env: startEnv };
+    // Windows launches through the same private Bash route as the application.
+    const start = spawnSync(launch.command, launch.args,
+      { cwd: root, timeout: 45000, encoding: 'utf8', windowsHide: true, env: launch.env });
+    if (start.error || start.signal || start.status !== 1 || !start.stderr.includes('not a usable GameCube disc image')) {
+      if (process.platform === 'win32') {
+        const objdump = path.join(env.MSYS2_ROOT, 'mingw64', 'bin', 'objdump.exe');
+        const imports = spawnSync(objdump, ['-p', binary], { cwd: root, env, encoding: 'utf8', timeout: 10000 });
+        process.stderr.write((imports.stdout || '').split('\n').filter(line => line.includes('DLL Name:')).join('\n') + '\n');
+      }
+      throw new Error(`${arch}-bit game did not reach the disc check: ${JSON.stringify({
+        error: start.error?.message, status: start.status, signal: start.signal, stdout: start.stdout, stderr: start.stderr })}`);
+    }
     if (process.platform === 'linux' && arch === '32') {
       const cmake = path.join(toolRoot, 'env', 'bin', 'cmake');
       await run(cmake, ['-S', root, '-B', path.dirname(binary), '-DSMS_GX_BUILD_TESTS=ON'], { cwd: root, env });
