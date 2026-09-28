@@ -26,7 +26,8 @@
     "extraResources": [
       {
         "from": "scripts",
-        "to": "scripts"
+        "to": "scripts",
+        "filter": ["build-eclipse.sh"]
       }
     ],
     "directories": {

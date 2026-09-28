@@ -24,6 +24,32 @@ const notices = ['# Build tool notices and source code', '',
 const packages = [];
 const downloaded = new Map();
 
+function flattenLinks(prefix, toolTree = fs.realpathSync(prefix)) {
+  for (const entry of fs.readdirSync(prefix, { withFileTypes: true })) {
+    const file = path.join(prefix, entry.name);
+    if (entry.isDirectory()) flattenLinks(file, toolTree);
+    else if (entry.isSymbolicLink()) {
+      const target = fs.readlinkSync(file);
+      let resolved;
+      try { resolved = fs.realpathSync(file); }
+      catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+      const relative = path.relative(toolTree, resolved);
+      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`Nonportable tool symlink: ${file} -> ${target}`);
+      if (platform === 'win32') {
+        // Native Windows symlinks require privileges; materialize these aliases in the shipped tree.
+        const copy = `${file}.portable-copy`;
+        fs.cpSync(resolved, copy, { recursive: true });
+        fs.unlinkSync(file);
+        fs.renameSync(copy, file);
+        if (fs.statSync(file).isDirectory()) flattenLinks(file, toolTree);
+      } else {
+        const direct = path.relative(fs.realpathSync(path.dirname(file)), resolved);
+        if (target !== direct) { fs.unlinkSync(file); fs.symlinkSync(direct, file); }
+      }
+    }
+  }
+}
+
 async function downloadSource(url, name, expected = null) {
   if (!/^https:\/\//.test(url)) throw new Error(`Source URL is not HTTPS: ${url}`);
   const key = expected || url;
@@ -31,7 +57,8 @@ async function downloadSource(url, name, expected = null) {
   const destination = path.join(sourceRoot, 'upstream', name.replace(/[^a-zA-Z0-9._-]/g, '_'));
   if (!fs.existsSync(destination) || (expected && await tools.hashFile(destination) !== expected)) {
     await run(platform === 'win32' ? path.join(root, 'msys64', 'usr', 'bin', 'curl.exe')
-    : path.join(root, 'env', 'bin', 'curl'), ['--fail', '--location', '--retry', '3', '--silent', '--show-error',
+    : path.join(root, 'env', 'bin', 'curl'), ['--fail', '--location', '--retry', '3', '--connect-timeout', '30',
+      '--max-time', '600', '--silent', '--show-error',
       '--output', `${destination}.part`, url], {}, `Source: ${name}`);
     fs.renameSync(`${destination}.part`, destination);
   }
@@ -62,9 +89,11 @@ async function linuxSources() {
         if (url.endsWith('.rpm')) {
           // Sysroot recipes repack binary RPMs; distribute their source RPMs instead.
           const rpm = url.match(/\/rocky\/([^/]+)\/.*\/(glibc|kernel)(?:-[a-z-]+)?-(\d[^/]+)\.x86_64\.rpm$/);
-          if (!rpm) throw new Error(`Add a corresponding source RPM for ${url}`);
-          const filename = `${rpm[2]}-${rpm[3]}.src.rpm`;
-          const sourceUrl = `https://download.rockylinux.org/vault/rocky/${rpm[1]}/BaseOS/source/tree/Packages/${rpm[2][0]}/${filename}`;
+          const centos = url.match(/vault\.centos\.org\/(?:centos\/)?([^/]+)\/(os|updates)\/.*\/(glibc|kernel)(?:-[a-z-]+)?-(\d[^/]+)\.x86_64\.rpm$/);
+          if (!rpm && !centos) throw new Error(`Add a corresponding source RPM for ${url}`);
+          const filename = rpm ? `${rpm[2]}-${rpm[3]}.src.rpm` : `${centos[3]}-${centos[4]}.src.rpm`;
+          const sourceUrl = rpm ? `https://download.rockylinux.org/vault/rocky/${rpm[1]}/BaseOS/source/tree/Packages/${rpm[2][0]}/${filename}`
+            : `https://vault.centos.org/${centos[1]}/${centos[2]}/Source/SPackages/${filename}`;
           sources.push(await downloadSource(sourceUrl, filename));
         } else sources.push(await downloadSource(url, `${meta.name}-${path.basename(new URL(url).pathname)}`, source.sha256 || null));
       } else if (source.git_url) {
@@ -114,6 +143,7 @@ async function main() {
     await linuxSources();
     const prefix = path.join(root, 'env');
     fs.writeFileSync(path.join(prefix, 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
+    flattenLinks(prefix);
     const helper = path.join(output, 'conda-pack-helper');
     const env = { ...process.env, PATH: [path.join(prefix, 'bin'), process.env.PATH].join(path.delimiter), PYTHONPATH: helper };
     await run(path.join(prefix, 'bin', 'python3'), ['-m', 'pip', 'install', '--target', helper, 'conda-pack==0.9.1'], { env }, 'Prepare archive packer');
@@ -123,6 +153,7 @@ async function main() {
   } else {
     await windowsSources();
     fs.writeFileSync(path.join(root, 'msys64', 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
+    flattenLinks(path.join(root, 'msys64'));
     // Preserve the prepared tree, but exclude package downloads, caches, and machine-specific homes.
     await tar.c({ gzip: true, file: archive, cwd: root, portable: true,
       filter: name => !/^msys64\/(?:var\/cache|home|tmp)(?:\/|$)/.test(name.replaceAll('\\', '/')) }, ['msys64']);
