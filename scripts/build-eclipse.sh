@@ -25,7 +25,7 @@ if [[ "$os" == macos ]]; then
   [[ -n "$objcopy" ]] || { echo "Install LLVM; open Mac setup help in the launcher." >&2; exit 1; }
   llvm_bin=$(dirname "$objcopy")
   export PATH="$llvm_bin:$PATH"
-  if [[ "$(uname -m)" == arm64 ]] && ! arch -x86_64 true >/dev/null 2>&1; then
+  if [[ "$(uname -m)" == arm64 ]] && ! /usr/bin/arch -x86_64 /usr/bin/true >/dev/null 2>&1; then
     echo "Install Rosetta 2; see BUILD.md." >&2; exit 1
   fi
   framework="$repo/build/deps/SDL2.framework"

@@ -38,6 +38,8 @@ async function main() {
       if (!/^CMAKE_OSX_ARCHITECTURES:STRING=x86_64$/m.test(cache)) throw new Error('Mac build must target x86_64.');
       const compiler = cache.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1];
       if (!compiler?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Unexpected system compiler: ${compiler}`);
+      const objcopy = cache.match(/^SMS_OBJCOPY:[^=]*=(.+)$/m)?.[1];
+      if (!objcopy?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Unexpected system LLVM tool: ${objcopy}`);
       await run('/usr/bin/arch', ['-x86_64', '/usr/bin/true'], { env }, 'Check Intel execution support');
       await run('/usr/bin/file', [binary], { env });
       process.stdout.write(`Mac build succeeded: ${binary}\n`);

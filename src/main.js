@@ -273,6 +273,15 @@ async function build() {
   await ensureBuildTools();
   const root = requireRepo();
   const rom = port.validateRom(config.rom);
+  if (process.platform === 'darwin') {
+    const compatible = () => fs.existsSync(path.join(root, 'decomp-patches', 'modhook-zz-macos-data-exports.patch')) &&
+      fs.readFileSync(path.join(root, 'build.sh'), 'utf8').includes('/usr/bin/arch');
+    if (!compatible()) {
+      if (!config.settings.autoUpdate) throw new Error('Your setup files need a Mac compatibility update. Open Settings → Manage game → Check for updates, then try again.');
+      await updatePort();
+      if (!compatible()) throw new Error('These setup files do not have the Mac compatibility fixes yet. Download the latest setup files and try again.');
+    }
+  }
   const settings = config.settings;
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse();
   const disc = port.gameDisc(root, rom, settings.eclipse);

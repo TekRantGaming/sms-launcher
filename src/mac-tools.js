@@ -14,6 +14,30 @@ function find(command, env, exists = executable) {
     .map(directory => path.posix.join(directory, command)).find(exists);
 }
 
+function prepareLto(prefix) {
+  // Apple's linker checks the resolved filename, not just the symlink name.
+  // Conda's versioned libLTO alias therefore needs an unversioned real file.
+  // Copy after conda-unpack so the copy already has its relocated library paths.
+  const library = path.join(prefix, 'lib', 'libLTO.dylib');
+  const clangRoot = path.join(prefix, 'lib', 'clang');
+  const aliases = fs.existsSync(clangRoot) ? fs.readdirSync(clangRoot)
+    .map(version => path.join(clangRoot, version, 'lib', 'libLTO.dylib')).filter(fs.existsSync) : [];
+  const source = [library, ...aliases].find(fs.existsSync);
+  if (!source) throw new Error('The Mac LLVM archive is missing libLTO.');
+  const resolved = fs.realpathSync(source);
+  if (!resolved.startsWith(`${fs.realpathSync(prefix)}${path.sep}`)) throw new Error('Mac LLVM library is outside its tool folder.');
+  if (resolved !== library) {
+    const temporary = `${library}.portable-copy`;
+    fs.copyFileSync(resolved, temporary);
+    fs.rmSync(library, { force: true });
+    fs.renameSync(temporary, library);
+  }
+  for (const alias of aliases) {
+    fs.rmSync(alias, { force: true });
+    fs.symlinkSync(path.relative(path.dirname(alias), library), alias);
+  }
+}
+
 // Finder launches apps with a minimal PATH, even after Homebrew is installed.
 // Change only the environment of our children, never shell profiles or system files.
 function environment(base = process.env, exists = executable) {
@@ -101,4 +125,4 @@ function report(inspection = { checked: false, requirements: [] }, { archives = 
       : 'Check the tools needed to prepare your game on this Mac.' };
 }
 
-module.exports = { environment, inspect, report };
+module.exports = { environment, inspect, report, prepareLto };

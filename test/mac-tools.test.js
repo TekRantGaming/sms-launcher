@@ -4,6 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mac = require('../src/mac-tools');
 const tools = require('../src/build-tools');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 function fixture({ prefix = '/opt/homebrew', missing = [], sdk = true, silicon = true,
   rosetta = true, cmakeVersion = '3.31.6' } = {}) {
@@ -81,4 +84,20 @@ test('private tools take priority and managed setup asks only for Apple installs
   assert.ok(!fake.calls.some(call => ['/usr/bin/git', '/usr/bin/python3', '/usr/bin/clang', '/usr/bin/clang++'].includes(call.command)));
   const env = mac.environment({ PATH: '/usr/bin:/bin', SMS_BUILD_TOOLS_BIN: '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin' }, fixture().exists);
   assert.equal(env.PATH.split(':')[0], '/Users/player/Library/Application Support/SMS Launcher/build-tools/macos-arm64/env/bin');
+});
+
+test('Mac LLVM resolves libLTO to an unversioned real file after relocation', { skip: process.platform === 'win32' }, () => {
+  const prefix = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-lto-test-'));
+  try {
+    const lib = path.join(prefix, 'lib');
+    const resource = path.join(lib, 'clang', '21', 'lib');
+    fs.mkdirSync(resource, { recursive: true });
+    fs.writeFileSync(path.join(lib, 'libLTO.21.1.dylib'), 'relocated library');
+    fs.symlinkSync('libLTO.21.1.dylib', path.join(lib, 'libLTO.dylib'));
+    fs.symlinkSync('../../../libLTO.21.1.dylib', path.join(resource, 'libLTO.dylib'));
+    mac.prepareLto(prefix);
+    assert.equal(fs.lstatSync(path.join(lib, 'libLTO.dylib')).isSymbolicLink(), false);
+    assert.equal(path.basename(fs.realpathSync(path.join(resource, 'libLTO.dylib'))), 'libLTO.dylib');
+    assert.equal(fs.readFileSync(path.join(lib, 'libLTO.dylib'), 'utf8'), 'relocated library');
+  } finally { fs.rmSync(prefix, { recursive: true, force: true }); }
 });
