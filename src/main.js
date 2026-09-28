@@ -69,7 +69,7 @@ function loadConfig() {
   config = {
     repo: typeof saved.repo === 'string' ? saved.repo : defaultRepo(),
     rom: typeof saved.rom === 'string' ? saved.rom : '',
-    settings: port.normalizeSettings(saved.settings),
+    settings: port.normalizeSettings(saved.settings || { textures: true }),
     installRoot: typeof saved.installRoot === 'string' ? saved.installRoot : null,
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
     previousInstall: saved.previousInstall || null,

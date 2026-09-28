@@ -102,6 +102,9 @@ function showWizardStep(data) {
     ? downloadTextures ? 'Download HD textures to finish setup.'
       : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
+  $('setup-install-description').textContent = needsTextureDownload(data)
+    ? "We'll download HD textures (about 1 GB), then prepare a playable copy using your disc image. This can take a while."
+    : "We'll prepare a playable copy using your disc image. This can take a while.";
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
     ? 'The setup files are ready. Download the tools needed to prepare your game.'
