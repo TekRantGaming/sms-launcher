@@ -288,7 +288,7 @@ async function build() {
         const patch = path.join(root, 'decomp-patches', `modhook-32-${name}.patch`);
         return fs.existsSync(patch) && fs.readFileSync(patch, 'utf8').includes('const_cast<TBGCheckData*>(mWallPlane)');
       }) && fs.readFileSync(path.join(root, 'src', 'port_include', 'sms_modhook.h'), 'utf8')
-        .includes('sms_mod_as_free(R (C::*)() const))(const C*)');
+        .includes('SMS_MOD_WEAK_IMPORT');
     if (!compatible()) {
       if (!config.settings.autoUpdate) throw new Error('Your setup files need a Mac compatibility update. Open Settings → Manage game → Check for updates, then try again.');
       await updatePort();
