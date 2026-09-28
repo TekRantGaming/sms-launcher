@@ -69,6 +69,12 @@ async function main() {
     await run(path.join(env.MSYS2_ROOT, 'mingw64', 'bin', 'python.exe'),
       [path.join(root, 'tools', 'msys_cross_compile.py'), env.CXX, '-v', '-include', header, input, '-o', output],
       { cwd: probe, env }, 'Check 32-bit cross compiler with native Windows paths and spaces');
+    const response = path.join(probe, 'link.rsp');
+    const quote = file => `"${file.replaceAll('\\', '/')}"`;
+    fs.writeFileSync(response, `-include ${quote(header)} ${quote(input)} -o ${quote(output)}`);
+    await run(path.join(env.MSYS2_ROOT, 'mingw64', 'bin', 'python.exe'),
+      [path.join(root, 'tools', 'msys_cross_compile.py'), env.CXX, `@${response}`],
+      { cwd: probe, env }, 'Check Windows cross compiler response files');
     if (executableType(output).bits !== '32') throw new Error('The cross compiler path check did not produce a 32-bit game target.');
   }
   const canonical = file => fs.realpathSync.native(file).replaceAll('\\', '/').toLowerCase();
