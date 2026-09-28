@@ -184,14 +184,15 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');
     if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : 'g++'), ['--version'], env))
       throw new Error('The downloaded compiler could not start on this computer.');
-    if (keptPrevious) fs.rmSync(previous, { recursive: true, force: true });
+    if (keptPrevious) await fs.promises.rm(previous, { recursive: true, force: true,
+      maxRetries: 5, retryDelay: 200 }).catch(() => {});
     return status(userData, platform);
   } catch (error) {
-    if (replaced) fs.rmSync(root, { recursive: true, force: true });
+    if (replaced) await fs.promises.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (keptPrevious) fs.renameSync(previous, root);
     throw error;
   } finally {
-    fs.rmSync(staging, { recursive: true, force: true });
+    await fs.promises.rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (!archiveFile) fs.rmSync(archive, { force: true });
   }
 }
