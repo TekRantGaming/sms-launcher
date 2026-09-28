@@ -64,7 +64,7 @@ function taskName(label) {
 function backupReason(reason) {
   return ({ manual: 'Manual backup', 'before-play': 'Before playing', 'after-play': 'After playing',
     'before-restore': 'Before restoring', 'before-cleanup': 'Before cleanup',
-    'before-port-update': 'Before update' })[reason] || 'Backup';
+    'before-port-update': 'Before update', 'before-tools-change': 'Before changing build tools' })[reason] || 'Backup';
 }
 
 function requiredStep(data) {

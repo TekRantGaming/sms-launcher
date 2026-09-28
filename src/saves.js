@@ -117,5 +117,21 @@ function restoreBackup(id, saveDir, destination = backupRoot()) {
   return { restored: manifest.files.length, previous: current.directory || null };
 }
 
+function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = backupRoot()) {
+  const relative = path.relative(path.resolve(buildDirectory), path.resolve(saveDir));
+  const inside = relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+  const backup = inside ? backupSaves(saveDir, backups, 'before-tools-change') : null;
+  fs.renameSync(buildDirectory, destination);
+  try {
+    if (backup && !backup.empty) restoreBackup(backup.id, saveDir, backups);
+  } catch (error) {
+    // Preserve any partly restored files as well as the untouched previous build.
+    if (fs.existsSync(buildDirectory)) fs.renameSync(buildDirectory, `${buildDirectory}.restore-failed-${crypto.randomUUID()}`);
+    fs.renameSync(destination, buildDirectory);
+    throw error;
+  }
+  return backup;
+}
+
 module.exports = { saveDirectory, backupRoot, cleanupWouldRemoveSaves,
-  backupSaves, listBackups, restoreBackup };
+  backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };

@@ -271,7 +271,8 @@ function keepPreviousBuildIfToolchainChanged(root, settings) {
   const compiler = contents.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1] || '';
   if (compiler.startsWith(expected)) return;
   const previous = `${buildDirectory}.previous-${Date.now()}`;
-  fs.renameSync(buildDirectory, previous);
+  const backup = saves.moveBuildKeepingSaves(buildDirectory, previous, currentSaveDirectory());
+  if (backup && !backup.empty) log('Kept your saved games in place and made a backup before changing build tools.');
   log(`Kept the earlier build at ${previous} because this setup uses different build tools.`);
 }
 
@@ -281,7 +282,11 @@ async function build() {
   const rom = port.validateRom(config.rom);
   if (process.platform === 'darwin') {
     const compatible = () => fs.existsSync(path.join(root, 'decomp-patches', 'modhook-zz-macos-data-exports.patch')) &&
-      fs.readFileSync(path.join(root, 'build.sh'), 'utf8').includes('/usr/bin/arch');
+      fs.readFileSync(path.join(root, 'build.sh'), 'utf8').includes('/usr/bin/arch') &&
+      ['MarioJump', 'MarioRun'].every(name => {
+        const patch = path.join(root, 'decomp-patches', `modhook-32-${name}.patch`);
+        return fs.existsSync(patch) && fs.readFileSync(patch, 'utf8').includes('const_cast<TBGCheckData*>(mWallPlane)');
+      });
     if (!compatible()) {
       if (!config.settings.autoUpdate) throw new Error('Your setup files need a Mac compatibility update. Open Settings → Manage game → Check for updates, then try again.');
       await updatePort();

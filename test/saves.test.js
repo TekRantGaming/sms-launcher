@@ -7,6 +7,46 @@ const os = require('node:os');
 const path = require('node:path');
 const saves = require('../src/saves');
 
+test('switching build tools preserves custom saves in place and keeps the old build', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-tool-switch-'));
+  const build = path.join(root, 'build');
+  const previous = path.join(root, 'build.previous');
+  const card = path.join(build, 'card-a');
+  try {
+    fs.mkdirSync(card, { recursive: true });
+    fs.writeFileSync(path.join(build, 'CMakeCache.txt'), 'old compiler');
+    fs.writeFileSync(path.join(card, 'GMSE01.dat'), 'existing progress');
+    fs.writeFileSync(path.join(card, 'index.txt'), 'memory card index');
+    const backup = saves.moveBuildKeepingSaves(build, previous, card, path.join(root, 'backups'));
+    assert.equal(backup.count, 2);
+    assert.equal(fs.readFileSync(path.join(card, 'GMSE01.dat'), 'utf8'), 'existing progress');
+    assert.equal(fs.readFileSync(path.join(card, 'index.txt'), 'utf8'), 'memory card index');
+    assert.equal(fs.readFileSync(path.join(previous, 'CMakeCache.txt'), 'utf8'), 'old compiler');
+    assert.equal(fs.existsSync(path.join(build, 'CMakeCache.txt')), false);
+    assert.equal(fs.readFileSync(path.join(previous, 'card-a', 'GMSE01.dat'), 'utf8'), 'existing progress');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a failed save restore puts the original build and progress back', context => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-tool-rollback-'));
+  const build = path.join(root, 'build');
+  const previous = path.join(root, 'build.previous');
+  const originalCopy = fs.copyFileSync;
+  try {
+    fs.mkdirSync(build);
+    fs.writeFileSync(path.join(build, 'CMakeCache.txt'), 'old compiler');
+    fs.writeFileSync(path.join(build, 'GMSE01.dat'), 'existing progress');
+    context.mock.method(fs, 'copyFileSync', (source, destination, ...args) => {
+      if (String(destination).includes('.restore-')) throw new Error('Restore could not write the file');
+      return originalCopy(source, destination, ...args);
+    });
+    assert.throws(() => saves.moveBuildKeepingSaves(build, previous, build, path.join(root, 'backups')), /could not write/);
+    assert.equal(fs.readFileSync(path.join(build, 'CMakeCache.txt'), 'utf8'), 'old compiler');
+    assert.equal(fs.readFileSync(path.join(build, 'GMSE01.dat'), 'utf8'), 'existing progress');
+    assert.equal(fs.existsSync(previous), false);
+  } finally { context.mock.restoreAll(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('save path follows the port defaults and explicit configuration', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-path-'));
   try {
