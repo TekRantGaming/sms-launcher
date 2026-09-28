@@ -15,7 +15,7 @@ const MAC_MAMBA = {
   arm64: { url: 'https://github.com/mamba-org/micromamba-releases/releases/download/2.8.1-0/micromamba-osx-arm64',
     sha256: 'de71a646b73af92dd663e6ddc78993a6a4d47ea28b5d8908c3cc2b9c3077e528' }
 };
-const MAC_PACKAGES = ['python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch',
+const MAC_PACKAGES = ['python=3.12', 'git=2.55', 'cmake=4.4.3', 'ninja', 'make', 'patch',
   'llvm-tools-21=21.1.8', '7zip=26.03', 'bash', 'coreutils',
   'grep', 'sed', 'gawk', 'findutils', 'curl'];
 const MSYS2 = {
@@ -80,7 +80,7 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       fs.rmSync(link, { force: true });
       fs.symlinkSync(target, link);
     }
-    const required = platform === 'darwin' ? ['git', 'cmake', 'make', 'patch', 'python3', 'llvm-objcopy', 'clang++', '7z', 'bash']
+    const required = platform === 'darwin' ? ['git', 'cmake', 'ninja', 'make', 'patch', 'python3', 'llvm-objcopy', 'clang++', '7z', 'bash']
       : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', '7z', 'bash'];
     for (const name of required)
       if (!fs.existsSync(path.join(bin, name))) throw new Error(`Build tool ${name} is missing after download.`);

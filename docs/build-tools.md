@@ -4,7 +4,7 @@ The launcher and its toolsets have independent versions. `src/tool-assets.json` 
 
 ## macOS setup
 
-Mac tools download as a separate private archive: CMake, Python 3, LLVM object tools (llvm-objcopy), Git, Make, patch, 7-Zip, and shell utilities. Small clang/clang++ wrappers select the compiler from Apple Command Line Tools; an additional compiler is not bundled. Native archives are provided for Intel and Apple Silicon. The game target remains x86_64. Homebrew is not required and no package manager runs on the user's Mac.
+Mac tools download as a separate private archive: CMake, Ninja, Python 3, LLVM object tools (llvm-objcopy), Git, Make, patch, 7-Zip, and shell utilities. Small clang/clang++ wrappers select the compiler from Apple Command Line Tools; an additional compiler is not bundled. Native archives are provided for Intel and Apple Silicon. Mac uses Ninja so tool paths under `Application Support` can contain spaces. The game target remains x86_64. Homebrew is not required and no package manager runs on the user's Mac.
 
 Apple's SDK, compiler/Command Line Tools, and Rosetta are excluded from our archives. Step 1 checks them and shows a guided checklist with copyable Terminal commands when needed. Run `xcode-select --install` and finish Apple's installer first. Apple Silicon also needs `softwareupdate --install-rosetta`. Click **Check again** in Mac setup help, then continue Step 1 to download the private tools. The launcher does not run system installers or accept Apple's licenses automatically. Downloaded files and saves are preserved.
 

@@ -44,7 +44,7 @@ function privateReady(userData, platform = process.platform) {
     if (installed.toolset !== toolsetFor(platform)) return false;
     const expected = platform === 'darwin' ? macAssets.platforms[process.arch] : assets.platforms[platform];
     if (expected && installed.archiveSha256 !== expected.sha256) return false;
-    if (platform === 'darwin') return ['clang', 'clang++', 'git', 'cmake', 'python3', 'make', 'patch', 'llvm-objcopy', '7z']
+    if (platform === 'darwin') return ['clang', 'clang++', 'git', 'cmake', 'ninja', 'python3', 'make', 'patch', 'llvm-objcopy', '7z']
       .every(name => fs.existsSync(path.join(root, 'env', 'bin', name)));
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
@@ -98,7 +98,12 @@ function environment(userData, base = process.env, platform = process.platform) 
   if (platform === 'darwin') {
     const bin = path.join(rootFor(userData, platform), 'env', 'bin');
     const result = macTools.environment(privateReady(userData, platform) ? { ...base, SMS_BUILD_TOOLS_BIN: bin } : base);
-    if (privateReady(userData, platform)) result.SMS_LLVM_BIN = bin;
+    if (privateReady(userData, platform)) {
+      result.SMS_LLVM_BIN = bin;
+      // GNU Make's recursive command cannot quote its own executable path.
+      // Application Support always contains a space, so use Ninja on Mac.
+      result.CMAKE_GENERATOR = 'Ninja';
+    }
     if (macInspection?.sdkPath) result.SDKROOT = macInspection.sdkPath;
     return result;
   }
