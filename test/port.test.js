@@ -58,11 +58,11 @@ test('Windows upgrade keeps the existing 32-bit game available with its original
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const saved = { repo: root, rom: 'own-disc.iso', settings: { arch: '32', textures: true }, saveDirectory: 'my-saves' };
-  assert.equal(port.legacyWindowsInstall(saved, 'win32'), null);
+  assert.equal(port.legacy32BitInstall(saved, 'win32'), null);
   const binary = port.binaryPath(root, saved.settings, 'win32');
   fs.mkdirSync(path.dirname(binary), { recursive: true });
   fs.writeFileSync(binary, 'previous 32-bit game');
-  const previous = port.legacyWindowsInstall(saved, 'win32');
+  const previous = port.legacy32BitInstall(saved, 'win32');
   assert.equal(previous.settings.arch, '32');
   assert.equal(previous.settings.textures, true);
   assert.equal(previous.saveDirectory, saved.saveDirectory);
@@ -73,8 +73,8 @@ test('Windows upgrade keeps the existing 32-bit game available with its original
   const cmd = port.commandFor(root, 'run', [saved.rom], 'win32', { SMS_ARCH: previous.settings.arch, MSYS2_ROOT: msys });
   assert.equal(cmd.env.MSYSTEM, 'MINGW32');
   assert.ok(cmd.env.PATH.startsWith(path.join(msys, 'mingw32', 'bin')));
-  assert.equal(port.legacyWindowsInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
-  assert.equal(port.legacyWindowsInstall(saved, 'linux'), null);
+  assert.equal(port.legacy32BitInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
+  assert.equal(port.legacy32BitInstall(saved, 'linux'), null);
 });
 
 test('recognizes an installed texture pack and points the game at its folder', () => {

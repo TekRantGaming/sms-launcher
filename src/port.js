@@ -110,8 +110,8 @@ function binaryPath(root, settings, platform = process.platform) {
   return path.join(root, 'build', `${info.id}-${settings.arch}${suffix}`, platform === 'win32' ? 'sms.exe' : 'sms');
 }
 
-function legacyWindowsInstall(saved, platform = process.platform) {
-  if (platform !== 'win32' || !saved.repo || String(saved.settings?.arch) !== '32') return null;
+function legacy32BitInstall(saved, platform = process.platform) {
+  if (!['win32', 'linux'].includes(platform) || !saved.repo || String(saved.settings?.arch) !== '32') return null;
   const settings = { ...normalizeSettings(saved.settings, platform), arch: '32' };
   if (!fs.existsSync(binaryPath(saved.repo, settings, platform))) return null;
   return { repo: saved.repo, settings, rom: saved.rom, saveDirectory: saved.saveDirectory || null };
@@ -179,4 +179,4 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
   texturePackDirectory, texturePackInstalled, buildEnvironment, gameDisc, binaryPath,
-  commandFor, eclipseBuildCommand, eclipseRunCommand, legacyWindowsInstall };
+  commandFor, eclipseBuildCommand, eclipseRunCommand, legacy32BitInstall };
