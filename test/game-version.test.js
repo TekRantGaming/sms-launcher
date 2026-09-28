@@ -148,3 +148,12 @@ test('build records the matching tool location and requests preparation again if
   fs.rmSync(toolRoot, { recursive: true });
   assert.equal(game.isCurrent(root, settings), false);
 });
+
+test('records the toolset root for x64-host cross compilers as well as native compilers', t => {
+  const { root, directory } = fixture(t);
+  for (const suffix of ['env/bin/g++', 'env/targets/linux32/bin/i686-linux-g++',
+    'msys64/opt/bin/i686-w64-mingw32-g++.exe', 'msys64/mingw64/bin/g++.exe']) {
+    fs.writeFileSync(path.join(directory, 'CMakeCache.txt'), `CMAKE_CXX_COMPILER:FILEPATH=/private/tools/${suffix}\n`);
+    assert.equal(game.compilerToolRoot(root, settings), '/private/tools');
+  }
+});
