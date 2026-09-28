@@ -94,7 +94,7 @@ test('new source snapshots share optional downloads and keep user settings in th
   fs.writeFileSync(path.join(root, 'settings.txt'), 'save_dir=./custom-saves');
   game.carryUserFiles(root, next);
   assert.equal(fs.readFileSync(path.join(next, 'settings.txt'), 'utf8'), 'save_dir=./custom-saves');
-  assert.equal(fs.realpathSync(path.join(next, 'mods', 'textures')), path.join(root, 'mods', 'textures'));
+  assert.equal(fs.realpathSync(path.join(next, 'mods', 'textures')), fs.realpathSync(path.join(root, 'mods', 'textures')));
   assert.equal(fs.readFileSync(path.join(root, 'settings.txt'), 'utf8'), 'save_dir=./custom-saves');
 });
 
