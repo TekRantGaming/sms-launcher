@@ -2,83 +2,191 @@
 
 ![SMS Launcher ready to play](docs/launcher-ready.png)
 
-Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev/sms-pc-port). The launcher is a **sibling** of the port checkout (`sms-launcher/` next to `sms-port/`) during development. It does not include game data.
+Set up and play Super Mario Sunshine on **Windows, macOS, and Linux**. SMS Launcher guides you through setup, downloads the tools it needs, and gives you one big **Play** button when you're ready.
 
-## Install on Mac
+**Bring your own ROM is required.** You need a disc image made from your own supported Super Mario Sunshine disc. The launcher does not include a game or disc image.
 
-Download **`SMS-Launcher-<version>-mac-universal.dmg`** from [the latest release](https://github.com/chasem-dev/sms-launcher/releases/latest). It supports both Intel and Apple Silicon Macs.
+## Download
 
-1. Double-click the DMG.
+**[Download SMS Launcher from the latest release](https://github.com/chasem-dev/sms-launcher/releases/latest)**
+
+Choose the launcher file for your computer:
+
+| Your computer | Download |
+| --- | --- |
+| Windows | The `.exe` installer |
+| Mac — Intel or Apple Silicon | `SMS-Launcher-<version>-mac-universal.dmg` |
+| Linux | The `.AppImage` |
+
+The launcher requires a **64-bit computer** and an internet connection for setup. Required setup tools download automatically.
+
+## Install
+
+### Windows
+
+Open the `.exe` installer and follow the steps, then open SMS Launcher.
+
+### Mac
+
+1. Double-click the `.dmg`.
 2. Drag **SMS Launcher.app** onto **Applications** in the window that opens.
 3. Eject the disk image, then open SMS Launcher from Applications.
 
-The **`mac-universal.zip`** is an app archive, used by the automatic updater and available for manual extraction. If using it manually, move the extracted app into Applications before opening it. Running the app directly from the DMG or a protected Downloads location can prevent launcher updates. Installing the launcher keeps your existing game setup and saved games in place.
+Use the DMG for the usual drag-and-drop installation. If you download the ZIP instead, move the extracted app into Applications before opening it.
 
-## Start locally
+### Linux
 
-1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
-2. Download the setup files to the suggested location, or choose a different install location first. On Linux and Windows, Step 1 also downloads the required build tool archive, verifies its SHA-256 checksum, and unpacks it into the launcher's private data folder. Development runs detect a neighboring `sms-port/` automatically. An existing setup folder can be selected later in **Settings → Game files**.
-3. Choose a file copied from your own **North American Super Mario Sunshine GMSE01 Rev 0** disc (`.iso`, `.gcm`, or Dolphin `.ciso`). The launcher reads it in place and saves only its path in local preferences.
-4. Select **Begin setup**. The launcher installs any selected HD textures and builds the game. When setup finishes, Home shows **Play**. Use **Settings → Manage game → Rebuild game** when you want a fresh build.
+Download the `.AppImage`, allow it to run as a program in your file manager's permissions settings, then open it.
 
-Home uses the supplied seaside artwork as its background. First run has three screens: download setup files, choose your disc image, and begin setup. The step indicator shows where you are; the task progress bar shows downloads and building. Once the game is ready, Home simplifies to Play and the Settings cog. Open **Settings → Game files** to change the setup folder or disc file later. **Manage game** groups rebuild, updates, space cleanup, backups, and the activity log. Use Back to return to Settings. The frameless window can be dragged by its top bar; its top-right buttons minimize, toggle full screen, and close the window.
+## Set up your game
 
-Linux and Windows use prepared build tool archives published as separate GitHub Release assets. The launcher downloads the matching archive automatically once; there is no manual MSYS2 installation and no package manager runs on the user's computer. The archive's checksum is pinned in the launcher, and the tools stay in its private data folder, outside the port build and save folders. Launcher updates reuse the same toolset. Failed downloads or unpacking preserve the previous tools. Linux includes Git, CMake, Python, GCC, SDL2, EGL, Make, patch, binutils, and 7-Zip in a relocatable conda-forge environment. Windows includes a prepared MSYS2 tree with 64-bit programs and compilers for both 32-bit and 64-bit games. Linux also includes an x64-host 32-bit cross compiler with private SDL2, EGL, and graphics runtime libraries. Source archives and package notices accompany the tools. macOS downloads a separate native tool archive for Intel or Apple Silicon, including LLVM, CMake, Python, Git, Make, patch, and 7-Zip. Only Apple's Command Line Tools and Rosetta (on Apple Silicon) require a one-time system install; Step 1 checks these before proceeding. Homebrew is not required. See [build tool publishing](docs/build-tools.md) for the separate toolset workflow.
+The launcher walks you through three steps:
 
-The launcher requires a 64-bit computer. **Settings → Game build** offers both **64-bit** (the default) and **32-bit** games on Windows and Linux. macOS games remain x86_64, with Rosetta 2 on Apple Silicon. An existing game build choice is preserved. Switching the choice keeps the previous game available through **Play previous version** until the new build succeeds; saves keep the same location. The first build may take a while and, for the standard game, also creates a private standalone build from your image.
+1. **Download setup files.** Use the suggested location, or choose a different folder before downloading.
+2. **Choose disc image.** Select a copy of your own original North American Super Mario Sunshine disc — **GMSE01, revision 0**. Supported files are `.iso`, `.gcm`, and Dolphin `.ciso`.
+3. **Begin setup.** The launcher downloads HD textures and prepares your game on your computer. This first setup can take a while.
 
-The game opens in a centered, resizable window on the monitor containing the pointer. It starts at up to 1280×720 and shrinks to fit smaller screens, keeping the title bar and resize edges accessible. Higher render quality improves the game's image without making the window larger.
+On Mac, setup may ask you to install Apple's Command Line Tools and, on Apple Silicon, Rosetta. Follow **Mac setup help** in the launcher.
 
-Home shows the current task, elapsed time, and a progress bar. It reads both Make's percentages and Ninja's completed/total build steps, including Windows builds. These describe the current build phase, rather than an estimated download or install time. Disc preparation has its own status after compilation. **View build log** opens the live output in a separate modal; closing it keeps setup running. The log follows new output unless you scroll up. It is also available from Manage game and from an error message. Downloads and unpacking show their current phase while the source tool does not report a percentage.
+The progress bar shows what's happening. **View build log** opens more detail; closing that view keeps setup running.
 
-The top bar shows the launcher version and the installed game version. **Settings → Versions** also shows the build tool version and any available game update. Before setup, the game is marked **Not installed**; older builds without a version record are marked **Version unavailable**.
+When setup finishes, press **Play**.
 
-## HD textures
+## Play and change settings
 
-HD textures are on by default for first-time setup. **Begin setup** downloads them before building the game. You can turn them off in **Settings → Visuals**; existing users keep their saved choice. If the game is already set up and the pack is missing, the main **Play** button becomes **Download HD textures**. Select it to download the pack; it returns to **Play** when installation finishes. Download progress shows the percentage and megabytes received when the server provides the file size; otherwise it shows megabytes received. Checking and unpacking have separate statuses. A failed download leaves the button available to try again. Turning textures off restores the usual button, and previously downloaded textures are reused when turned back on. The installer downloads the authors' pack (about 1 GB, about 3 GB installed) and checks its checksum. Python 3 and 7-Zip come from the prepared tools when system copies are missing. The launcher points the running game at that folder when HD textures are on. Installations and changes take effect on the next game start. The texture pack stays in the port checkout, separate from launcher updates and builds.
+After setup, the main screen is just **Play** and the **Settings cog** beside it. The game opens in a centered, resizable window.
 
-## Eclipse
+Open Settings to change screen format, smoothness, picture sharpness, and HD textures. Changes take effect the next time you start the game.
 
-Enable **Super Mario Eclipse**, then choose **Install Eclipse mod** or select **Begin setup** if it appears on Home. The installer downloads the official patch and applies it to your own original image. It needs Python 3 and 7-Zip as described in the port's `mods/README.md`. Eclipse uses a separate `build/<os>-<arch>-eclipse/` tree. It builds against the port's `eclipse` branch and runs the installed patched disc without bundling it. Toggle Eclipse off to return to the original build.
+- **Game files** lets you change the setup folder or choose a different disc file.
+- **Manage game** has updates, rebuilding, save backups, and space cleanup.
+- **Versions** shows your launcher, game, and setup tool versions for support.
 
-The Eclipse patcher needs an unmodified 1:1 GMSE01 image; a compressed CISO does not pass its checksum. Eclipse builds have been verified in the port on Linux. The launcher offers the same build path on macOS and Windows, marked experimental until those port builds are verified there.
+Windows and Linux offer both 64-bit and 32-bit game builds. Keep the default **64-bit** choice unless you need 32-bit. Mac game builds are 64-bit.
 
-## Updates and cleanup
+### HD textures
 
-Each launcher release selects one tested game source revision, including the exact decomp submodule. Home shows **Update & play** when the selected game or tools differ from your installed build. One click prepares it and starts the game. Launcher-only updates reuse your game and tools. Turning off **Update automatically** keeps the installed game selected; **Settings → Manage game → Update game** installs the version selected by this launcher manually.
+HD textures are **on by default for first-time setup**. They add more detail to the game and use about **1 GB to download** and **3 GB once installed**. You can turn them off in **Settings → Visuals**. Existing users keep their saved choice.
 
-Updates build in a separate source folder beside the original installation. Preferences switch only after setup succeeds. Your original source folder, saved games, disc file, settings, and optional downloads are preserved. Failed downloads or builds leave the installed game available through **Play installed version** in Manage game. After a successful source update, **Play previous version** is available there too. Rebuilds keep their previous build and restore it on failure; a recovery journal restores interrupted rebuilds on the next launcher start. Existing installations without version records need one verified update. First-time setup still uses the three-step flow.
+If you enable them later and they haven't been installed, Play becomes **Download HD textures**. Select it to download and install the pack; the button returns to Play when it's ready. Progress shows the amount downloaded, followed by checking and unpacking. Previously downloaded textures are reused.
 
-**See removable files** previews cleanup; **Free up space** asks for confirmation before removing the current installation's regenerable build output. Earlier installations are retained for recovery and use additional disk space.
+### Updates
 
-Memory card saves stay in the port's usual user data folder, independent of launcher installs and build folders. The launcher honors `SMS_SAVE_DIR` or `save_dir` in the port's `settings.txt`, and shows the resolved save path in the app. It makes verified, dated copies before each play session, after play exits, and before a port update or cleanup. Cleanup refuses to run if a custom save folder is inside a removable build folder. When changing compilers, it keeps the previous build and preserves custom saves in their original location, with a verified backup and rollback if restoring fails. Backups live in `~/SMS Launcher Backups` (the Windows user profile folder on Windows), outside both the launcher installation and port checkout. **Back up now**, **Open backups**, and **Restore selected backup** are in the app. Restore verifies the selected backup and saves the current memory card first. No ROM or patched disc is included in these backups. Keep an additional copy of the backup folder on another drive or cloud service to protect against disk failure.
+When a game update is ready, the main button becomes **Update & play**. Your current game stays available until the new setup succeeds.
 
-Packaged launcher builds support self updates through `electron-updater`. A `package.json` version bump pushed to `main` makes `.github/workflows/release.yml` create its `vX.Y.Z` tag, build an x64 Linux AppImage, universal macOS DMG/ZIP for Intel and Apple Silicon, and x64 Windows installer, and publish only after all launcher packages and four private-tool game compilation checks succeed. The private-tool checks compile and start both 32-bit and 64-bit games on Windows and Linux, and 64-bit games on both Mac host types. Release packages embed their GitHub update feed, check on startup and every 30 minutes, download updates, and install them on quit. Unsigned macOS builds can be downloaded, but macOS automatic updates need the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` signing secrets. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic update feed. Local packages made without a release feed can prepare their bundled game revision, but cannot download newer launcher releases automatically.
+Launcher updates download automatically when **Update automatically** is enabled and install when you quit. If automatic updates aren't available for your installation, download and install the latest launcher from the [releases page](https://github.com/chasem-dev/sms-launcher/releases/latest).
 
-For a launcher-only release, run `npm version patch --no-git-tag-version`, commit the updated `package.json` and `package-lock.json`, and push to `main`. The workflow creates the tag after the push. Version bumps can also use `minor` or `major`.
+To manage updates yourself, turn off **Update automatically** in **Settings → Manage game**. Use **Update game** there when you're ready.
 
-Build platform packages with `npm run dist`. The installer includes only the launcher code, never the port checkout, ROMs, mods, standalone game builds, or saves. Linux, Windows, and native Intel/Apple Silicon Mac build tool archives are separate assets attached to each launcher release and downloaded during setup. `npm test` runs the launcher command, disc selection, tool replacement, Mac prerequisite, and save backup tests. The separate **Smoke test build tools** workflow runs on pull requests, a weekly schedule, manual requests, and as a required reusable gate for launcher releases. It downloads the exact published archives, verifies their pinned checksums, and compiles the exact game source revision in `src/game-release.json` without any disc image, then checks that CMake used the expected compiler. Mac tests use only the private tools and Apple's installed compiler and SDK, including paths containing spaces. It does not package or publish the launcher.
+### Saved games and backups
 
+The launcher keeps your save location when you update or rebuild the game. It makes dated backups before and after playing, and before game updates or cleanup.
 
-## Versioning and releasing game updates
+In **Settings → Manage game → Saved games**, you can:
 
-There are three independent versions:
+- **Back up saves** whenever you want an extra copy.
+- **Open backup folder** to find your backups.
+- Choose an earlier backup and select **Restore backup**. Your current saves are backed up before restoring.
+
+Backups are stored in **SMS Launcher Backups** in your home folder, separate from the launcher installation and game build folders. Copy that folder to another drive or cloud storage for extra protection.
+
+### Optional: Super Mario Eclipse
+
+Super Mario Eclipse is a fan-made expansion available in Settings. Enable it and choose **Install Eclipse mod**, then finish any setup the launcher requests. Turn it off to return to the original game.
+
+Eclipse needs a full, unmodified North American ISO; compressed CISO files won't work for its patch. Eclipse has been verified on Linux and is experimental on Windows and Mac.
+
+## Need help?
+
+- **Setup or a download failed:** open **View activity** on the error message to see what happened, then try setup again. A failed HD texture download leaves **Download HD textures** available to retry.
+- **A game update failed:** use **Play installed version** in Manage game. After a successful update, **Play previous version** is also available there.
+- **Mac says the launcher is on a read-only volume:** quit the launcher, move SMS Launcher.app into Applications, eject the DMG, and reopen it from Applications.
+- **Need to free up space:** use **See removable files** in Manage game, then **Free up space**. The launcher keeps your disc file and saved games.
+
+## For developers
+
+SMS Launcher is an Electron frontend for [sms-pc-port](https://github.com/chasem-dev/sms-pc-port). Game preparation stays on the user's computer and requires their own disc image.
+
+### Run locally
+
+Install **Node.js 22.12 or newer** and npm, then:
+
+```sh
+git clone https://github.com/chasem-dev/sms-launcher.git
+cd sms-launcher
+npm ci
+npm start
+```
+
+For development alongside the port, use sibling folders:
+
+```text
+workspace/
+├── sms-port/
+└── sms-launcher/
+```
+
+Development runs detect a neighboring `sms-port/` automatically. Packaged installs use the launcher's data folder by default. Existing setup folders can be selected in **Settings → Game files**.
+
+### Test and package
+
+```sh
+npm test
+npm run dist
+```
+
+To make a universal Mac package on macOS:
+
+```sh
+npm run dist -- --mac --universal
+```
+
+Packages contain the launcher. Game source, disc images, optional mods, compiled games, and saves are not bundled.
+
+The separate **Smoke test build tools** workflow downloads checksum-verified tool archives and compiles the exact source in `src/game-release.json` without a ROM. It checks both 32-bit and 64-bit games on Windows and Linux, and 64-bit games on Intel and Apple Silicon Mac hosts. These checks are a required release gate; they do not publish game binaries.
+
+### Build tools
+
+The launcher checks available tools and downloads prepared archives when needed. Downloads are checksum-verified and stay in its private data folder. Users do not need to install Git, Homebrew, or MSYS2 themselves.
+
+| Host | Prepared tools |
+| --- | --- |
+| Linux x64 | Git, CMake, Python, GCC, SDL2, EGL, Make, patch, binutils, 7-Zip, and an x64-host 32-bit cross compiler with its SDK and graphics libraries |
+| Windows x64 | A prepared MSYS2 tree with 64-bit helper programs and compilers for both 32-bit and 64-bit games |
+| Mac Intel / Apple Silicon | Native LLVM, CMake, Python, Git, Make, patch, and 7-Zip; Apple's Command Line Tools and Rosetta are installed separately when required |
+
+Tool archives are separate release assets, with source archives and package notices. Matching versions are reused. Changed archives install into separate folders, preserving tools needed by earlier game builds. Each game build records its tool location.
+
+See [build tool publishing](docs/build-tools.md) for archive preparation and publishing.
+
+### Versions and releases
 
 | Component | Version location | When it changes |
 | --- | --- | --- |
-| Launcher | `package.json` | UI, launcher behavior, or selecting a new game/tools release |
-| Game source | `src/game-release.json` | A new tested port commit (which also pins its decomp commit) |
-| Build tools | Each platform entry in `src/tool-assets.json` and `src/mac-tool-assets.json` | Only when that OS/architecture needs different tools |
+| Launcher | `package.json` | Launcher behavior, UI, or selecting a new game/tools release |
+| Game source | `src/game-release.json` | A tested port commit and its exact decomp commit |
+| Build tools | Platform entries in `src/tool-assets.json` and `src/mac-tool-assets.json` | When that OS or architecture needs different tools |
 
-Users do not choose Git branches or manage these versions. The launcher selects compatible source and tools, records what built their game, and shows versions in Manage game for support. Source and tool changes require a rebuild; visual preferences and launcher-only changes do not.
+Source or tool changes require a game rebuild. Visual preferences and launcher-only updates reuse the existing game. The launcher selects compatible versions; users don't manage branches or commits.
 
-To release decomp/port progress:
+**Launcher release:** run `npm version patch --no-git-tag-version`, commit `package.json` and `package-lock.json`, and push to `main`. The release workflow creates the tag and draft, verifies the game with the published tools, builds the Linux AppImage, universal Mac DMG/ZIP, and Windows installer, then publishes after all checks pass. Documentation-only changes don't need a version bump.
 
-1. Commit the decomp work, update the port's `decomp` gitlink to that commit, and push the complete port revision to `eclipse`.
-2. In this launcher repository, run `npm run update:game` (or `npm run update:game -- <port-commit>`). It records exact port/decomp commits, assigns a dated game version, and bumps the launcher patch version. Selecting the same commit again makes no changes.
-3. Review and commit `src/game-release.json`, `package.json`, and `package-lock.json`, then push to `main`.
-4. GitHub builds the pinned game with the published private tools on all four supported host targets, without a ROM. If those checks pass, it builds and publishes the launcher release. Any failure keeps the release unpublished.
+**Game update:**
 
-To change tools, bump only the matching platform entry's `toolset`, publish that OS archive through the separate tool publishing workflow, then adopt its generated manifest entry (new immutable URL/checksum) and bump the launcher. The tool workflows can select one OS or Mac architecture. Existing archives and hashes remain unchanged; changing Linux tools never forces Windows or Mac downloads. All game compilation remains on the user's computer with their own disc. No game executable or assets are published by these workflows.
+1. Push a complete port revision, including its decomp gitlink, to the branch selected in `src/game-release.json` — currently `main`.
+2. Run `npm run update:game` or `npm run update:game -- <port-commit>`. It records exact source revisions, assigns a dated game version, and bumps the launcher version. Selecting the same revision makes no changes.
+3. Review and commit `src/game-release.json`, `package.json`, and `package-lock.json`, then push to `main` to run the release gate.
 
-Matching tools from earlier launcher installs are reused in place. Changed tool archives install into separate checksum-specific folders, retaining older tools needed by previous game builds. Each build records its compiler tool location, and fallback play uses that location. Removing a recorded tool folder causes the launcher to request preparation again. One launcher instance runs at a time to prevent overlapping game updates or save operations.
+**Tool update:** publish the affected OS or Mac architecture through the separate tool workflow, adopt its generated manifest entry with the new immutable URL and checksum, and bump the launcher. Preserve existing archives and hashes. See [the toolset workflow](docs/build-tools.md).
+
+### Launcher updates and Mac signing
+
+Release packages embed their GitHub update feed, check on startup and every 30 minutes, and install downloaded updates on quit. The Mac ZIP is required by the automatic updater; the DMG is the recommended user installation.
+
+macOS automatic updates require signed builds using the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` secrets. Unsigned builds remain available for manual installation. Windows signing uses `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic feed. Local packages without a feed cannot fetch new launcher releases automatically.
+
+### Save storage and recovery
+
+The launcher honors `SMS_SAVE_DIR` or `save_dir` in the port's `settings.txt` and displays the resolved path. Verified backups live outside the launcher and port folders in `~/SMS Launcher Backups`.
+
+Source updates build in separate folders and switch preferences only after success. Rebuilds preserve the previous binary and metadata; a recovery journal restores interrupted builds on the next start. Cleanup refuses custom save folders inside removable build output. Restore verifies the backup and saves current progress first. Disc images and patched discs are not included in save backups. A single-instance lock prevents overlapping updates and save operations.
