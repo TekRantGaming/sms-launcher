@@ -180,7 +180,13 @@ async function ensureBuildTools() {
       async run(command, args, options, label) {
         active = null;
         broadcast('activity', null);
-        return launch(command, args, options, label);
+        try { return await launch(command, args, options, label); }
+        finally {
+          if (preparingTools && !active) {
+            active = { label: 'Download build tools', child: null, detail: 'Preparing build tools…', percent: null, startedAt };
+            broadcast('activity', { label: active.label, detail: active.detail, percent: null, startedAt, canStop: false });
+          }
+        }
       }
     });
     log('Build tools are ready.');

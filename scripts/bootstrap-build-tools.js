@@ -16,7 +16,7 @@ const MAC_MAMBA = {
     sha256: 'de71a646b73af92dd663e6ddc78993a6a4d47ea28b5d8908c3cc2b9c3077e528' }
 };
 const MAC_PACKAGES = ['python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch',
-  'clang-21=21.1.8', 'llvm-tools-21=21.1.8', '7zip=26.03', 'bash', 'coreutils',
+  'llvm-tools-21=21.1.8', '7zip=26.03', 'bash', 'coreutils',
   'grep', 'sed', 'gawk', 'findutils', 'curl'];
 const MSYS2 = {
   url: 'https://github.com/msys2/msys2-installer/releases/download/2026-09-27/msys2-base-x86_64-20260927.sfx.exe',
@@ -60,8 +60,15 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       env: { ...process.env, MAMBA_ROOT_PREFIX: path.join(root, 'cache') }
     }, 'Prepare build tools');
     const bin = path.join(prefix, 'bin');
-    const aliases = platform === 'darwin' ? [['clang', 'clang-21'], ['clang++', 'clang-21'],
-      ['llvm-objcopy', 'llvm-objcopy-21']] : [['gcc', 'x86_64-conda-linux-gnu-gcc'],
+    if (platform === 'darwin') {
+      // The required Apple toolchain supplies the SDK and its matching compiler.
+      // These explicit wrappers prevent an unrelated Homebrew compiler taking over.
+      for (const name of ['clang', 'clang++']) {
+        fs.rmSync(path.join(bin, name), { force: true });
+        fs.writeFileSync(path.join(bin, name), `#!/bin/sh\nexec /usr/bin/${name} "$@"\n`, { mode: 0o755 });
+      }
+    }
+    const aliases = platform === 'darwin' ? [['llvm-objcopy', 'llvm-objcopy-21']] : [['gcc', 'x86_64-conda-linux-gnu-gcc'],
       ['g++', 'x86_64-conda-linux-gnu-g++'], ['cc', 'x86_64-conda-linux-gnu-gcc'],
       ['c++', 'x86_64-conda-linux-gnu-g++']];
     for (const [name, target] of aliases) {

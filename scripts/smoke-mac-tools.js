@@ -15,7 +15,7 @@ async function main() {
   delete base.HOMEBREW_PREFIX;
   delete base.CC;
   delete base.CXX;
-  const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-mac-tools-ci-'));
+  const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'sms Mac tools ci-'));
   try {
     const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
     const source = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).platforms[process.arch] : null;
@@ -37,7 +37,9 @@ async function main() {
       const cache = fs.readFileSync(path.join(path.dirname(binary), 'CMakeCache.txt'), 'utf8');
       if (!/^CMAKE_OSX_ARCHITECTURES:STRING=x86_64$/m.test(cache)) throw new Error('Mac build must target x86_64.');
       const compiler = cache.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1];
-      if (!compiler?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Unexpected system compiler: ${compiler}`);
+      if (!compiler?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Expected the Apple compiler wrapper: ${compiler}`);
+      const wrapper = fs.readFileSync(compiler, 'utf8');
+      if (!wrapper.includes('exec /usr/bin/clang++')) throw new Error('Mac builds must use the compiler from Apple Command Line Tools.');
       const objcopy = cache.match(/^SMS_OBJCOPY:[^=]*=(.+)$/m)?.[1];
       if (!objcopy?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Unexpected system LLVM tool: ${objcopy}`);
       await run('/usr/bin/arch', ['-x86_64', '/usr/bin/true'], { env }, 'Check Intel execution support');

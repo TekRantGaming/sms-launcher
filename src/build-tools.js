@@ -232,7 +232,6 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       const prefix = path.join(root, 'env');
       await run(path.join(prefix, 'bin', 'python3'), [path.join(prefix, 'bin', 'conda-unpack')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare build tools');
-      if (platform === 'darwin') macTools.prepareLto(prefix);
     } else {
       // Machine-specific contents are excluded from the archive; MSYS2 still needs these folders.
       for (const directory of ['tmp', 'home'])
