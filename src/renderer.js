@@ -83,9 +83,9 @@ function showWizardStep(data) {
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready ? 'Ready when you are.' : "Three steps, then you're ready to play.";
-  $('setup-download-title').textContent = data.repoReady ? 'Prepare build tools' : 'Download setup files';
+  $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
-    ? 'The setup files are ready. The launcher will prepare any tools this computer still needs.'
+    ? 'The setup files are ready. Download the tools needed to prepare your game.'
     : "We'll get the files and tools needed to prepare your own disc. The game is not included.";
   $('repo-location').hidden = data.repoReady;
   $('choose-location').hidden = data.repoReady;
@@ -101,7 +101,7 @@ function showWizardStep(data) {
     $('play').textContent = setupPending
       ? wizardStep === 1 ? 'Downloading…' : wizardStep === 2 ? 'Choosing…' : 'Setting up…'
       : wizardStep === 1 ? data.repoReady && data.tools.ready ? 'Continue'
-        : data.repoReady ? 'Prepare build tools' : 'Download setup files'
+        : data.repoReady ? 'Download build tools' : 'Download setup files'
         : wizardStep === 2 ? data.romReady ? 'Continue' : 'Choose disc image' : 'Begin setup';
   }
 }

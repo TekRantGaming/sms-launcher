@@ -151,9 +151,9 @@ async function ensureBuildTools() {
   try {
     await buildTools.prepare(userData, {
       forcePrivate,
-      progress(percent) {
+      progress(percent, detail) {
         if (!active || active.child) return;
-        active.detail = percent === null ? 'Downloading tools…' : `Downloading tools: ${percent}%`;
+        active.detail = detail || (percent === null ? 'Downloading tools…' : `Downloading tools: ${percent}%`);
         active.percent = percent;
         broadcast('activity', { label: active.label, detail: active.detail, percent, startedAt });
       },

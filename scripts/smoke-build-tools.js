@@ -4,22 +4,16 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
 const buildTools = require('../src/build-tools');
 const port = require('../src/port');
-
-function run(command, args, options = {}, label = command) {
-  process.stdout.write(`\n${label}\n`);
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { ...options, stdio: 'inherit', windowsHide: true });
-    child.on('error', reject);
-    child.on('close', code => code === 0 ? resolve() : reject(new Error(`${label} exited with ${code}`)));
-  });
-}
+const { run } = require('./tool-run');
 
 async function main() {
   const userData = path.join(os.tmpdir(), 'sms-launcher-private-tools-ci');
-  await buildTools.prepare(userData, { forcePrivate: true, run });
+  const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
+  const source = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).platforms[process.platform] : null;
+  const archiveFile = source ? path.join(path.dirname(manifestFile), source.name) : null;
+  await buildTools.prepare(userData, { forcePrivate: true, run, source, archiveFile });
   if (buildTools.status(userData).mode !== 'private') throw new Error('Private tools were not prepared.');
   const env = buildTools.environment(userData, { ...process.env, SMS_ARCH: process.platform === 'win32' ? '32' : '64' });
   const toolRoot = buildTools.rootFor(userData);

@@ -6,26 +6,8 @@ const https = require('node:https');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
-const TOOLSET = '2026-09-27.2';
-const MAMBA = {
-  url: 'https://github.com/mamba-org/micromamba-releases/releases/download/2.8.1-0/micromamba-linux-64',
-  sha256: '9689782d863c05a1bf5d2d371ba527104e7a4eb4310c1637d8653b751aed9c82'
-};
-const MSYS2 = {
-  url: 'https://github.com/msys2/msys2-installer/releases/download/2026-09-27/msys2-base-x86_64-20260927.sfx.exe',
-  sha256: 'ad336cccfda47758b5e15cda993fbba421115cb0b126697daef1ee4dfe37209f'
-};
-const LINUX_PACKAGES = [
-  'python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch', 'binutils',
-  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
-  'libegl-devel', 'libgl-devel', '7zip=26.03', 'bash', 'coreutils',
-  'grep', 'sed', 'gawk', 'findutils', 'curl'
-];
-const WINDOWS_PACKAGES = [
-  'mingw-w64-i686-gcc', 'mingw-w64-i686-cmake', 'mingw-w64-i686-SDL2',
-  'mingw-w64-i686-ninja', 'mingw-w64-i686-python', 'mingw-w64-x86_64-7zip',
-  'patch', 'git'
-];
+const assets = require('./tool-assets.json');
+const TOOLSET = assets.toolset;
 
 function rootFor(userData, platform = process.platform) {
   return path.join(userData, 'build-tools', platform === 'win32' ? 'windows-x64' : 'linux-x64');
@@ -36,7 +18,10 @@ function privateReady(userData, platform = process.platform) {
   const root = rootFor(userData, platform);
   const marker = path.join(root, 'ready.json');
   try {
-    if (JSON.parse(fs.readFileSync(marker, 'utf8')).toolset !== TOOLSET) return false;
+    const installed = JSON.parse(fs.readFileSync(marker, 'utf8'));
+    if (installed.toolset !== TOOLSET) return false;
+    const expected = assets.platforms[platform];
+    if (expected && installed.archiveSha256 !== expected.sha256) return false;
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
         fs.existsSync(path.join(root, 'msys64', 'mingw32', 'bin', 'g++.exe')) &&
@@ -73,7 +58,7 @@ function systemReady(platform = process.platform, env = process.env) {
 
 function status(userData, platform = process.platform, env = process.env) {
   if (privateReady(userData, platform)) return { ready: true, mode: 'private' };
-  if (systemReady(platform, env)) return { ready: true, mode: 'system' };
+  if (platform === 'darwin' && systemReady(platform, env)) return { ready: true, mode: 'system' };
   return { ready: false, mode: 'missing' };
 }
 
@@ -146,59 +131,70 @@ function hashFile(file) {
   });
 }
 
-async function ensureArchive(archive, source, progress) {
-  if (fs.existsSync(archive) && await hashFile(archive) === source.sha256) return;
-  fs.rmSync(archive, { force: true });
-  await fetchVerified(source.url, archive, source.sha256, progress);
+function assetFor(platform = process.platform) {
+  const source = assets.platforms[platform];
+  if (!source || !/^https:\/\//.test(source.url) || !/^[a-f0-9]{64}$/.test(source.sha256) ||
+      !/^[a-zA-Z0-9._-]+\.tar\.gz$/.test(source.name))
+    throw new Error('The build tools for this release are not available yet.');
+  return source;
 }
 
-async function prepare(userData, { platform = process.platform, run, progress = () => {}, forcePrivate = false } = {}) {
-  if (!['linux', 'win32', 'darwin'].includes(platform)) throw new Error('This operating system is not supported.');
+async function prepare(userData, { platform = process.platform, run, progress = () => {},
+  forcePrivate = false, source = null, archiveFile = null } = {}) {
   if (platform === 'darwin') return status(userData, platform);
+  if (!['linux', 'win32'].includes(platform)) throw new Error('This operating system is not supported.');
   if (process.arch !== 'x64') throw new Error('Setup tools require a 64-bit Intel or AMD computer.');
-  if (!forcePrivate && status(userData, platform).ready) return status(userData, platform);
+  if (!forcePrivate && privateReady(userData, platform)) return status(userData, platform);
+  source = source || assetFor(platform);
+  if (!/^[a-f0-9]{64}$/.test(source.sha256) || !/^[a-zA-Z0-9._-]+\.tar\.gz$/.test(source.name))
+    throw new Error('Invalid build tool archive information.');
   const root = rootFor(userData, platform);
-  fs.mkdirSync(root, { recursive: true, mode: 0o700 });
-  fs.rmSync(path.join(root, 'ready.json'), { force: true });
-  if (platform === 'linux') {
-    const binary = path.join(root, 'micromamba');
-    await ensureArchive(binary, MAMBA, progress);
-    fs.chmodSync(binary, 0o700);
-    const prefix = path.join(root, 'env');
-    fs.rmSync(prefix, { recursive: true, force: true });
-    await run(binary, ['create', '--yes', '--prefix', prefix, '--channel', 'conda-forge',
-      '--override-channels', ...LINUX_PACKAGES], {
-      env: { ...process.env, MAMBA_ROOT_PREFIX: path.join(root, 'cache') }
-    }, 'Prepare build tools');
-    const bin = path.join(prefix, 'bin');
-    for (const [name, target] of [['gcc', 'x86_64-conda-linux-gnu-gcc'],
-      ['g++', 'x86_64-conda-linux-gnu-g++'], ['cc', 'x86_64-conda-linux-gnu-gcc'],
-      ['c++', 'x86_64-conda-linux-gnu-g++']]) {
-      const link = path.join(bin, name);
-      fs.rmSync(link, { force: true });
-      fs.symlinkSync(target, link);
+  const parent = path.dirname(root);
+  fs.mkdirSync(parent, { recursive: true, mode: 0o700 });
+  const archive = archiveFile || path.join(parent, source.name);
+  if (!archiveFile) await fetchVerified(source.url, archive, source.sha256, progress);
+  if (await hashFile(archive) !== source.sha256) throw new Error('Downloaded build tools failed their SHA-256 check.');
+  const staging = fs.mkdtempSync(path.join(parent, '.unpack-'));
+  const previous = `${root}.previous-${crypto.randomUUID()}`;
+  let replaced = false;
+  let keptPrevious = false;
+  try {
+    progress(null, 'Unpacking build tools…');
+    const top = platform === 'win32' ? 'msys64' : 'env';
+    await require('tar').x({ file: archive, cwd: staging, strict: true,
+      filter(name) {
+        const entry = name.replace(/^\.\//, '');
+        return entry === top || entry.startsWith(`${top}/`) || entry === 'THIRD-PARTY-NOTICES.md' ||
+          entry.startsWith('package-sources/');
+      }
+    });
+    if (!fs.existsSync(path.join(staging, top))) throw new Error('Build tool archive is incomplete.');
+    if (fs.existsSync(root)) { fs.renameSync(root, previous); keptPrevious = true; }
+    fs.renameSync(staging, root);
+    replaced = true;
+    if (platform === 'linux') {
+      const prefix = path.join(root, 'env');
+      await run(path.join(prefix, 'bin', 'python3'), [path.join(prefix, 'bin', 'conda-unpack')],
+        { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare build tools');
     }
-    for (const name of ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', '7z', 'bash'])
-      if (!fs.existsSync(path.join(bin, name))) throw new Error(`Build tool ${name} is missing after download.`);
-  } else {
-    const archive = path.join(root, 'msys2-base.sfx.exe');
-    await ensureArchive(archive, MSYS2, progress);
-    const msys = path.join(root, 'msys64');
-    fs.rmSync(msys, { recursive: true, force: true });
-    await run(archive, ['-y', `-o${root}`], { cwd: root }, 'Unpack build tools');
-    const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
-    if (!fs.existsSync(bash)) throw new Error('Portable MSYS2 did not unpack correctly.');
-    const env = { ...process.env, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'usr', 'bin'), process.env.PATH || ''].join(path.delimiter) };
-    await run(bash, ['-lc', 'pacman -Syu --noconfirm'], { cwd: msys, env }, 'Update private build tools');
-    await run(bash, ['-lc', `pacman -Syu --noconfirm --needed ${WINDOWS_PACKAGES.join(' ')}`],
-      { cwd: msys, env }, 'Prepare build tools');
-    if (!fs.existsSync(path.join(msys, 'mingw32', 'bin', 'g++.exe')))
-      throw new Error('Windows compiler is missing after tool setup.');
+    fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: TOOLSET, platform,
+      archiveSha256: source.sha256 }), { mode: 0o600 });
+    if (!privateReady(userData, platform)) throw new Error('Downloaded build tools are incomplete or do not match this release.');
+    const env = environment(userData, process.env, platform);
+    const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');
+    if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : 'g++'), ['--version'], env))
+      throw new Error('The downloaded compiler could not start on this computer.');
+    if (keptPrevious) fs.rmSync(previous, { recursive: true, force: true });
+    return status(userData, platform);
+  } catch (error) {
+    if (replaced) fs.rmSync(root, { recursive: true, force: true });
+    if (keptPrevious) fs.renameSync(previous, root);
+    throw error;
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+    if (!archiveFile) fs.rmSync(archive, { force: true });
   }
-  fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: TOOLSET, platform }), { mode: 0o600 });
-  return status(userData, platform);
 }
 
-module.exports = { TOOLSET, LINUX_PACKAGES, WINDOWS_PACKAGES, rootFor, privateReady,
-  systemReady, status, environment, fetchVerified, prepare };
+module.exports = { TOOLSET, rootFor, privateReady, systemReady, status, environment,
+  fetchVerified, hashFile, assetFor, prepare };

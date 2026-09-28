@@ -52,6 +52,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Attach the verified build tools for this OS
+        if: runner.os != 'macOS'
+        run: node scripts/download-tool-asset.js
+        env:
+          SMS_RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure optional macOS signing
         if: runner.os == 'macOS'
         shell: bash

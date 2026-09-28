@@ -1,5 +1,6 @@
 node_modules/
 dist/
 preview/
+tool-assets/
 *.log
 .DS_Store
