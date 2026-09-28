@@ -7,9 +7,9 @@ const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
 
 function platformInfo(platform = process.platform) {
-  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64', '32'], defaultArch: '64' };
+  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64'], defaultArch: '64' };
   if (platform === 'darwin') return { name: 'macOS', id: 'macos', arches: ['64'], defaultArch: '64' };
-  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: ['32'], defaultArch: '32' };
+  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: ['64'], defaultArch: '64' };
   throw new Error(`This port does not support ${platform}.`);
 }
 
@@ -110,6 +110,13 @@ function binaryPath(root, settings, platform = process.platform) {
   return path.join(root, 'build', `${info.id}-${settings.arch}${suffix}`, platform === 'win32' ? 'sms.exe' : 'sms');
 }
 
+function legacyWindowsInstall(saved, platform = process.platform) {
+  if (platform !== 'win32' || !saved.repo || String(saved.settings?.arch) !== '32') return null;
+  const settings = { ...normalizeSettings(saved.settings, platform), arch: '32' };
+  if (!fs.existsSync(binaryPath(saved.repo, settings, platform))) return null;
+  return { repo: saved.repo, settings, rom: saved.rom, saveDirectory: saved.saveDirectory || null };
+}
+
 function commandFor(root, action, args = [], platform = process.platform, environment = process.env) {
   if (platform !== 'win32') {
     const file = action === 'python' || action === 'textures' ? 'python3' : path.join(root, `${action}.sh`);
@@ -119,7 +126,7 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   }
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
-  if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
+  if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
   const script = action === 'python'
     ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py eclipse --iso "$(cygpath -u "$2")"'
     : action === 'textures'
@@ -130,8 +137,8 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   return {
     command: bash,
     args: ['-c', script, 'sms-launcher', root, ...args], cwd: root,
-    env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
@@ -143,13 +150,13 @@ function eclipseBuildCommand(root, settings, platform = process.platform, enviro
   if (platform !== 'win32') return { command: script, args: [root, settings.arch], cwd: root, env: environment };
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
-  if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
+  if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
   return {
     command: bash,
     args: ['-c', 'exec "$(cygpath -u "$1")" "$(cygpath -u "$2")" "$3"', 'sms-launcher', script, root, settings.arch],
     cwd: root,
-    env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
@@ -159,17 +166,17 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
   if (platform !== 'win32') return { command: binary, args: [disc], cwd: root, env: environment };
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
-  if (!fs.existsSync(bash)) throw new Error(`MSYS2 MINGW32 is required. Install it at ${msys} or set MSYS2_ROOT.`);
+  if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
   return {
     command: bash,
     args: ['-c', 'cd "$(cygpath -u "$1")" && exec "$(cygpath -u "$2")" "$(cygpath -u "$3")"', 'sms-launcher', root, binary, disc],
     cwd: root,
-    env: { ...environment, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
   texturePackDirectory, texturePackInstalled, buildEnvironment, gameDisc, binaryPath,
-  commandFor, eclipseBuildCommand, eclipseRunCommand };
+  commandFor, eclipseBuildCommand, eclipseRunCommand, legacyWindowsInstall };

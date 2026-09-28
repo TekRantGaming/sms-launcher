@@ -63,8 +63,8 @@ function privateReady(userData, platform = process.platform) {
       .every(name => fs.existsSync(path.join(root, 'env', 'bin', name)));
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
-        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'bin', 'g++.exe')) &&
-        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'include', 'SDL2', 'SDL.h'))
+        fs.existsSync(path.join(root, 'msys64', 'mingw64', 'bin', 'g++.exe')) &&
+        fs.existsSync(path.join(root, 'msys64', 'mingw64', 'include', 'SDL2', 'SDL.h'))
       : ['g++', 'git', 'cmake', 'python3', 'make', 'patch', 'objcopy', '7z']
         .every(name => fs.existsSync(path.join(root, 'env', 'bin', name))) &&
         fs.existsSync(path.join(root, 'env', 'lib', 'libSDL2-2.0.so.0'));
@@ -87,9 +87,9 @@ function systemReady(platform = process.platform, env = process.env) {
   if (platform === 'win32') {
     const root = env.MSYS2_ROOT || 'C:\\msys64';
     return ['usr/bin/bash.exe', 'usr/bin/git.exe', 'usr/bin/patch.exe',
-      'mingw32/bin/g++.exe', 'mingw32/bin/cmake.exe', 'mingw32/bin/ninja.exe',
-      'mingw32/bin/python.exe', 'mingw32/include/SDL2/SDL.h',
-      'mingw32/lib/libSDL2.dll.a'].every(file => fs.existsSync(path.join(root, file))) &&
+      'mingw64/bin/g++.exe', 'mingw64/bin/cmake.exe', 'mingw64/bin/ninja.exe',
+      'mingw64/bin/python.exe', 'mingw64/include/SDL2/SDL.h',
+      'mingw64/lib/libSDL2.dll.a'].every(file => fs.existsSync(path.join(root, file))) &&
       (fs.existsSync(path.join(root, 'mingw64', 'bin', '7z.exe')) || commandWorks('7z', ['-h'], env));
   }
   return false;
@@ -139,8 +139,9 @@ function environmentAtRoot(root, base = process.env, platform = process.platform
     };
   }
   const msys = path.join(root, 'msys64');
-  return { ...base, MSYS2_ROOT: msys, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
-    PATH: [path.join(msys, 'mingw32', 'bin'), path.join(msys, 'mingw64', 'bin'),
+  const target = base.SMS_ARCH === '32' ? 'mingw32' : 'mingw64';
+  return { ...base, MSYS2_ROOT: msys, MSYSTEM: target === 'mingw32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+    PATH: [path.join(msys, target, 'bin'),
       path.join(msys, 'usr', 'bin'), base.PATH || ''].join(path.delimiter) };
 }
 
@@ -266,7 +267,7 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     progress(null, 'Checking build tools…');
     if (!privateReady(userData, platform)) throw new Error('Downloaded build tools are incomplete or do not match this release.');
     const env = environment(userData, process.env, platform);
-    const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');
+    const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw64', 'bin') : path.join(root, 'env', 'bin');
     if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : platform === 'darwin' ? 'clang++' : 'g++'), ['--version'], env))
       throw new Error('The downloaded compiler could not start on this computer.');
     if (platform === 'darwin') {

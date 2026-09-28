@@ -59,8 +59,12 @@ test('fallback play can use a recorded older Windows toolset without downloading
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-old-tools-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   fs.mkdirSync(path.join(dir, 'msys64'));
-  const env = tools.environmentAtRoot(dir, { PATH: 'existing path' }, 'win32');
+  const env = tools.environmentAtRoot(dir, { PATH: 'existing path', SMS_ARCH: '32' }, 'win32');
   assert.equal(env.MSYS2_ROOT, path.join(dir, 'msys64'));
   assert.equal(env.MSYSTEM, 'MINGW32');
   assert.ok(env.PATH.includes(path.join(dir, 'msys64', 'usr', 'bin')));
+  const current = tools.environmentAtRoot(dir, { PATH: 'existing path', SMS_ARCH: '64' }, 'win32');
+  assert.equal(current.MSYSTEM, 'MINGW64');
+  assert.ok(current.PATH.startsWith(path.join(dir, 'msys64', 'mingw64', 'bin')));
+  assert.equal(current.PATH.includes(path.join(dir, 'msys64', 'mingw32', 'bin')), false);
 });

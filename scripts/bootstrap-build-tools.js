@@ -29,8 +29,8 @@ const LINUX_PACKAGES = [
   'grep', 'sed', 'gawk', 'findutils', 'curl'
 ];
 const WINDOWS_PACKAGES = [
-  'mingw-w64-i686-gcc', 'mingw-w64-i686-cmake', 'mingw-w64-i686-SDL2',
-  'mingw-w64-i686-ninja', 'mingw-w64-i686-python', 'mingw-w64-x86_64-7zip',
+  'mingw-w64-x86_64-gcc', 'mingw-w64-x86_64-cmake', 'mingw-w64-x86_64-SDL2',
+  'mingw-w64-x86_64-ninja', 'mingw-w64-x86_64-python', 'mingw-w64-x86_64-7zip',
   'patch', 'git'
 ];
 
@@ -92,12 +92,12 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
     await run(archive, ['-y', `-o${root}`], { cwd: root }, 'Unpack build tools');
     const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
     if (!fs.existsSync(bash)) throw new Error('Portable MSYS2 did not unpack correctly.');
-    const env = { ...process.env, MSYSTEM: 'MINGW32', CHERE_INVOKING: '1',
+    const env = { ...process.env, MSYSTEM: 'MINGW64', CHERE_INVOKING: '1',
       PATH: [path.join(msys, 'usr', 'bin'), process.env.PATH || ''].join(path.delimiter) };
     await run(bash, ['-lc', 'pacman -Syu --noconfirm'], { cwd: msys, env }, 'Update private build tools');
     await run(bash, ['-lc', `pacman -Syu --noconfirm --needed ${WINDOWS_PACKAGES.join(' ')}`],
       { cwd: msys, env }, 'Prepare build tools');
-    if (!fs.existsSync(path.join(msys, 'mingw32', 'bin', 'g++.exe')))
+    if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'g++.exe')))
       throw new Error('Windows compiler is missing after tool setup.');
   }
   fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: toolsetFor(platform), platform }), { mode: 0o600 });

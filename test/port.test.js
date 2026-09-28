@@ -37,11 +37,14 @@ test('requires an owned GMSE01 Rev 0 image and supports plain and CISO headers',
 });
 
 test('offers only platform-supported architectures and keeps builds separate', () => {
-  assert.deepEqual(port.platformInfo('linux').arches, ['64', '32']);
+  assert.deepEqual(port.platformInfo('linux').arches, ['64']);
   assert.deepEqual(port.platformInfo('darwin').arches, ['64']);
-  assert.deepEqual(port.platformInfo('win32').arches, ['32']);
+  assert.deepEqual(port.platformInfo('win32').arches, ['64']);
   const windows = port.normalizeSettings({ arch: '64' }, 'win32');
-  assert.equal(windows.arch, '32');
+  assert.equal(windows.arch, '64');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'win32').arch, '64');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'linux').arch, '64');
+  assert.match(port.binaryPath('/port', windows, 'win32'), /windows-64[\\/]sms.exe$/);
   const settings = port.normalizeSettings({ eclipse: true, arch: '64' }, 'linux');
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_DISC_IMAGE, '/my/disc.iso');
@@ -49,6 +52,29 @@ test('offers only platform-supported architectures and keeps builds separate', (
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS, '0');
   assert.equal(port.buildEnvironment({ ...settings, textures: true }, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS,
     path.join('/port', 'mods', 'textures'));
+});
+
+test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
+  const root = temporary();
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const saved = { repo: root, rom: 'own-disc.iso', settings: { arch: '32', textures: true }, saveDirectory: 'my-saves' };
+  assert.equal(port.legacyWindowsInstall(saved, 'win32'), null);
+  const binary = port.binaryPath(root, saved.settings, 'win32');
+  fs.mkdirSync(path.dirname(binary), { recursive: true });
+  fs.writeFileSync(binary, 'previous 32-bit game');
+  const previous = port.legacyWindowsInstall(saved, 'win32');
+  assert.equal(previous.settings.arch, '32');
+  assert.equal(previous.settings.textures, true);
+  assert.equal(previous.saveDirectory, saved.saveDirectory);
+  assert.equal(fs.readFileSync(binary, 'utf8'), 'previous 32-bit game');
+  const msys = path.join(root, 'tools');
+  fs.mkdirSync(path.join(msys, 'usr', 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(msys, 'usr', 'bin', 'bash.exe'), '');
+  const cmd = port.commandFor(root, 'run', [saved.rom], 'win32', { SMS_ARCH: previous.settings.arch, MSYS2_ROOT: msys });
+  assert.equal(cmd.env.MSYSTEM, 'MINGW32');
+  assert.ok(cmd.env.PATH.startsWith(path.join(msys, 'mingw32', 'bin')));
+  assert.equal(port.legacyWindowsInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
+  assert.equal(port.legacyWindowsInstall(saved, 'linux'), null);
 });
 
 test('recognizes an installed texture pack and points the game at its folder', () => {
@@ -102,7 +128,7 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     const cmd = port.commandFor('C:\\port', 'build', [rom], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.equal(cmd.args.at(-1), rom);
     assert.doesNotMatch(cmd.args[1], /Sunshine/);
-    assert.match(cmd.env.PATH, /mingw32/);
+    assert.match(cmd.env.PATH, /mingw64/);
     const textures = port.commandFor('C:\\port', 'textures', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
     assert.match(textures.args[1], /get\.py textures/);
     assert.equal(textures.args.at(-1), 'C:\\port');
