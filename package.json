@@ -1,6 +1,6 @@
 {
   "name": "sms-launcher",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "private": true,
   "author": "sms-port contributors",
   "license": "MIT",
@@ -51,6 +51,7 @@
       ]
     },
     "mac": {
+      "artifactName": "SMS-Launcher-${version}-mac-${arch}.${ext}",
       "target": [
         "dmg",
         "zip"

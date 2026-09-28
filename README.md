@@ -4,7 +4,17 @@
 
 Electron setup and play launcher for [sms-pc-port](https://github.com/chasem-dev/sms-pc-port). The launcher is a **sibling** of the port checkout (`sms-launcher/` next to `sms-port/`) during development. It does not include game data.
 
-## Start
+## Install on Mac
+
+Download **`SMS-Launcher-<version>-mac-universal.dmg`** from [the latest release](https://github.com/chasem-dev/sms-launcher/releases/latest). It supports both Intel and Apple Silicon Macs.
+
+1. Double-click the DMG.
+2. Drag **SMS Launcher.app** onto **Applications** in the window that opens.
+3. Eject the disk image, then open SMS Launcher from Applications.
+
+The **`mac-universal.zip`** is an app archive, used by the automatic updater and available for manual extraction. If using it manually, move the extracted app into Applications before opening it. Running the app directly from the DMG or a protected Downloads location can prevent launcher updates. Installing the launcher keeps your existing game setup and saved games in place.
+
+## Start locally
 
 1. Install Node.js 22 or newer and npm. From `sms-launcher/`, run `npm ci` and `npm start`.
 2. Download the setup files to the suggested location, or choose a different install location first. On Linux and Windows, Step 1 also downloads the required build tool archive, verifies its SHA-256 checksum, and unpacks it into the launcher's private data folder. Development runs detect a neighboring `sms-port/` automatically. An existing setup folder can be selected later in **Settings → Game files**.
