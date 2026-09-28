@@ -30,7 +30,8 @@
             <h2 id="setup-download-title">Download setup files</h2><p id="setup-download-description">We'll get the files and tools needed to prepare your own disc. The game is not included.</p>
             <div id="repo-location" class="setup-file"><span>Install location</span><strong id="repo-path"></strong></div>
             <div class="actions"><button id="choose-location" class="subtle">Change location</button></div>
-            <p class="helper">Any tools we download stay in the launcher's own folder.</p>
+            <p id="tool-location-note" class="helper">Any tools we download stay in the launcher's own folder.</p>
+            <button id="mac-setup-help" class="subtle" hidden>Mac setup help</button>
           </section>
           <section id="setup-step-2" class="panel setup-step" aria-label="Choose disc image" hidden>
             <div class="setup-step-heading"><h2>Choose your disc image</h2><button class="setup-back" data-setup-back>← Back</button></div>
@@ -84,9 +85,24 @@
           <section class="panel maintenance-panel" aria-label="Game setup tools"><h2>Game setup</h2><button id="build" class="solid rebuild-button" hidden>Rebuild game</button><p id="rebuild-note" class="helper" hidden>Makes a fresh playable copy. Your saves stay safe.</p><label class="switch"><span><strong>Update automatically</strong><small>Checks the launcher and setup files.</small></span><input id="autoUpdate" type="checkbox"><i></i></label><div class="actions"><button class="subtle" id="update-port">Check for updates</button><button class="subtle" id="clean-preview">See removable files</button><button class="subtle danger" id="clean">Free up space</button></div><p class="helper">Your disc file and saves are kept safe.</p><button class="text-button" id="docs">Open setup help ↗</button></section>
           <section class="panel maintenance-panel" aria-label="Saved game backups"><h2>Saved games</h2><p class="small-path" id="save-path"></p><div class="actions"><button class="subtle" id="backup-saves">Back up saves</button><button class="subtle" id="open-backups">Open backup folder</button></div><label class="backup-picker"><span>Restore a backup</span><select id="backup-list"></select></label><button class="subtle" id="restore-saves">Restore backup</button></section>
         </div>
+        <button id="mac-tools-settings" class="subtle" hidden>Mac setup help</button>
         <section class="panel activity-panel" aria-label="Activity log"><div class="activity-heading"><h2>Activity</h2><div><span id="activity-label">Nothing running</span><button class="subtle" id="stop" hidden>Stop task</button></div></div><pre id="log" aria-live="polite">Ready.</pre></section>
       </div>
       </section>
+    </dialog>
+
+    <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">
+      <div class="modal-head"><div><h1>Prepare this Mac</h1><p>A one-time setup before we can prepare your game.</p></div><button class="modal-close" data-close-modal aria-label="Close Mac setup help">×</button></div>
+      <div class="modal-body">
+        <p class="mac-help-intro">Mac setup uses Apple Command Line Tools and a few extra tools. Apple and Homebrew install these outside the launcher. Follow the steps below, then check again.</p>
+        <ul id="mac-requirements" class="mac-requirements" aria-live="polite"></ul>
+        <p id="mac-apple-note" class="mac-help-intro" hidden>Start with the Apple command below. Finish the installer that opens before continuing.</p>
+        <div id="mac-apple-command"></div>
+        <div id="mac-homebrew-help" hidden><p class="mac-help-intro">Next, install Homebrew using its official instructions. It may ask for your Mac password.</p><button id="open-homebrew-help" class="subtle">Open Homebrew instructions ↗</button></div>
+        <p id="mac-extra-note" class="mac-help-intro" hidden>Open Terminal and run each remaining command below. Rosetta may ask you to accept Apple's license.</p>
+        <div id="mac-extra-commands"></div>
+        <div class="actions mac-check-actions"><button id="check-mac-tools" class="solid">Check again</button><span id="mac-check-result" role="status"></span></div>
+      </div>
     </dialog>
 
     <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Loading…</span><span class="status-separator">·</span><span id="app-update">Checking for updates…</span><span class="byo">Bring your own ROM · No game data included</span></footer>

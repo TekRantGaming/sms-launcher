@@ -236,6 +236,13 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .installation-row .small-path { display: block; min-height: 0; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .installation-row button { flex: none; }
 .message { z-index: 20; }
+.mac-help-intro { margin: 0 0 12px; color: #526e77; font-size: 13px; line-height: 1.5; }
+.mac-requirements { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; padding: 0; margin: 16px 0; list-style: none; }
+.mac-requirements li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.mac-command { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 16px; padding: 10px 12px; border: 1px solid #d5dfde; border-radius: 8px; background: #fff; }
+.mac-command code { overflow-wrap: anywhere; font-size: 12px; }
+#mac-homebrew-help { margin-bottom: 16px; }
+.mac-check-actions { margin-top: 18px; font-size: 12px; color: #526e77; }
 @media (max-height: 800px) {
   .viewport { padding-top: 16px; padding-bottom: 12px; }
   .home-page { gap: 10px; }

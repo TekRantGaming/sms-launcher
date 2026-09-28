@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('sms', {
   state: () => ipcRenderer.invoke('state'),
+  checkTools: () => ipcRenderer.invoke('check-tools'),
+  openMacToolHelp: () => ipcRenderer.invoke('open-mac-tool-help'),
+  copyMacCommand: index => ipcRenderer.invoke('copy-mac-command', index),
   saveSettings: value => ipcRenderer.invoke('save-settings', value),
   chooseRom: () => ipcRenderer.invoke('choose-rom'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),

@@ -8,6 +8,22 @@ const { spawnSync } = require('node:child_process');
 
 const assets = require('./tool-assets.json');
 const TOOLSET = assets.toolset;
+const macTools = require('./mac-tools');
+let macInspection;
+let macCheck;
+let macCheckedAt = 0;
+
+async function check(userData, { platform = process.platform, env = process.env, refresh = false, archives = false } = {}) {
+  if (platform !== 'darwin') return status(userData, platform, env);
+  if (refresh || !macInspection || Date.now() - macCheckedAt > 15000) {
+    if (!macCheck) macCheck = macTools.inspect(env).then(result => {
+      macInspection = result;
+      macCheckedAt = Date.now();
+    }).finally(() => { macCheck = null; });
+    await macCheck;
+  }
+  return macTools.report(macInspection, { archives });
+}
 
 function rootFor(userData, platform = process.platform) {
   return path.join(userData, 'build-tools', platform === 'win32' ? 'windows-x64' : 'linux-x64');
@@ -38,7 +54,7 @@ function commandWorks(command, args = [], env = process.env) {
 }
 
 function systemReady(platform = process.platform, env = process.env) {
-  if (platform === 'darwin') return true; // Keep macOS's existing Apple toolchain path.
+  if (platform === 'darwin') return macTools.report(macInspection).ready;
   if (platform === 'linux') {
     const commands = ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++'];
     return commands.every(command => commandWorks(command, ['--version'], env)) &&
@@ -56,13 +72,14 @@ function systemReady(platform = process.platform, env = process.env) {
   return false;
 }
 
-function status(userData, platform = process.platform, env = process.env) {
+function status(userData, platform = process.platform, env = process.env, options = {}) {
+  if (platform === 'darwin') return macTools.report(macInspection, options);
   if (privateReady(userData, platform)) return { ready: true, mode: 'private' };
-  if (platform === 'darwin' && systemReady(platform, env)) return { ready: true, mode: 'system' };
   return { ready: false, mode: 'missing' };
 }
 
 function environment(userData, base = process.env, platform = process.platform) {
+  if (platform === 'darwin') return macTools.environment(base);
   if (!privateReady(userData, platform)) return { ...base };
   const root = rootFor(userData, platform);
   if (platform === 'linux') {
@@ -142,8 +159,12 @@ function assetFor(platform = process.platform) {
 }
 
 async function prepare(userData, { platform = process.platform, run, progress = () => {},
-  forcePrivate = false, source = null, archiveFile = null } = {}) {
-  if (platform === 'darwin') return status(userData, platform);
+  forcePrivate = false, source = null, archiveFile = null, archives = false } = {}) {
+  if (platform === 'darwin') {
+    const found = await check(userData, { platform, refresh: true, archives });
+    if (!found.ready) throw new Error(found.message);
+    return found;
+  }
   if (!['linux', 'win32'].includes(platform)) throw new Error('This operating system is not supported.');
   if (process.arch !== 'x64') throw new Error('Setup tools require a 64-bit Intel or AMD computer.');
   if (!forcePrivate && privateReady(userData, platform)) return status(userData, platform);
@@ -215,5 +236,5 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   }
 }
 
-module.exports = { TOOLSET, rootFor, privateReady, systemReady, status, environment,
+module.exports = { TOOLSET, rootFor, privateReady, systemReady, status, environment, check,
   fetchVerified, hashFile, assetFor, prepare };

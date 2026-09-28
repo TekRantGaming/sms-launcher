@@ -1,4 +1,4 @@
-name: Smoke test private build tools
+name: Smoke test build tools
 on:
   push:
     branches: [main]
@@ -23,3 +23,21 @@ jobs:
           node-version: 22
       - run: npm ci --ignore-scripts
       - run: node scripts/smoke-build-tools.js
+  compile-mac-port:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - name: Install the documented Mac prerequisites on the CI runner
+        run: |
+          brew install cmake python3 llvm sevenzip
+          if [[ "$(sysctl -n hw.optional.arm64)" == 1 ]]; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+      - name: Verify Finder tool detection and compile both game variants without a ROM
+        run: node scripts/smoke-mac-tools.js

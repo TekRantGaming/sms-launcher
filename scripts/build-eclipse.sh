@@ -17,9 +17,13 @@ cmake_args=(-DSMS_ARCH="$arch" -DSMS_ECLIPSE=ON -DSMS_BUNDLE_DISC= -DSMS_GX_BUIL
 if [[ "$os" == windows ]]; then cmake_args+=(-G Ninja); fi
 
 if [[ "$os" == macos ]]; then
-  command -v brew >/dev/null || { echo "Install Homebrew and LLVM; see BUILD.md." >&2; exit 1; }
-  llvm_bin="$(brew --prefix llvm)/bin"
-  [[ -x "$llvm_bin/llvm-objcopy" ]] || { echo "Install Homebrew LLVM; see BUILD.md." >&2; exit 1; }
+  objcopy=""
+  for candidate in "$(brew --prefix llvm 2>/dev/null)/bin/llvm-objcopy" /opt/homebrew/opt/llvm/bin/llvm-objcopy /usr/local/opt/llvm/bin/llvm-objcopy; do
+    if [[ -x "$candidate" ]]; then objcopy="$candidate"; break; fi
+  done
+  [[ -n "$objcopy" ]] || objcopy=$(command -v llvm-objcopy || true)
+  [[ -n "$objcopy" ]] || { echo "Install LLVM; open Mac setup help in the launcher." >&2; exit 1; }
+  llvm_bin=$(dirname "$objcopy")
   export PATH="$llvm_bin:$PATH"
   if [[ "$(uname -m)" == arm64 ]] && ! arch -x86_64 true >/dev/null 2>&1; then
     echo "Install Rosetta 2; see BUILD.md." >&2; exit 1

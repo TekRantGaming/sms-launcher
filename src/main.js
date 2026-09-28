@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -137,11 +137,31 @@ function toolEnv(base = process.env) {
   return buildTools.environment(app.getPath('userData'), base);
 }
 
+function toolOptions() {
+  return { archives: Boolean(config.settings.textures || config.settings.eclipse) };
+}
+
+function toolsStatus() {
+  return buildTools.status(app.getPath('userData'), process.platform, process.env, toolOptions());
+}
+
+async function checkTools(refresh = false) {
+  return buildTools.check(app.getPath('userData'), { ...toolOptions(), refresh });
+}
+
 async function ensureBuildTools() {
   if (preparingTools) throw new Error('Wait for build tools to finish preparing.');
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
   const userData = app.getPath('userData');
   const forcePrivate = process.env.SMS_FORCE_PRIVATE_TOOLS === '1';
+  if (process.platform === 'darwin') {
+    preparingTools = true;
+    try {
+      const found = await checkTools(true);
+      if (!found.ready) throw new Error(found.message);
+      return;
+    } finally { preparingTools = false; }
+  }
   const found = buildTools.status(userData);
   if (found.mode === 'private' || (!forcePrivate && found.ready)) return;
   preparingTools = true;
@@ -329,7 +349,7 @@ function state() {
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
     binaryReady: repoReady && binaryReady(),
-    tools: buildTools.status(app.getPath('userData')),
+    tools: toolsStatus(),
     active: active ? { label: active.label, detail: active.detail,
       percent: active.percent, startedAt: active.startedAt, canStop: Boolean(active.child) } : null, appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
@@ -379,7 +399,15 @@ function registerHandlers() {
     return { fullscreen: target.isFullScreen() };
   });
   ipcMain.handle('window-close', event => senderWindow(event)?.close());
-  ipcMain.handle('state', () => state());
+  ipcMain.handle('state', async () => { await checkTools(); return state(); });
+  ipcMain.handle('check-tools', async () => { await checkTools(true); return state(); });
+  ipcMain.handle('open-mac-tool-help', () => shell.openExternal('https://docs.brew.sh/Installation'));
+  ipcMain.handle('copy-mac-command', (_event, index) => {
+    if (process.platform !== 'darwin') throw new Error('This help is for macOS.');
+    const commands = toolsStatus().commands.split('\n').filter(Boolean);
+    if (!Number.isInteger(index) || !commands[index]) throw new Error('Check your Mac tools again.');
+    clipboard.writeText(commands[index]);
+  });
   ipcMain.handle('save-settings', (_event, input) => {
     config.settings = port.normalizeSettings(input);
     saveConfig();
