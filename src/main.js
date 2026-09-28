@@ -59,18 +59,17 @@ function saveConfig() {
 function loadConfig() {
   let saved = {};
   try { saved = JSON.parse(fs.readFileSync(configFile(), 'utf8')); } catch (_) { /* first run */ }
-  const legacy32Bit = port.legacy32BitInstall(saved);
   config = {
     repo: typeof saved.repo === 'string' ? saved.repo : defaultRepo(),
     rom: typeof saved.rom === 'string' ? saved.rom : '',
     settings: port.normalizeSettings(saved.settings),
     installRoot: typeof saved.installRoot === 'string' ? saved.installRoot : null,
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
-    previousInstall: legacy32Bit || saved.previousInstall || null,
-    completedSetup: Boolean(saved.completedSetup || legacy32Bit)
+    previousInstall: saved.previousInstall || null,
+    completedSetup: Boolean(saved.completedSetup)
   };
   for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
-    for (const arch of ['win32', 'linux'].includes(process.platform) ? ['64', '32'] : port.platformInfo().arches)
+    for (const arch of port.platformInfo().arches)
       for (const eclipse of [false, true]) {
         try { if (game.recoverBuild(root, { arch, eclipse })) log('Recovered your previous game after interrupted setup.'); }
         catch (error) { log(`Game recovery: ${error.message}`); }
@@ -447,7 +446,10 @@ function registerHandlers() {
   });
   ipcMain.handle('save-settings', (_event, input) => {
     if (operation || active) throw new Error('Finish the current task before changing settings.');
-    config.settings = port.normalizeSettings(input);
+    const settings = port.normalizeSettings(input);
+    if (settings.arch !== config.settings.arch || settings.eclipse !== config.settings.eclipse)
+      config.previousInstall = port.playableInstall({ ...config, saveDirectory: currentSaveDirectory() }) || config.previousInstall;
+    config.settings = settings;
     saveConfig();
     return state();
   });

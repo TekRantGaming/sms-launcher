@@ -7,9 +7,9 @@ const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
 
 function platformInfo(platform = process.platform) {
-  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64'], defaultArch: '64' };
+  if (platform === 'linux') return { name: 'Linux', id: 'linux', arches: ['64', '32'], defaultArch: '64' };
   if (platform === 'darwin') return { name: 'macOS', id: 'macos', arches: ['64'], defaultArch: '64' };
-  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: ['64'], defaultArch: '64' };
+  if (platform === 'win32') return { name: 'Windows', id: 'windows', arches: ['64', '32'], defaultArch: '64' };
   throw new Error(`This port does not support ${platform}.`);
 }
 
@@ -110,9 +110,9 @@ function binaryPath(root, settings, platform = process.platform) {
   return path.join(root, 'build', `${info.id}-${settings.arch}${suffix}`, platform === 'win32' ? 'sms.exe' : 'sms');
 }
 
-function legacy32BitInstall(saved, platform = process.platform) {
-  if (!['win32', 'linux'].includes(platform) || !saved.repo || String(saved.settings?.arch) !== '32') return null;
-  const settings = { ...normalizeSettings(saved.settings, platform), arch: '32' };
+function playableInstall(saved, platform = process.platform) {
+  if (!saved.repo || !saved.settings) return null;
+  const settings = normalizeSettings(saved.settings, platform);
   if (!fs.existsSync(binaryPath(saved.repo, settings, platform))) return null;
   return { repo: saved.repo, settings, rom: saved.rom, saveDirectory: saved.saveDirectory || null };
 }
@@ -137,8 +137,8 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   return {
     command: bash,
     args: ['-c', script, 'sms-launcher', root, ...args], cwd: root,
-    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
@@ -155,14 +155,18 @@ function eclipseBuildCommand(root, settings, platform = process.platform, enviro
     command: bash,
     args: ['-c', 'exec "$(cygpath -u "$1")" "$(cygpath -u "$2")" "$3"', 'sms-launcher', script, root, settings.arch],
     cwd: root,
-    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 
 function eclipseRunCommand(root, settings, disc, platform = process.platform, environment = process.env) {
   const binary = binaryPath(root, settings, platform);
+  if (platform === 'linux' && settings.arch === '32' && environment.SMS_LINUX32_ROOT)
+    return { command: path.join(environment.SMS_LINUX32_ROOT, 'i686-buildroot-linux-gnu', 'sysroot', 'lib', 'ld-linux.so.2'),
+      args: ['--library-path', environment.SMS_LINUX32_LIBRARY_PATH, binary, disc], cwd: root,
+      env: { ...environment, SMS_GAME_EXECUTABLE: binary } };
   if (platform !== 'win32') return { command: binary, args: [disc], cwd: root, env: environment };
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
   const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
@@ -171,12 +175,12 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
     command: bash,
     args: ['-c', 'cd "$(cygpath -u "$1")" && exec "$(cygpath -u "$2")" "$(cygpath -u "$3")"', 'sms-launcher', root, binary, disc],
     cwd: root,
-    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
-      PATH: [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
+    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
+      PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
   };
 }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
   texturePackDirectory, texturePackInstalled, buildEnvironment, gameDisc, binaryPath,
-  commandFor, eclipseBuildCommand, eclipseRunCommand, legacy32BitInstall };
+  commandFor, eclipseBuildCommand, eclipseRunCommand, playableInstall };

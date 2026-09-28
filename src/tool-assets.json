@@ -8,10 +8,10 @@
       "size": 457135767,
       "sources": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-2026-09-27.3/sms-build-tools-linux-x64-2026-09-27.3-sources.tar.gz",
       "notices": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-2026-09-27.3/sms-build-tools-linux-x64-2026-09-27.3-NOTICES.md",
-      "toolset": "2026-09-27.3"
+      "toolset": "2026-09-28.2"
     },
     "win32": {
-      "toolset": "2026-09-28.1",
+      "toolset": "2026-09-28.2",
       "name": "sms-build-tools-windows-x64-2026-09-28.1.tar.gz",
       "url": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-windows-x64-2026-09-28.1/sms-build-tools-windows-x64-2026-09-28.1.tar.gz",
       "sha256": "6615d9531ff106ac96d8a993a1c11ed65d48b30a269008b7105c67d4b042d118",

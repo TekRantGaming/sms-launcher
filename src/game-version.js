@@ -52,7 +52,7 @@ function compilerToolRoot(root, settings) {
   try {
     const cache = fs.readFileSync(path.join(path.dirname(port.binaryPath(root, settings)), 'CMakeCache.txt'), 'utf8');
     const compiler = cache.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1].trim().replaceAll('\\', '/');
-    return compiler?.match(/^(.*)\/(?:env\/bin|msys64\/mingw(?:32|64)\/bin)\/[^/]+$/)?.[1] || null;
+    return compiler?.match(/^(.*)\/(?:env\/bin|env\/targets\/linux32\/bin|msys64\/(?:mingw(?:32|64)|opt)\/bin)\/[^/]+$/)?.[1] || null;
   } catch (_) { return null; }
 }
 

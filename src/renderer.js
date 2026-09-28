@@ -203,7 +203,9 @@ function refresh(data) {
 
   changing = true;
   $('arch').replaceChildren(...platform.arches.map(arch => {
-    const option = document.createElement('option'); option.value = arch; option.textContent = `${arch} bit`; return option;
+    const option = document.createElement('option'); option.value = arch;
+    option.textContent = arch === '64' && platform.arches.length > 1 ? '64-bit (recommended)' : `${arch}-bit`;
+    return option;
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];

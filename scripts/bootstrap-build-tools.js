@@ -26,11 +26,12 @@ const LINUX_PACKAGES = [
   'python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch', 'binutils',
   'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
   'libegl-devel', 'libgl-devel', '7zip=26.03', 'bash', 'coreutils',
-  'grep', 'sed', 'gawk', 'findutils', 'curl'
+  'grep', 'sed', 'gawk', 'findutils', 'curl', 'file'
 ];
 const WINDOWS_PACKAGES = [
   'mingw-w64-x86_64-gcc', 'mingw-w64-x86_64-cmake', 'mingw-w64-x86_64-SDL2',
   'mingw-w64-x86_64-ninja', 'mingw-w64-x86_64-python', 'mingw-w64-x86_64-7zip',
+  'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
   'patch', 'git'
 ];
 
@@ -84,6 +85,7 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', '7z', 'bash'];
     for (const name of required)
       if (!fs.existsSync(path.join(bin, name))) throw new Error(`Build tool ${name} is missing after download.`);
+    if (platform === 'linux') await require('./prepare-linux32').prepare(prefix, run);
   } else {
     const archive = path.join(root, 'msys2-base.sfx.exe');
     await ensureArchive(archive, MSYS2, progress);
@@ -99,6 +101,12 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       { cwd: msys, env }, 'Prepare build tools');
     if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'g++.exe')))
       throw new Error('Windows compiler is missing after tool setup.');
+    const runtimes = path.join(msys, 'opt', 'i686-w64-mingw32', 'bin');
+    for (const version of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32')))
+      for (const file of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32', version)).filter(name => name.endsWith('.dll')))
+        fs.copyFileSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32', version, file), path.join(runtimes, file));
+    if (!fs.existsSync(path.join(msys, 'opt', 'bin', 'i686-w64-mingw32-g++.exe')))
+      throw new Error('The x64-host compiler for 32-bit Windows games is missing.');
   }
   fs.writeFileSync(path.join(root, 'ready.json'), JSON.stringify({ toolset: toolsetFor(platform), platform }), { mode: 0o600 });
   return status(userData, platform);

@@ -37,13 +37,13 @@ test('requires an owned GMSE01 Rev 0 image and supports plain and CISO headers',
 });
 
 test('offers only platform-supported architectures and keeps builds separate', () => {
-  assert.deepEqual(port.platformInfo('linux').arches, ['64']);
+  assert.deepEqual(port.platformInfo('linux').arches, ['64', '32']);
   assert.deepEqual(port.platformInfo('darwin').arches, ['64']);
-  assert.deepEqual(port.platformInfo('win32').arches, ['64']);
+  assert.deepEqual(port.platformInfo('win32').arches, ['64', '32']);
   const windows = port.normalizeSettings({ arch: '64' }, 'win32');
   assert.equal(windows.arch, '64');
-  assert.equal(port.normalizeSettings({ arch: '32' }, 'win32').arch, '64');
-  assert.equal(port.normalizeSettings({ arch: '32' }, 'linux').arch, '64');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'win32').arch, '32');
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'linux').arch, '32');
   assert.match(port.binaryPath('/port', windows, 'win32'), /windows-64[\\/]sms.exe$/);
   const settings = port.normalizeSettings({ eclipse: true, arch: '64' }, 'linux');
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
@@ -58,11 +58,11 @@ test('Windows upgrade keeps the existing 32-bit game available with its original
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const saved = { repo: root, rom: 'own-disc.iso', settings: { arch: '32', textures: true }, saveDirectory: 'my-saves' };
-  assert.equal(port.legacy32BitInstall(saved, 'win32'), null);
+  assert.equal(port.playableInstall(saved, 'win32'), null);
   const binary = port.binaryPath(root, saved.settings, 'win32');
   fs.mkdirSync(path.dirname(binary), { recursive: true });
   fs.writeFileSync(binary, 'previous 32-bit game');
-  const previous = port.legacy32BitInstall(saved, 'win32');
+  const previous = port.playableInstall(saved, 'win32');
   assert.equal(previous.settings.arch, '32');
   assert.equal(previous.settings.textures, true);
   assert.equal(previous.saveDirectory, saved.saveDirectory);
@@ -73,8 +73,13 @@ test('Windows upgrade keeps the existing 32-bit game available with its original
   const cmd = port.commandFor(root, 'run', [saved.rom], 'win32', { SMS_ARCH: previous.settings.arch, MSYS2_ROOT: msys });
   assert.equal(cmd.env.MSYSTEM, 'MINGW32');
   assert.ok(cmd.env.PATH.startsWith(path.join(msys, 'mingw32', 'bin')));
-  assert.equal(port.legacy32BitInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
-  assert.equal(port.legacy32BitInstall(saved, 'linux'), null);
+  assert.equal(port.playableInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
+  assert.equal(port.normalizeSettings({ arch: '32' }, 'darwin').arch, '64');
+  assert.equal(port.normalizeSettings({}, 'win32').arch, '64');
+  const x64 = port.binaryPath(root, { arch: '64' }, 'win32');
+  fs.mkdirSync(path.dirname(x64), { recursive: true });
+  fs.writeFileSync(x64, 'previous 64-bit game');
+  assert.equal(port.playableInstall({ ...saved, settings: { arch: '64' } }, 'win32').settings.arch, '64');
 });
 
 test('recognizes an installed texture pack and points the game at its folder', () => {

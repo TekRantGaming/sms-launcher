@@ -6,6 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const tar = require('tar');
 const YAML = require('yaml');
+const { execFileSync } = require('node:child_process');
 const tools = require('../src/build-tools');
 const { prepareFromUpstream } = require('./bootstrap-build-tools');
 const { run, runMain } = require('./tool-run');
@@ -130,6 +131,55 @@ async function condaSources() {
   }
 }
 
+async function linux32Sources() {
+  const { SDK } = require('./prepare-linux32');
+  const sdk = path.join(root, 'env', 'targets', 'linux32');
+  const recipe = path.join(sourceRoot, 'recipes', 'linux32-sdk');
+  fs.mkdirSync(recipe, { recursive: true });
+  for (const name of ['README.txt', 'summary.csv', 'buildroot.config'])
+    fs.copyFileSync(path.join(sdk, name), path.join(recipe, name));
+  const buildroot = await downloadSource(SDK.buildroot, 'bootlin-buildroot-toolchains-2025.08.1.tar.gz');
+  const rows = JSON.parse(execFileSync(path.join(root, 'env', 'bin', 'python3'), ['-c',
+    'import csv,json,sys; print(json.dumps(list(csv.reader(open(sys.argv[1])))[1:]))', path.join(sdk, 'summary.csv')], { encoding: 'utf8' }));
+  const seen = new Set();
+  for (const [name, version, license, licenseFiles, archive] of rows) {
+    const key = `${name}-${version}`;
+    const item = { name, version, license, recipe: 'recipes/linux32-sdk', sources: [buildroot] };
+    if (archive !== 'not saved' && !seen.has(archive)) {
+      item.sources.push(await downloadSource(`https://toolchains.bootlin.com/downloads/releases/sources/${key}/${archive}`, archive));
+      seen.add(archive);
+    }
+    for (const file of licenseFiles.split(' ').filter(Boolean)) {
+      const licenseUrl = name === 'buildroot'
+        ? `https://raw.githubusercontent.com/bootlin/buildroot-toolchains/toolchains.bootlin.com-2025.08.1/${file}`
+        : `https://toolchains.bootlin.com/downloads/releases/licenses/${key}/${file}`;
+      const source = await downloadSource(licenseUrl,
+        `${key}-${file.replaceAll('/', '-')}`);
+      const destination = path.join(sdk, 'share', 'sms-launcher-licenses', key, file);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(path.join(sourceRoot, source.file), destination);
+    }
+    packages.push(item);
+    notices.push(`- Linux 32-bit SDK: ${name} ${version} (${license})`);
+  }
+  const graphics = path.join(sdk, 'graphics');
+  const debSources = path.join(graphics, 'package-sources');
+  fs.cpSync(debSources, path.join(sourceRoot, 'debian-sources'), { recursive: true });
+  for (const line of fs.readFileSync(path.join(graphics, 'packages.tsv'), 'utf8').trim().split('\n')) {
+    const [name, version, source, sourceVersion] = line.split('\t');
+    const copyright = path.join(graphics, 'usr', 'share', 'doc', name.replace(/:i386$/, ''), 'copyright');
+    packages.push({ name, version, source, sourceVersion, recipe: 'recipes/linux32-sdk/prepare-linux32-graphics.sh',
+      files: await Promise.all(fs.readdirSync(path.join(debSources, source)).map(async file => ({
+        file: `debian-sources/${source}/${file}`, sha256: await tools.hashFile(path.join(debSources, source, file)) }))) });
+    notices.push(`- Linux 32-bit graphics: ${name} ${version} (see usr/share/doc/${name.replace(/:i386$/, '')}/copyright)`);
+    if (!fs.existsSync(copyright)) throw new Error(`Missing Debian license information for ${name}`);
+  }
+  fs.copyFileSync(path.join(__dirname, 'prepare-linux32-graphics.sh'), path.join(recipe, 'prepare-linux32-graphics.sh'));
+  fs.copyFileSync(path.join(__dirname, 'prepare-linux32.js'), path.join(recipe, 'prepare-linux32.js'));
+  fs.copyFileSync(path.join(graphics, 'packages.tsv'), path.join(recipe, 'debian-packages.tsv'));
+  fs.rmSync(debSources, { recursive: true, force: true });
+}
+
 function dbField(text, name) { return text.match(new RegExp(`%${name}%\\r?\\n([\\s\\S]*?)(?:\\r?\\n\\r?\\n|$)`))?.[1].trim() || ''; }
 
 async function windowsSources() {
@@ -142,7 +192,7 @@ async function windowsSources() {
     const name = dbField(contents, 'NAME'), version = dbField(contents, 'VERSION');
     const base = dbField(contents, 'BASE') || name;
     const sourceName = `${base}-${version}.src.tar.zst`;
-    const sourceUrl = `https://repo.msys2.org/${base.startsWith('mingw-w64-') ? 'mingw' : 'msys'}/sources/${sourceName}`;
+    const sourceUrl = `https://repo.msys2.org/${base.startsWith('mingw-w64-') && !base.startsWith('mingw-w64-cross-') ? 'mingw' : 'msys'}/sources/${sourceName}`;
     let source;
     if (!sourceNames.has(sourceName)) {
       source = await downloadSource(sourceUrl, sourceName);
@@ -164,6 +214,7 @@ async function main() {
   const noticesFile = `sms-build-tools-${id}-${toolset}-NOTICES.md`;
   if (platform !== 'win32') {
     await condaSources();
+    if (platform === 'linux') await linux32Sources();
     const prefix = path.join(root, 'env');
     fs.writeFileSync(path.join(prefix, 'THIRD-PARTY-NOTICES.md'), `${notices.join('\n')}\n`);
     flattenLinks(prefix);

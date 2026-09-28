@@ -9,7 +9,7 @@ cd "$repo"
 case "$(uname -s)" in
   Linux) os=linux ;;
   Darwin) os=macos; [[ "$arch" == 64 ]] || { echo "macOS supports 64 bit only." >&2; exit 1; } ;;
-  MINGW*|MSYS*) os=windows; [[ "$arch" == 64 && "${MSYSTEM:-}" == MINGW64 ]] || { echo "Windows needs the MSYS2 MINGW64 64 bit toolchain." >&2; exit 1; } ;;
+  MINGW*|MSYS*) os=windows; [[ "$arch" == 64 || "$arch" == 32 ]] || { echo "Choose a 32-bit or 64-bit game build." >&2; exit 1; } ;;
   *) echo "Unsupported operating system." >&2; exit 1 ;;
 esac
 bdir="build/$os-$arch-eclipse"

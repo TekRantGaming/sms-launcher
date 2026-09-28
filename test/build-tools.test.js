@@ -68,3 +68,39 @@ test('fallback play can use a recorded older Windows toolset without downloading
   assert.ok(current.PATH.startsWith(path.join(dir, 'msys64', 'mingw64', 'bin')));
   assert.equal(current.PATH.includes(path.join(dir, 'msys64', 'mingw32', 'bin')), false);
 });
+
+test('32-bit Windows target uses x64 helpers and a cross compiler, with target DLLs first', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-cross-tools-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const cross = path.join(root, 'msys64', 'opt', 'bin', 'i686-w64-mingw32-g++.exe');
+  fs.mkdirSync(path.dirname(cross), { recursive: true });
+  fs.writeFileSync(cross, 'fixture');
+  const env = tools.environmentAtRoot(root, { PATH: 'system', SMS_ARCH: '32' }, 'win32');
+  assert.equal(env.MSYSTEM, 'MINGW64');
+  assert.equal(env.SMS_WINDOWS_32_CROSS, '1');
+  assert.equal(env.CXX, cross);
+  assert.equal(env.CMAKE_PREFIX_PATH, path.join(root, 'msys64', 'mingw32'));
+  assert.ok(env.PATH.startsWith(path.join(root, 'msys64', 'opt', 'i686-w64-mingw32', 'bin')));
+  fs.mkdirSync(path.join(root, 'msys64', 'usr', 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe'), '');
+  const command = require('../src/port').commandFor(root, 'build', [], 'win32', env);
+  assert.equal(command.env.MSYSTEM, 'MINGW64');
+  assert.equal(command.env.PATH, env.PATH);
+});
+
+test('32-bit Linux target selects the private SDK without changing the host helper library path', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-cross-tools-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const sdk = path.join(root, 'env', 'targets', 'linux32');
+  fs.mkdirSync(path.join(sdk, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(sdk, 'bin', 'i686-linux-g++'), 'fixture');
+  const env = tools.environmentAtRoot(root, { PATH: 'system', SMS_ARCH: '32' }, 'linux');
+  assert.equal(env.CXX, path.join(sdk, 'bin', 'i686-linux-g++'));
+  assert.equal(env.SMS_LINUX32_ROOT, sdk);
+  assert.equal(env.LD_LIBRARY_PATH, undefined);
+  assert.ok(env.PATH.startsWith(path.join(root, 'env', 'bin')));
+  assert.ok(env.SMS_LINUX32_LIBRARY_PATH.includes('i386-linux-gnu'));
+  const root64 = tools.environmentAtRoot(root, { SMS_ARCH: '64' }, 'linux');
+  assert.equal(root64.CXX, path.join(root, 'env', 'bin', 'g++'));
+  assert.equal(root64.SMS_LINUX32_ROOT, undefined);
+});

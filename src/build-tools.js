@@ -64,10 +64,14 @@ function privateReady(userData, platform = process.platform) {
     return platform === 'win32'
       ? fs.existsSync(path.join(root, 'msys64', 'usr', 'bin', 'bash.exe')) &&
         fs.existsSync(path.join(root, 'msys64', 'mingw64', 'bin', 'g++.exe')) &&
-        fs.existsSync(path.join(root, 'msys64', 'mingw64', 'include', 'SDL2', 'SDL.h'))
+        fs.existsSync(path.join(root, 'msys64', 'mingw64', 'include', 'SDL2', 'SDL.h')) &&
+        fs.existsSync(path.join(root, 'msys64', 'opt', 'bin', 'i686-w64-mingw32-g++.exe')) &&
+        fs.existsSync(path.join(root, 'msys64', 'mingw32', 'include', 'SDL2', 'SDL.h'))
       : ['g++', 'git', 'cmake', 'python3', 'make', 'patch', 'objcopy', '7z']
         .every(name => fs.existsSync(path.join(root, 'env', 'bin', name))) &&
-        fs.existsSync(path.join(root, 'env', 'lib', 'libSDL2-2.0.so.0'));
+        fs.existsSync(path.join(root, 'env', 'lib', 'libSDL2-2.0.so.0')) &&
+        fs.existsSync(path.join(root, 'env', 'targets', 'linux32', 'bin', 'i686-linux-g++')) &&
+        fs.existsSync(path.join(root, 'env', 'targets', 'linux32', 'graphics', 'usr', 'lib', 'i386-linux-gnu', 'libSDL2-2.0.so.0'));
   } catch (_) { return false; }
 }
 
@@ -131,14 +135,36 @@ function environmentAtRoot(root, base = process.env, platform = process.platform
   if (platform === 'linux') {
     const prefix = path.join(root, 'env');
     const bin = path.join(prefix, 'bin');
-    return {
+    const result = {
       ...base, PATH: [bin, base.PATH || ''].join(path.delimiter),
       CC: path.join(bin, 'gcc'), CXX: path.join(bin, 'g++'),
       CMAKE_PREFIX_PATH: [prefix, base.CMAKE_PREFIX_PATH || ''].filter(Boolean).join(path.delimiter),
       PKG_CONFIG_PATH: [path.join(prefix, 'lib', 'pkgconfig'), base.PKG_CONFIG_PATH || ''].filter(Boolean).join(path.delimiter)
     };
+    const sdk = path.join(prefix, 'targets', 'linux32');
+    if (base.SMS_ARCH === '32' && fs.existsSync(path.join(sdk, 'bin', 'i686-linux-g++'))) {
+      result.CC = path.join(sdk, 'bin', 'i686-linux-gcc');
+      result.CXX = path.join(sdk, 'bin', 'i686-linux-g++');
+      result.SMS_LINUX32_ROOT = sdk;
+      result.SMS_LINUX32_LIBRARY_PATH = [path.join(sdk, 'i686-buildroot-linux-gnu', 'sysroot', 'lib'),
+        path.join(sdk, 'i686-buildroot-linux-gnu', 'sysroot', 'usr', 'lib'),
+        path.join(sdk, 'graphics', 'usr', 'lib', 'i386-linux-gnu'),
+        path.join(sdk, 'graphics', 'lib', 'i386-linux-gnu'),
+        path.join(sdk, 'graphics', 'usr', 'lib', 'i386-linux-gnu', 'pulseaudio')].join(':');
+      result.LIBGL_DRIVERS_PATH = path.join(sdk, 'graphics', 'usr', 'lib', 'i386-linux-gnu', 'dri');
+      result.__EGL_VENDOR_LIBRARY_FILENAMES = path.join(sdk, 'graphics', 'usr', 'share', 'glvnd', 'egl_vendor.d', '50_mesa.json');
+    }
+    return result;
   }
   const msys = path.join(root, 'msys64');
+  if (base.SMS_ARCH === '32' && fs.existsSync(path.join(msys, 'opt', 'bin', 'i686-w64-mingw32-g++.exe'))) {
+    return { ...base, MSYS2_ROOT: msys, MSYSTEM: 'MINGW64', CHERE_INVOKING: '1', SMS_WINDOWS_32_CROSS: '1',
+      CC: path.join(msys, 'opt', 'bin', 'i686-w64-mingw32-gcc.exe'),
+      CXX: path.join(msys, 'opt', 'bin', 'i686-w64-mingw32-g++.exe'),
+      CMAKE_PREFIX_PATH: path.join(msys, 'mingw32'),
+      PATH: [path.join(msys, 'opt', 'i686-w64-mingw32', 'bin'), path.join(msys, 'mingw32', 'bin'),
+        path.join(msys, 'mingw64', 'bin'), path.join(msys, 'usr', 'bin'), base.PATH || ''].join(path.delimiter) };
+  }
   const target = base.SMS_ARCH === '32' ? 'mingw32' : 'mingw64';
   return { ...base, MSYS2_ROOT: msys, MSYSTEM: target === 'mingw32' ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
     PATH: [path.join(msys, target, 'bin'),
@@ -257,6 +283,9 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       const prefix = path.join(root, 'env');
       await run(path.join(prefix, 'bin', 'python3'), [path.join(prefix, 'bin', 'conda-unpack')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare build tools');
+      if (platform === 'linux') await run(path.join(prefix, 'bin', 'bash'),
+        [path.join(prefix, 'targets', 'linux32', 'relocate-sdk.sh')],
+        { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare 32-bit game support');
     } else {
       // Machine-specific contents are excluded from the archive; MSYS2 still needs these folders.
       for (const directory of ['tmp', 'home'])
