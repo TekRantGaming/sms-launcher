@@ -12,7 +12,8 @@ const capture = async (command, args, cwd, env) => execFileSync(command, args, {
 const { run, runMain } = require('./tool-run');
 
 async function main() {
-  const userData = path.join(os.tmpdir(), 'sms-launcher-private-tools-ci');
+  const userData = path.join(os.tmpdir(), process.platform === 'win32'
+    ? 'SMS Launcher Private Tools CI' : 'sms-launcher-private-tools-ci');
   const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
   const generated = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : null;
   const source = generated?.platforms[process.platform] || null;
@@ -35,7 +36,8 @@ async function main() {
     : path.join(toolRoot, 'env', 'bin', 'git');
   if (!fs.existsSync(git)) throw new Error(`Private Git is missing: ${git}`);
   if (process.platform === 'linux') env.PATH = path.join(toolRoot, 'env', 'bin');
-  const root = path.join(os.tmpdir(), 'sms-port-private-tools-ci');
+  const root = path.join(os.tmpdir(), process.platform === 'win32'
+    ? 'SMS Port Private Tools CI' : 'sms-port-private-tools-ci');
   if (fs.existsSync(root)) throw new Error(`Smoke build folder already exists: ${root}`);
   await game.checkout(root, { git, run, capture, env });
   if (process.platform === 'win32') {
@@ -49,8 +51,9 @@ async function main() {
   if (!fs.existsSync(binary)) throw new Error(`Build completed without ${binary}`);
   const cache = fs.readFileSync(path.join(path.dirname(binary), 'CMakeCache.txt'), 'utf8');
   const compiler = cache.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1];
-  const privatePathFragment = '/sms-launcher-private-tools-ci/build-tools/';
-  if (!compiler || !compiler.toLowerCase().replaceAll('\\', '/').includes(privatePathFragment))
+  // Windows tools may report the long path while os.tmpdir uses an 8.3 alias.
+  const privatePrefix = `${fs.realpathSync.native(toolRoot).replaceAll('\\', '/').toLowerCase()}/`;
+  if (!compiler || !fs.realpathSync.native(compiler).toLowerCase().replaceAll('\\', '/').startsWith(privatePrefix))
     throw new Error(`Port was not compiled with the private C++ toolchain: ${compiler || 'unknown'}`);
   if (process.platform === 'win32') {
     const machine = await capture(compiler, ['-dumpmachine'], root, env);

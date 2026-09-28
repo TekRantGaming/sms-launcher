@@ -39,7 +39,9 @@ jobs:
         env:
           SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-${{ matrix.platform }}.json
       - uses: actions/upload-artifact@v4
-        if: inputs.platform == 'all' || inputs.platform == matrix.platform
+        # Retain prepared archives for diagnosis/reverification if smoke fails.
+        # The publish job still requires successful preparation and smoke.
+        if: always() && (inputs.platform == 'all' || inputs.platform == matrix.platform)
         with:
           name: tools-${{ matrix.platform }}
           path: tool-assets/*
