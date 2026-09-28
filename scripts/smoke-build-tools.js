@@ -115,6 +115,14 @@ async function main() {
           SMS_DISC_IMAGE: path.join(userData, 'intentionally-missing.iso') } });
     if (start.error || start.signal || start.status !== 1 || !start.stderr.includes('not a usable GameCube disc image'))
       throw new Error(`${arch}-bit game did not reach the missing-disc check: ${start.error?.message || start.stderr}`);
+    if (process.platform === 'linux' && arch === '32') {
+      const cmake = path.join(toolRoot, 'env', 'bin', 'cmake');
+      await run(cmake, ['-S', root, '-B', path.dirname(binary), '-DSMS_GX_BUILD_TESTS=ON'], { cwd: root, env });
+      await run(cmake, ['--build', path.dirname(binary), '--target', 'gx_selftest', '--parallel', '2'], { cwd: root, env });
+      const graphicsTest = path.join(path.dirname(binary), 'platform', 'gx', 'gx_selftest');
+      await run(loader, ['--library-path', env.SMS_LINUX32_LIBRARY_PATH, graphicsTest, '--headless'],
+        { cwd: root, env: { ...env, LIBGL_ALWAYS_SOFTWARE: '1' } }, 'Verify private 32-bit graphics runtime');
+    }
     process.stdout.write(`Private x64-host tools compiled and started the ${arch}-bit game: ${binary}\n`);
   }
 }
