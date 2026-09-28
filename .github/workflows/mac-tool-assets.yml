@@ -33,7 +33,7 @@ jobs:
       - run: npm test
       - name: Package private tools and corresponding sources
         run: node scripts/package-build-tools.js
-      - name: Compile both variants using only relocated tools and the Apple SDK
+      - name: Compile Sunshine using only relocated tools and the Apple SDK
         run: node scripts/smoke-mac-tools.js
         env:
           SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-macos-${{ matrix.arch }}.json

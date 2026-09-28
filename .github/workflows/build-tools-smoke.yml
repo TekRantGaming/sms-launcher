@@ -42,5 +42,5 @@ jobs:
           if [[ "$(sysctl -n hw.optional.arm64)" == 1 ]]; then
             sudo softwareupdate --install-rosetta --agree-to-license
           fi
-      - name: Verify Finder tool detection and compile both game variants without a ROM
+      - name: Verify Finder tool detection and compile Sunshine without a ROM
         run: node scripts/smoke-mac-tools.js

@@ -31,9 +31,8 @@ async function main() {
     const root = path.join(userData, 'port');
     await run('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, root], { env });
     await run(path.join(root, 'build.sh'), [], { cwd: root, env }, 'Compile Sunshine on Mac without a ROM');
-    await run(path.join(__dirname, 'build-eclipse.sh'), [root, '64'], { cwd: root, env }, 'Compile Eclipse on Mac without a ROM');
-    for (const eclipse of [false, true]) {
-      const binary = port.binaryPath(root, { arch: '64', eclipse });
+    {
+      const binary = port.binaryPath(root, { arch: '64', eclipse: false });
       if (!fs.existsSync(binary)) throw new Error(`Missing binary: ${binary}`);
       const cache = fs.readFileSync(path.join(path.dirname(binary), 'CMakeCache.txt'), 'utf8');
       if (!/^CMAKE_OSX_ARCHITECTURES:STRING=x86_64$/m.test(cache)) throw new Error('Mac build must target x86_64.');
