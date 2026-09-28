@@ -6,12 +6,20 @@ const os = require('node:os');
 const path = require('node:path');
 const buildTools = require('../src/build-tools');
 const port = require('../src/port');
+const game = require('../src/game-version');
+const { execFileSync } = require('node:child_process');
+const capture = async (command, args, cwd, env) => execFileSync(command, args, { cwd, env, encoding: 'utf8' }).trim();
 const { run, runMain } = require('./tool-run');
 
 async function main() {
   const userData = path.join(os.tmpdir(), 'sms-launcher-private-tools-ci');
   const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
-  const source = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).platforms[process.platform] : null;
+  const generated = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : null;
+  const source = generated?.platforms[process.platform] || null;
+  if (source) {
+    source.toolset ||= generated.toolset;
+    require('../src/tool-assets.json').platforms[process.platform] = source;
+  }
   const archiveFile = source ? path.join(path.dirname(manifestFile), source.name) : null;
   await buildTools.prepare(userData, { forcePrivate: true, run, source, archiveFile,
     progress(percent, detail) {
@@ -29,8 +37,7 @@ async function main() {
   if (process.platform === 'linux') env.PATH = path.join(toolRoot, 'env', 'bin');
   const root = path.join(os.tmpdir(), 'sms-port-private-tools-ci');
   if (fs.existsSync(root)) throw new Error(`Smoke build folder already exists: ${root}`);
-  await run(git, ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, root],
-    { cwd: os.tmpdir(), env }, 'Clone source using private Git');
+  await game.checkout(root, { git, run, capture, env });
   if (process.platform === 'win32') {
     const bash = path.join(env.MSYS2_ROOT, 'usr', 'bin', 'bash.exe');
     await run(bash, ['-lc', 'cd "$(cygpath -u "$1")" && ./build.sh', 'sms-launcher', root],

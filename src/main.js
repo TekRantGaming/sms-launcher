@@ -7,12 +7,14 @@ const { spawn } = require('node:child_process');
 const port = require('./port');
 const saves = require('./saves');
 const buildTools = require('./build-tools');
+const game = require('./game-version');
 const { activityFromLine } = require('./progress');
 
 let window;
 let config;
 let active = null;
 let preparingTools = false;
+let operation = null;
 let appUpdate = { state: 'idle', message: '' };
 const logLines = [];
 
@@ -53,9 +55,26 @@ function loadConfig() {
     repo: typeof saved.repo === 'string' ? saved.repo : defaultRepo(),
     rom: typeof saved.rom === 'string' ? saved.rom : '',
     settings: port.normalizeSettings(saved.settings),
-    portGeneration: Number.isSafeInteger(saved.portGeneration) ? saved.portGeneration : 0,
-    builtGeneration: saved.builtGeneration && typeof saved.builtGeneration === 'object' ? saved.builtGeneration : {}
+    installRoot: typeof saved.installRoot === 'string' ? saved.installRoot : null,
+    saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
+    previousInstall: saved.previousInstall || null,
+    completedSetup: Boolean(saved.completedSetup)
   };
+  for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
+    for (const arch of port.platformInfo().arches)
+      for (const eclipse of [false, true]) {
+        try { if (game.recoverBuild(root, { arch, eclipse })) log('Recovered your previous game after interrupted setup.'); }
+        catch (error) { log(`Game recovery: ${error.message}`); }
+      }
+  config.completedSetup ||= fs.existsSync(port.binaryPath(config.repo, config.settings));
+}
+
+async function exclusive(label, callback) {
+  if (operation || active || preparingTools) throw new Error('Wait for the current task to finish, or stop it first.');
+  operation = { label, detail: 'Starting…', percent: null, startedAt: Date.now() };
+  broadcast('activity', operation);
+  try { return await callback(); }
+  finally { operation = null; broadcast('activity', null); }
 }
 
 function requireRepo() {
@@ -63,7 +82,9 @@ function requireRepo() {
   return config.repo;
 }
 
-function currentSaveDirectory() { return saves.saveDirectory(config.repo); }
+function currentSaveDirectory() {
+  return process.env.SMS_SAVE_DIR ? saves.saveDirectory(config.repo) : config.saveDirectory || saves.saveDirectory(config.repo);
+}
 
 function makeSaveBackup(reason) {
   if (active) throw new Error('Stop the running game or task before backing up saves.');
@@ -200,50 +221,39 @@ async function ensureBuildTools() {
 }
 
 async function updatePort() {
+  requireRepo();
+  port.validateRom(config.rom);
   await ensureBuildTools();
-  const root = requireRepo();
-  if (!fs.existsSync(path.join(root, '.git'))) throw new Error('These setup files cannot update automatically. Download a fresh copy to get updates.');
-  const env = toolEnv();
-  await launch('git', ['fetch', '--recurse-submodules=no'], { cwd: root, env }, 'Check for port updates');
-  const tracking = await capture('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], root, env);
-  const counts = await capture('git', ['rev-list', '--left-right', '--count', `HEAD...${tracking}`], root, env);
-  const [ahead, behind] = counts.split(/\s+/).map(Number);
-  if (behind === 0) { log('Your setup files are up to date.'); return { updated: false, behind: 0 }; }
-  if (ahead > 0) throw new Error(`Local branch has ${ahead} unpublished commit(s) and ${behind} upstream commit(s). Resolve that branch before updating.`);
-  makeSaveBackup('before-port-update');
-  await launch('git', ['merge', '--ff-only', tracking], { cwd: root, env }, `Update port (${behind} commits)`);
-  config.portGeneration += 1;
-  saveConfig();
-  await launch('git', ['submodule', 'update', '--init', 'decomp'], { cwd: root, env }, 'Update decompilation');
-  log('Setup files updated. Your game will be prepared again the next time you play.');
-  return { updated: true, behind };
+  if (game.isCurrent(config.repo, config.settings)) {
+    log('Your game is up to date for this launcher release.');
+    return state();
+  }
+  await build();
+  return state();
 }
 
 async function installPort() {
   await ensureBuildTools();
-  const destination = path.resolve(config.repo);
+  const destination = config.repo;
+  if (port.isPort(destination)) return { ok: true };
   if (fs.existsSync(destination)) {
-    if (port.isPort(destination)) return { ok: true };
     if (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length)
-      throw new Error('That folder has other files in it. Choose a different download folder.');
+      throw new Error('That folder is not empty. Choose another download location.');
+    fs.rmdirSync(destination);
   }
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  await launch('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, destination],
-    { cwd: path.dirname(destination), env: toolEnv() }, 'Download port source');
+  await game.checkout(destination, { run: launch, capture, env: toolEnv() });
   return { ok: true };
 }
 
-async function installEclipse() {
+async function installEclipse(root = requireRepo()) {
   await ensureBuildTools();
-  const root = requireRepo();
   const rom = port.validateRom(config.rom);
   const cmd = port.commandFor(root, 'python', [rom], process.platform, toolEnv());
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
 }
 
-async function installTextures() {
+async function installTextures(root = requireRepo()) {
   await ensureBuildTools();
-  const root = requireRepo();
   if (port.texturePackInstalled(root)) {
     log('HD textures are already installed.');
     return { installed: true };
@@ -256,74 +266,64 @@ async function installTextures() {
 }
 
 function binaryReady(root = config.repo, settings = config.settings) {
-  if (!port.isPort(root)) return false;
-  const binary = port.binaryPath(root, settings);
-  return fs.existsSync(binary) && (!config.portGeneration || config.builtGeneration[binary] === config.portGeneration);
+  return port.isPort(root) && fs.existsSync(port.binaryPath(root, settings));
 }
 
-function keepPreviousBuildIfToolchainChanged(root, settings) {
-  if (buildTools.status(app.getPath('userData')).mode !== 'private') return;
-  const buildDirectory = path.dirname(port.binaryPath(root, settings));
-  const cache = path.join(buildDirectory, 'CMakeCache.txt');
-  if (!fs.existsSync(cache)) return;
-  const expected = buildTools.rootFor(app.getPath('userData'));
-  const contents = fs.readFileSync(cache, 'utf8');
-  const compiler = contents.match(/^CMAKE_CXX_COMPILER:[^=]*=(.+)$/m)?.[1] || '';
-  if (compiler.startsWith(expected)) return;
-  const previous = `${buildDirectory}.previous-${Date.now()}`;
-  const backup = saves.moveBuildKeepingSaves(buildDirectory, previous, currentSaveDirectory());
-  if (backup && !backup.empty) log('Kept your saved games in place and made a backup before changing build tools.');
-  log(`Kept the earlier build at ${previous} because this setup uses different build tools.`);
-}
-
-async function build() {
-  await ensureBuildTools();
-  const root = requireRepo();
+async function build(forceFresh = false) {
+  const original = requireRepo();
+  const settings = { ...config.settings };
   const rom = port.validateRom(config.rom);
-  if (process.platform === 'darwin') {
-    const compatible = () => fs.existsSync(path.join(root, 'src', 'port_include', 'JSystem', 'JSupport', 'JSUStreamEnum.hpp')) &&
-      fs.existsSync(path.join(root, 'decomp-patches', 'modhook-zz-macos-data-exports.patch')) &&
-      fs.readFileSync(path.join(root, 'build.sh'), 'utf8').includes('/usr/bin/arch') &&
-      ['MarioJump', 'MarioRun'].every(name => {
-        const patch = path.join(root, 'decomp-patches', `modhook-32-${name}.patch`);
-        return fs.existsSync(patch) && fs.readFileSync(patch, 'utf8').includes('const_cast<TBGCheckData*>(mWallPlane)');
-      }) && fs.readFileSync(path.join(root, 'src', 'port_include', 'sms_modhook.h'), 'utf8')
-        .includes('SMS_MOD_WEAK_IMPORT') &&
-      fs.readFileSync(path.join(root, 'CMakeLists.txt'), 'utf8').includes('LINKER:-U,${_optional_mod_symbol}');
-    if (!compatible()) {
-      if (!config.settings.autoUpdate) throw new Error('Your setup files need a Mac compatibility update. Open Settings → Manage game → Check for updates, then try again.');
-      await updatePort();
-      if (!compatible()) throw new Error('These setup files do not have the Mac compatibility fixes yet. Download the latest setup files and try again.');
-    }
+  const saveDirectory = currentSaveDirectory();
+  makeSaveBackup('before-port-update');
+  await ensureBuildTools();
+  let root = original;
+  const sourceMarker = path.join(root, 'launcher-source.json');
+  const freshPinnedSource = fs.existsSync(sourceMarker) && !binaryReady(root, settings) &&
+    game.gitRevision(root) === game.release.commit && game.gitRevision(path.join(root, 'decomp')) === game.release.decomp;
+  if (forceFresh || (!game.isCurrent(root, settings) && !freshPinnedSource)) {
+    root = game.snapshotPath(config.installRoot || original, settings);
+    if (forceFresh || (fs.existsSync(root) && (game.gitRevision(root) !== game.release.commit ||
+        game.gitRevision(path.join(root, 'decomp')) !== game.release.decomp))) root += `.fresh-${Date.now()}`;
+    if (!fs.existsSync(root)) await game.checkout(root, { run: launch, capture, env: toolEnv(), reference: original });
+    if (game.gitRevision(root) !== game.release.commit || game.gitRevision(path.join(root, 'decomp')) !== game.release.decomp)
+      throw new Error('The update folder has changed. Choose another setup location in Settings and try again.');
+    game.carryUserFiles(original, root);
   }
-  const settings = config.settings;
-  if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse();
+  if (settings.textures && !port.texturePackInstalled(root)) await installTextures(root);
+  if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
   const disc = port.gameDisc(root, rom, settings.eclipse);
-  keepPreviousBuildIfToolchainChanged(root, settings);
   const env = toolEnv(port.buildEnvironment(settings, disc, root));
   const cmd = settings.eclipse
     ? port.eclipseBuildCommand(root, settings, process.platform, env)
     : port.commandFor(root, 'build', [disc], process.platform, env);
-  const result = await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port');
-  config.builtGeneration[port.binaryPath(root, settings)] = config.portGeneration;
-  saveConfig();
+  const result = await game.buildSafely(root, settings, saveDirectory,
+    () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port'));
+  // Preferences switch only after a successful build. Closing the app or a
+  // failed download/build leaves the last installation selected and playable.
+  const earlier = { ...config };
+  config = { ...config, repo: root, installRoot: config.installRoot || original,
+    saveDirectory, completedSetup: true,
+    previousInstall: root !== original && binaryReady(original, settings)
+      ? { repo: original, settings, rom, saveDirectory } : config.previousInstall };
+  try { saveConfig(); }
+  catch (error) { config = earlier; throw error; }
+  log(`Game ${game.release.version} is ready. Your saved games stay in the same folder.`);
   return result;
 }
 
 async function setupGame() {
-  const root = requireRepo();
+  requireRepo();
   port.validateRom(config.rom);
-  if (config.settings.textures && !port.texturePackInstalled(root)) await installTextures();
-  if (!binaryReady()) await build();
+  if (!game.isCurrent(config.repo, config.settings)) await build();
+  else if (config.settings.textures && !port.texturePackInstalled(config.repo)) await installTextures();
   return state();
 }
 
-async function play() {
-  const root = requireRepo();
-  const settings = config.settings;
-  const rom = port.validateRom(config.rom);
-  if (!binaryReady(root, settings))
-    throw new Error('Set up this version of the game before playing.');
+async function play(installation = null) {
+  const root = installation?.repo || requireRepo();
+  const settings = installation?.settings || config.settings;
+  const rom = port.validateRom(installation?.rom || config.rom);
+  if (!binaryReady(root, settings)) throw new Error('Set up this version of the game before playing.');
   if (settings.textures && !port.texturePackInstalled(root))
     throw new Error('HD textures are on but have not been downloaded. Download them or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
@@ -341,11 +341,10 @@ async function play() {
 }
 
 async function launchGame() {
-  const root = requireRepo();
+  requireRepo();
   port.validateRom(config.rom);
-  if (config.settings.textures && !port.texturePackInstalled(root))
-    throw new Error('Download HD textures before playing, or turn them off in Settings.');
-  if (!binaryReady(root)) await build();
+  if (!binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings))) await build();
+  if (config.settings.textures && !port.texturePackInstalled(config.repo)) await installTextures();
   return play();
 }
 
@@ -373,8 +372,12 @@ function state() {
     texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
     binaryReady: repoReady && binaryReady(),
     tools: toolsStatus(),
+    game: { launcherVersion: app.getVersion(), availableVersion: game.release.version,
+      installedVersion: game.installed(config.repo, config.settings)?.gameVersion || null,
+      toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings),
+      previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
     active: active ? { label: active.label, detail: active.detail,
-      percent: active.percent, startedAt: active.startedAt, canStop: Boolean(active.child) } : null, appUpdate, logs: logLines,
+      percent: active.percent, startedAt: active.startedAt, canStop: Boolean(active.child) } : operation, appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -431,11 +434,13 @@ function registerHandlers() {
     clipboard.writeText(commands[index]);
   });
   ipcMain.handle('save-settings', (_event, input) => {
+    if (operation || active) throw new Error('Finish the current task before changing settings.');
     config.settings = port.normalizeSettings(input);
     saveConfig();
     return state();
   });
   ipcMain.handle('choose-rom', async () => {
+    if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, {
       title: 'Choose a file from your own Super Mario Sunshine disc',
       properties: ['openFile'], filters: [{ name: 'Game disc files', extensions: ['iso', 'gcm', 'ciso'] }]
@@ -446,39 +451,48 @@ function registerHandlers() {
     return state();
   });
   ipcMain.handle('choose-repo', async () => {
+    if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, { title: 'Choose a folder with setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
     if (!port.isPort(chosen.filePaths[0])) throw new Error('That folder does not have the setup files this launcher needs.');
     config.repo = chosen.filePaths[0];
-    config.portGeneration = 0;
-    config.builtGeneration = {};
+    config.installRoot = null;
+    config.saveDirectory = null;
+    config.previousInstall = null;
+    config.completedSetup = fs.existsSync(port.binaryPath(config.repo, config.settings));
     saveConfig();
     return state();
   });
   ipcMain.handle('choose-location', async () => {
+    if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, { title: 'Choose where to download setup files', properties: ['openDirectory'] });
     if (chosen.canceled) return state();
     const destination = path.join(chosen.filePaths[0], 'sms-pc-port');
     if (fs.existsSync(destination) && (!fs.statSync(destination).isDirectory() || fs.readdirSync(destination).length))
       throw new Error('That location already has a game setup folder. Choose another location.');
     config.repo = destination;
-    config.portGeneration = 0;
-    config.builtGeneration = {};
+    config.installRoot = null;
+    config.saveDirectory = null;
+    config.previousInstall = null;
+    config.completedSetup = fs.existsSync(port.binaryPath(config.repo, config.settings));
     saveConfig();
     return state();
   });
-  ipcMain.handle('install-port', installPort);
-  ipcMain.handle('update-port', updatePort);
-  ipcMain.handle('install-eclipse', installEclipse);
-  ipcMain.handle('install-textures', installTextures);
-  ipcMain.handle('build', build);
-  ipcMain.handle('setup-game', setupGame);
-  ipcMain.handle('play', play);
-  ipcMain.handle('launch-game', launchGame);
-  ipcMain.handle('clean-preview', () => clean(true));
-  ipcMain.handle('backup-saves', () => makeSaveBackup('manual'));
+  const actions = { 'install-port': ['Download port source', installPort],
+    'update-port': ['Update game', updatePort], 'install-eclipse': ['Install Eclipse', () => installEclipse()],
+    'install-textures': ['Install UHD textures', () => installTextures()], 'build': ['Build game', () => build(true)],
+    'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', () => play()],
+    'launch-game': ['Prepare game', launchGame],
+    'play-previous': ['Play Super Mario Sunshine', () => {
+      if (!config.previousInstall) throw new Error('There is no previous version available.');
+      return play(config.previousInstall);
+    }] };
+  for (const [channel, [label, callback]] of Object.entries(actions))
+    ipcMain.handle(channel, () => exclusive(label, callback));
+  ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
+  ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
   ipcMain.handle('restore-saves', async (_event, id) => {
-    if (active) throw new Error('Stop the running game or task before restoring saves.');
+    if (operation || active) throw new Error('Stop the running game or task before restoring saves.');
     if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))
       throw new Error('Choose a backup for this memory card.');
     const answer = await dialog.showMessageBox(window, {
@@ -495,13 +509,13 @@ function registerHandlers() {
     fs.mkdirSync(saves.backupRoot(), { recursive: true, mode: 0o700 });
     return shell.openPath(saves.backupRoot());
   });
-  ipcMain.handle('clean', async () => {
+  ipcMain.handle('clean', () => exclusive('Clean build output', async () => {
     const answer = await dialog.showMessageBox(window, {
       type: 'warning', buttons: ['Cancel', 'Free up space'], defaultId: 0, cancelId: 0,
       message: 'Remove files the launcher can make again?', detail: 'The next play may take longer. Your disc file and saved games will be kept.'
     });
     return answer.response === 1 ? clean(false) : { cancelled: true };
-  });
+  }));
   ipcMain.handle('stop', () => {
     if (!active) return false;
     if (!active.child) return false;
@@ -531,15 +545,16 @@ app.whenReady().then(() => {
   createWindow();
   registerHandlers();
   setupAppUpdater();
-  setTimeout(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active && !preparingTools)
-      updatePort().catch(error => log(`Update check: ${error.message}`));
-  }, 5000);
-  setInterval(() => {
-    if (config.settings.autoUpdate && port.isPort(config.repo) && !active && !preparingTools)
-      updatePort().catch(error => log(`Update check: ${error.message}`));
-  }, 30 * 60 * 1000);
+  // The bundled manifest is the update check. Source downloads and builds
+  // start with Update & play, so opening the launcher never changes a game.
 });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+
+app.on('before-quit', () => {
+  // Stop an in-flight compiler before another launcher process can recover it.
+  if (!active?.child || active.label === 'Play Super Mario Sunshine') return;
+  if (process.platform === 'win32') spawn('taskkill', ['/PID', String(active.child.pid), '/T', '/F'], { windowsHide: true });
+  else { try { process.kill(-active.child.pid, 'SIGTERM'); } catch (_) { /* already exited */ } }
+});

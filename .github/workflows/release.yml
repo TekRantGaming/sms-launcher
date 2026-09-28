@@ -34,8 +34,16 @@ jobs:
             git push origin "$TAG"
           fi
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --generate-notes
-  publish:
+  verify-game:
     needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    uses: ./.github/workflows/build-tools-smoke.yml
+    with:
+      ref: ${{ needs.prepare.outputs.tag }}
+    permissions:
+      contents: read
+  publish:
+    needs: [prepare, verify-game]
     if: needs.prepare.outputs.release == 'true'
     strategy:
       fail-fast: false
@@ -87,7 +95,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
   finalize:
-    needs: [prepare, publish]
+    needs: [prepare, verify-game, publish]
     if: needs.prepare.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:

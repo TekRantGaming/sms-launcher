@@ -68,8 +68,7 @@ function backupReason(reason) {
 }
 
 function requiredStep(data) {
-  if (data.repoReady && data.romReady && data.binaryReady &&
-      (!data.config.settings.textures || data.texturesInstalled)) return 0;
+  if (data.repoReady && data.romReady && (data.config.completedSetup || data.binaryReady)) return 0;
   if (!data.repoReady || !data.tools.ready) return 1;
   if (!data.romReady) return 2;
   if (!data.binaryReady || (data.config.settings.textures && !data.texturesInstalled)) return 3;
@@ -84,7 +83,9 @@ function showWizardStep(data) {
   $('page-home').classList.toggle('ready-mode', ready);
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
-  $('home-description').textContent = ready ? 'Ready when you are.' : "Three steps, then you're ready to play.";
+  $('home-description').textContent = ready
+    ? data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
+    : "Three steps, then you're ready to play.";
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
     ? 'The setup files are ready. Download the tools needed to prepare your game.'
@@ -103,7 +104,8 @@ function showWizardStep(data) {
   $('choose-location').hidden = data.repoReady;
   for (let step = 1; step <= 3; step++)
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
-  if (ready) $('play').textContent = '▶  Play';
+  if (ready) $('play').textContent = data.game.needsUpdate && data.config.settings.autoUpdate
+    ? '↻  Update & play' : !data.binaryReady ? '▶  Prepare & play' : '▶  Play';
   else {
     $('step-count').textContent = `Step ${wizardStep} of 3`;
     document.querySelectorAll('.setup-progress-track i').forEach((segment, index) => {
@@ -122,6 +124,7 @@ function renderActivity(active) {
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
   $('task-status').textContent = active ? taskName(active.label)
+    : current?.game.needsUpdate && current.config.settings.autoUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
   if (!working) return;
   $('progress-title').textContent = taskName(active.label);
@@ -177,6 +180,14 @@ function refresh(data) {
   $('activity-label').textContent = taskName(data.active?.label);
   renderActivity(data.active);
   $('app-update').textContent = data.appUpdate.message;
+  $('game-versions').textContent = `Launcher ${data.game.launcherVersion} · Game ${data.game.installedVersion || 'earlier installation'} · Build tools ${data.game.toolVersion}`;
+  $('game-update-note').textContent = data.game.needsUpdate
+    ? `Game ${data.game.availableVersion} is ready to set up. Your current version stays available until setup succeeds.`
+    : 'Your game is up to date.';
+  $('play-installed').hidden = !data.binaryReady || !data.game.needsUpdate;
+  $('play-installed').disabled = Boolean(data.active);
+  $('play-previous').hidden = !data.game.previousReady;
+  $('play-previous').disabled = Boolean(data.active);
   $('save-path').textContent = `Saved games: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
   $('backup-saves').disabled = Boolean(data.active);
   $('restore-saves').disabled = Boolean(data.active) || !data.backups.length;
@@ -196,6 +207,8 @@ function refresh(data) {
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
+    $(key).disabled = Boolean(data.active);
   changing = false;
 }
 
@@ -256,7 +269,7 @@ function showError(error) { closeModal(); setMessage(error.message || String(err
 async function action(method) {
   setMessage('');
   try {
-    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updatePort', 'clean', 'cleanPreview'].includes(method)) closeModal();
+    if (['installPort', 'installEclipse', 'installTextures', 'build', 'setupGame', 'launchGame', 'updatePort', 'play', 'playPrevious', 'clean', 'cleanPreview'].includes(method)) closeModal();
     const result = await window.sms[method]();
     if (result && result.config) refresh(result);
     await sync();
@@ -297,12 +310,12 @@ function appendLog(line) {
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom',
   'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation',
-  'update-port': 'updatePort', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
+  'update-port': 'updatePort', 'play-installed': 'play', 'play-previous': 'playPrevious', 'build': 'build', 'install-eclipse': 'installEclipse', 'install-textures': 'installTextures',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
 $('play').addEventListener('click', () => {
-  if (wizardStep === 0) action('launchGame');
+  if (wizardStep === 0) runWizardAction('launchGame');
   else if (wizardStep === 1) {
     if (current.platform.id === 'macos' && !current.tools.appleReady) { showMacHelp(); return; }
     if (current.repoReady && current.tools.ready) { wizardStep = 2; refresh(current); }

@@ -13,6 +13,8 @@ const { run, runMain } = require('./tool-run');
 const platform = process.platform;
 const id = tools.platformId();
 const toolset = tools.toolsetFor();
+if (tools.assetFor().name.endsWith(`-${toolset}.tar.gz`))
+  throw new Error('Bump this platform entry’s toolset before publishing a new immutable archive.');
 const output = path.resolve(process.env.SMS_TOOL_ASSET_OUTPUT || 'tool-assets');
 const userData = process.env.SMS_TOOLS_PREPARED_DATA || path.join(os.tmpdir(), 'sms-tools-publisher');
 const root = tools.rootFor(userData);
@@ -21,7 +23,7 @@ const notices = ['# Build tool notices and source code', '',
   'These assets contain third-party build tools, not game code or game data.',
   'Each package retains its own license. See the installed license files and the corresponding source asset.',
   'The source asset contains upstream sources, build recipes, patches, and package metadata.',
-  `Source download: https://github.com/chasem-dev/sms-launcher/releases/download/${platform === 'darwin' ? 'mac-' : ''}build-tools-${toolset}/sms-build-tools-${id}-${toolset}-sources.tar.gz`, ''];
+  `Source download: https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-${id}-${toolset}/sms-build-tools-${id}-${toolset}-sources.tar.gz`, ''];
 if (platform === 'darwin') notices.push('Apple Command Line Tools, its SDK/compiler, and Rosetta are not included. The clang/clang++ wrapper scripts invoke the existing Apple compiler installed by the user.', '');
 const packages = [];
 const downloaded = new Map();
@@ -187,9 +189,9 @@ async function main() {
   tar.c({ sync: true, gzip: true, file: path.join(output, sourcesName), cwd: sourceRoot, portable: true }, fs.readdirSync(sourceRoot));
   for (const file of [archive, path.join(output, sourcesName)])
     if (fs.statSync(file).size >= 2 ** 31) throw new Error(`Release asset exceeds GitHub's size limit: ${file}`);
-  const tag = `${platform === 'darwin' ? 'mac-' : ''}build-tools-${toolset}`;
+  const tag = `build-tools-${id}-${toolset}`;
   const base = `https://github.com/chasem-dev/sms-launcher/releases/download/${tag}`;
-  const manifest = { toolset, platforms: { [platform === 'darwin' ? process.arch : platform]: { name, url: `${base}/${name}`,
+  const manifest = { toolset, platforms: { [platform === 'darwin' ? process.arch : platform]: { toolset, name, url: `${base}/${name}`,
     sha256: await tools.hashFile(archive), size: fs.statSync(archive).size, sources: `${base}/${sourcesName}`,
     notices: `${base}/${noticesFile}` } } };
   fs.writeFileSync(path.join(output, `manifest-${platform === 'darwin' ? id : platform}.json`), `${JSON.stringify(manifest, null, 2)}\n`);

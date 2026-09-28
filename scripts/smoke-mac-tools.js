@@ -7,6 +7,9 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const buildTools = require('../src/build-tools');
 const port = require('../src/port');
+const game = require('../src/game-version');
+const { execFileSync } = require('node:child_process');
+const capture = async (command, args, cwd, env) => execFileSync(command, args, { cwd, env, encoding: 'utf8' }).trim();
 const { run, runMain } = require('./tool-run');
 
 async function main() {
@@ -19,7 +22,12 @@ async function main() {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'sms Mac tools ci-'));
   try {
     const manifestFile = process.env.SMS_TOOL_ASSET_MANIFEST;
-    const source = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')).platforms[process.arch] : null;
+    const generated = manifestFile ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : null;
+    const source = generated?.platforms[process.arch] || null;
+    if (source) {
+      source.toolset ||= generated.toolset;
+      require('../src/mac-tool-assets.json').platforms[process.arch] = source;
+    }
     const archiveFile = source ? path.join(path.dirname(manifestFile), source.name) : null;
     await buildTools.prepare(userData, { forcePrivate: true, run, source, archiveFile, archives: true,
       progress(percent, detail) { if (detail) process.stdout.write(`${detail}\n`); }
@@ -30,7 +38,7 @@ async function main() {
     const env = buildTools.environment(userData, base);
     env.PATH = `${env.SMS_BUILD_TOOLS_BIN}:/usr/bin:/bin:/usr/sbin:/sbin`;
     const root = path.join(userData, 'port');
-    await run('git', ['clone', '--branch', 'eclipse', '--recurse-submodules', port.PORT_URL, root], { env });
+    await game.checkout(root, { run, capture, env });
     try {
       await run(path.join(root, 'build.sh'), [], { cwd: root, env }, 'Compile Sunshine on Mac without a ROM');
     } catch (error) {

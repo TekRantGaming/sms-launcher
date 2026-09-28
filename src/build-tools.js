@@ -26,7 +26,10 @@ async function check(userData, { platform = process.platform, env = process.env,
   return status(userData, platform, env, { archives });
 }
 
-function toolsetFor(platform = process.platform) { return platform === 'darwin' ? macAssets.toolset : TOOLSET; }
+function toolsetFor(platform = process.platform, arch = process.arch) {
+  const manifest = platform === 'darwin' ? macAssets : assets;
+  return manifest.platforms[platform === 'darwin' ? arch : platform]?.toolset || manifest.toolset;
+}
 
 function platformId(platform = process.platform, arch = process.arch) {
   return platform === 'darwin' ? `macos-${arch}` : platform === 'win32' ? 'windows-x64' : 'linux-x64';

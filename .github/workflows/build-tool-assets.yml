@@ -1,6 +1,12 @@
 name: Publish build tool archives
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Tool archive to publish
+        type: choice
+        default: all
+        options: [all, linux, win32]
 permissions:
   contents: read
 jobs:
@@ -17,17 +23,23 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        if: (inputs.platform == 'all' || inputs.platform == matrix.platform)
       - uses: actions/setup-node@v4
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
       - name: Prepare tool archives and corresponding sources
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         run: node scripts/package-build-tools.js
       - name: Compile with the relocated archive
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         run: node scripts/smoke-build-tools.js
         env:
           SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-${{ matrix.platform }}.json
       - uses: actions/upload-artifact@v4
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
         with:
           name: tools-${{ matrix.platform }}
           path: tool-assets/*
