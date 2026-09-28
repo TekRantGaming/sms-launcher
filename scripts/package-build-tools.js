@@ -23,6 +23,11 @@ const notices = ['# Build tool notices and source code', '',
   `Source download: https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-${tools.TOOLSET}/sms-build-tools-${id}-${tools.TOOLSET}-sources.tar.gz`, ''];
 const packages = [];
 const downloaded = new Map();
+// Use a mirror only when the recipe pins these exact upstream bytes.
+const SOURCE_MIRRORS = {
+  '053794d6671a3e397d849e478a80b82a63cb9d8ca296bd35b73317bb5ceb87b5':
+    ['https://ftp.osuosl.org/pub/gentoo/distfiles/62/pulseaudio-17.0.tar.xz']
+};
 
 function flattenLinks(prefix, toolTree = fs.realpathSync(prefix)) {
   if (platform === 'linux') fs.chmodSync(prefix, fs.statSync(prefix).mode | 0o700);
@@ -57,16 +62,26 @@ async function downloadSource(url, name, expected = null) {
   const key = expected || url;
   if (downloaded.has(key)) return downloaded.get(key);
   const destination = path.join(sourceRoot, 'upstream', name.replace(/[^a-zA-Z0-9._-]/g, '_'));
+  let downloadedUrl = url;
   if (!fs.existsSync(destination) || (expected && await tools.hashFile(destination) !== expected)) {
-    await run(platform === 'win32' ? path.join(root, 'msys64', 'usr', 'bin', 'curl.exe')
-    : path.join(root, 'env', 'bin', 'curl'), ['--fail', '--location', '--retry', '3', '--connect-timeout', '30',
-      '--max-time', '600', '--silent', '--show-error',
-      '--output', `${destination}.part`, url], {}, `Source: ${name}`);
+    const candidates = [url, ...(SOURCE_MIRRORS[expected] || [])];
+    for (let index = 0; index < candidates.length; index++) {
+      try {
+        await run(platform === 'win32' ? path.join(root, 'msys64', 'usr', 'bin', 'curl.exe')
+          : path.join(root, 'env', 'bin', 'curl'), ['--fail', '--location', '--retry', '5', '--retry-all-errors',
+          '--retry-delay', '5', '--connect-timeout', '30', '--max-time', '600', '--silent', '--show-error',
+          '--output', `${destination}.part`, candidates[index]], {}, `Source: ${name}`);
+        downloadedUrl = candidates[index];
+        break;
+      } catch (error) {
+        if (index === candidates.length - 1) throw error;
+      }
+    }
     fs.renameSync(`${destination}.part`, destination);
   }
   const sha256 = await tools.hashFile(destination);
   if (expected && sha256 !== expected) throw new Error(`Source checksum failed: ${url}`);
-  const item = { url, file: `upstream/${path.basename(destination)}`, sha256 };
+  const item = { url: downloadedUrl, file: `upstream/${path.basename(destination)}`, sha256 };
   downloaded.set(key, item);
   return item;
 }

@@ -163,17 +163,24 @@ async function prepare(userData, { platform = process.platform, run, progress = 
   try {
     progress(null, 'Unpacking build tools…');
     const top = platform === 'win32' ? 'msys64' : 'env';
-    let entries = 0;
-    await require('tar').x({ file: archive, cwd: staging, strict: true,
-      onReadEntry() {
-        if (++entries % 1000 === 0) progress(null, `Unpacking build tools… ${entries.toLocaleString()} files`);
-      },
-      filter(name) {
-        const entry = name.replace(/^\.\//, '');
-        return entry === top || entry.startsWith(`${top}/`) || entry === 'THIRD-PARTY-NOTICES.md' ||
-          entry.startsWith('package-sources/');
-      }
-    });
+    const nativeTar = platform === 'win32'
+      ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe') : null;
+    if (nativeTar && typeof run === 'function' && fs.existsSync(nativeTar) && commandWorks(nativeTar, ['--version'])) {
+      // Windows includes bsdtar; its native extraction avoids slow per-file JS filesystem work.
+      await run(nativeTar, ['-xzf', archive, '-C', staging, top], {}, 'Unpack build tools');
+    } else {
+      let entries = 0;
+      await require('tar').x({ file: archive, cwd: staging, strict: true,
+        onReadEntry() {
+          if (++entries % 1000 === 0) progress(null, `Unpacking build tools… ${entries.toLocaleString()} files`);
+        },
+        filter(name) {
+          const entry = name.replace(/^\.\//, '');
+          return entry === top || entry.startsWith(`${top}/`) || entry === 'THIRD-PARTY-NOTICES.md' ||
+            entry.startsWith('package-sources/');
+        }
+      });
+    }
     if (!fs.existsSync(path.join(staging, top))) throw new Error('Build tool archive is incomplete.');
     if (fs.existsSync(root)) { fs.renameSync(root, previous); keptPrevious = true; }
     fs.renameSync(staging, root);
@@ -195,7 +202,7 @@ async function prepare(userData, { platform = process.platform, run, progress = 
     const bin = platform === 'win32' ? path.join(root, 'msys64', 'mingw32', 'bin') : path.join(root, 'env', 'bin');
     if (!commandWorks(path.join(bin, platform === 'win32' ? 'g++.exe' : 'g++'), ['--version'], env))
       throw new Error('The downloaded compiler could not start on this computer.');
-    if (keptPrevious) await fs.promises.rm(previous, { recursive: true, force: true,
+    if (keptPrevious) void fs.promises.rm(previous, { recursive: true, force: true,
       maxRetries: 5, retryDelay: 200 }).catch(() => {});
     return status(userData, platform);
   } catch (error) {
