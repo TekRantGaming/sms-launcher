@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const buildTools = require('../src/build-tools');
 const port = require('../src/port');
 const { run, runMain } = require('./tool-run');
@@ -54,6 +55,12 @@ async function main() {
       if (!objcopy?.startsWith(env.SMS_BUILD_TOOLS_BIN)) throw new Error(`Unexpected system LLVM tool: ${objcopy}`);
       await run('/usr/bin/arch', ['-x86_64', '/usr/bin/true'], { env }, 'Check Intel execution support');
       await run('/usr/bin/file', [binary], { env });
+      const start = spawnSync(binary, [], { cwd: root, timeout: 15000, encoding: 'utf8',
+        env: { ...env, SMS_HEADLESS: '1', SMS_SAVE_DIR: path.join(userData, 'test-saves'),
+          SMS_DISC_IMAGE: path.join(userData, 'intentionally-missing.iso') } });
+      if (start.error || start.signal || start.status !== 1 || !start.stderr.includes('not a usable GameCube disc image'))
+        throw new Error(`The Mac executable did not reach the expected missing-disc check: ${start.error?.message || start.stderr}`);
+      process.stdout.write('Mac executable loaded successfully and correctly requires a disc image.\n');
       process.stdout.write(`Mac build succeeded: ${binary}\n`);
     }
   } finally { fs.rmSync(userData, { recursive: true, force: true }); }
