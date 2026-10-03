@@ -63,6 +63,43 @@ function normalizeSettings(input = {}, platform = process.platform) {
   };
 }
 
+function cutscenePackDirectory(root) { return path.join(root, 'mods', 'hd-cutscenes'); }
+
+function cutscenePackRequirements(root) {
+  try {
+    const catalog = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'media', 'cutscene-release.json'), 'utf8'));
+    if (catalog.schema !== 1 || catalog.movies.length !== 21) return null;
+    let downloadBytes = 0, installedBytes = 0, largestPatch = 0;
+    for (const movie of catalog.movies) {
+      if (![movie.patch_bytes, movie.target_bytes].every(size => Number.isSafeInteger(size) && size > 0)) return null;
+      downloadBytes += movie.patch_bytes;
+      installedBytes += movie.target_bytes;
+      largestPatch = Math.max(largestPatch, movie.patch_bytes);
+    }
+    return { downloadBytes, freeBytes: installedBytes + largestPatch + 964 * 1024 * 1024 };
+  } catch (_) { return null; }
+}
+
+function cutscenePackInstalled(root) {
+  const folder = cutscenePackDirectory(root);
+  try {
+    const release = fs.readFileSync(path.join(root, 'tools', 'media', 'cutscene-release.json'), 'utf8');
+    const installed = fs.readFileSync(path.join(folder, 'installed.json'), 'utf8');
+    const expected = JSON.parse(release), actual = JSON.parse(installed);
+    if (expected.schema !== 1 || expected.movies.length !== 21 ||
+        JSON.stringify(actual) !== JSON.stringify(expected) ||
+        fs.readFileSync(path.join(folder, 'sms-hd-cutscenes-v1.complete'), 'utf8').trim() !== expected.release) return false;
+    return expected.movies.every(movie => {
+      const stat = fs.statSync(path.join(folder, 'files', movie.disc_path));
+      return stat.isFile() && stat.size === movie.target_bytes;
+    });
+  } catch (_) { return false; }
+}
+
+function hdVisualsInstalled(root, settings) {
+  return texturePackInstalled(root) && (settings.eclipse || cutscenePackInstalled(root));
+}
+
 function texturePackDirectory(root) { return path.join(root, 'mods', 'textures'); }
 
 function texturePackInstalled(root) {
@@ -92,7 +129,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_FRAME_RATE: settings.fps60 ? '60' : '30',
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
-    SMS_MOD: 'none'
+    SMS_MOD: 'none',
+    SMS_HD_CUTSCENES: settings.textures && !settings.eclipse ? cutscenePackDirectory(root) : '0'
   };
   return env;
 }
@@ -122,9 +160,10 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
     ? path.join(process.resourcesPath, 'scripts', 'texture-progress.py')
     : path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
   if (platform !== 'win32') {
-    const file = action === 'python' || action === 'textures' ? 'python3' : path.join(root, `${action}.sh`);
+    const file = action === 'python' || action === 'textures' || action === 'cutscenes' ? 'python3' : path.join(root, `${action}.sh`);
     const commandArgs = action === 'python' ? ['tools/mods/get.py', 'eclipse', '--iso', ...args]
-      : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')] : args;
+      : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')]
+        : action === 'cutscenes' ? ['tools/media/install_cutscenes.py', '--iso', ...args] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
   }
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
@@ -132,6 +171,8 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
   if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
   const script = action === 'python'
     ? 'cd "$(cygpath -u "$1")" && python tools/mods/get.py eclipse --iso "$(cygpath -u "$2")"'
+    : action === 'cutscenes'
+      ? 'cd "$(cygpath -u "$1")" && python tools/media/install_cutscenes.py --iso "$(cygpath -u "$2")"'
     : action === 'textures'
       ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py'
     : action === 'clean'
@@ -185,5 +226,5 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
 }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
-  texturePackDirectory, texturePackInstalled, buildEnvironment, gameDisc, binaryPath,
+  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackRequirements, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, playableInstall };

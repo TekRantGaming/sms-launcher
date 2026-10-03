@@ -64,3 +64,19 @@ test('reports texture download bytes, handles unknown file sizes, and separates 
   for (const invalid of ['Texture download: 4/3 bytes', 'Texture download: 9007199254740992/0 bytes'])
     assert.equal(activityFromLine(invalid), null);
 });
+
+
+test('HD movie setup reports its own download and complete-movie progress', () => {
+  assert.deepEqual(activityFromLine('Preparing HD cutscenes from your disc'),
+    { detail: 'Preparing HD cutscenes from your disc', percent: null });
+  assert.deepEqual(activityFromLine('HD movie download: 1500000/3000000 bytes'),
+    { detail: 'Downloading HD cutscenes · 1.5 of 3.0 MB', percent: 50 });
+  assert.deepEqual(activityFromLine('Installing HD cutscenes: 7/21 movies'),
+    { detail: 'Installing HD cutscenes · 7 of 21 movies', percent: 33 });
+  assert.deepEqual(activityFromLine('HD cutscenes installed: 21/21 movies'),
+    { detail: 'HD cutscenes installed', percent: 100 });
+  assert.equal(activityFromLine('HD movie download: 4000000/3000000 bytes'), null);
+  assert.deepEqual(activityFromLine('HD movie download: 1500000/3000000 bytes (movie 8/21)'),
+    { detail: 'Downloading HD cutscenes · movie 8 of 21 · 1.5 of 3.0 MB', percent: 35 });
+  assert.equal(activityFromLine('HD movie download: 1500000/3000000 bytes (movie 22/21)'), null);
+});

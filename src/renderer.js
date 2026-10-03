@@ -62,6 +62,7 @@ function taskName(label) {
   if (label.startsWith('Download port')) return 'Downloading setup files';
   if (label.startsWith('Download build') || label.startsWith('Prepare build') ||
       label.startsWith('Unpack build') || label.startsWith('Update private')) return 'Preparing build tools';
+  if (label === 'Install HD cutscenes') return 'Preparing HD cutscenes';
   if (label.startsWith('Install UHD')) return 'Downloading HD textures';
   if (label.startsWith('Install Eclipse')) return 'Setting up Eclipse';
   if (label.startsWith('Check for port')) return 'Checking for updates';
@@ -99,11 +100,13 @@ function showWizardStep(data) {
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
-    ? downloadTextures ? 'Download HD textures to finish setup.'
+    ? downloadTextures ? data.config.settings.eclipse ? 'Set up HD textures to finish setup.' : 'Set up HD textures and cutscenes to finish setup.'
       : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
   $('setup-install-description').textContent = needsTextureDownload(data)
-    ? "We'll download HD textures (about 1 GB), then prepare a playable copy using your disc image. This can take a while."
+    ? data.config.settings.eclipse
+      ? "We'll download HD textures, then get the game ready to play. This can take a while."
+      : "We'll download HD textures and prepare HD cutscenes using your disc image, then get the game ready to play. This can take a while."
     : "We'll prepare a playable copy using your disc image. This can take a while.";
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
@@ -124,7 +127,7 @@ function showWizardStep(data) {
   for (let step = 1; step <= 3; step++)
     $(`setup-step-${step}`).hidden = ready || step !== wizardStep;
   if (ready) $('play').textContent = downloadTextures
-    ? setupPending || data.active?.label === 'Install UHD textures' ? 'Downloading…' : 'Download HD textures'
+    ? setupPending || data.active?.label === 'Install UHD textures' || data.active?.label === 'Install HD cutscenes' ? 'Setting up…' : 'Finish HD setup'
     : data.game.needsUpdate && data.config.settings.autoUpdate
       ? '↻  Update & play' : !data.binaryReady ? '▶  Prepare & play' : '▶  Play';
   else {
@@ -150,7 +153,7 @@ function renderActivity(active) {
     : active?.label.startsWith('Build ') ? 'Stop build' : 'Stop task';
   $('view-build-log').textContent = active?.label.startsWith('Build ') ? 'View build log' : 'View activity';
   $('task-status').textContent = active ? taskName(active.label)
-    : current?.binaryReady && needsTextureDownload(current) ? 'HD textures need a download'
+    : current?.binaryReady && needsTextureDownload(current) ? 'HD setup needed'
     : current?.game.needsUpdate && current.config.settings.autoUpdate && current.config.completedSetup ? 'Update ready'
     : $('page-home').classList.contains('ready-mode') ? 'Ready to play' : 'Finish setup to play';
   if (!working) return;
@@ -188,12 +191,20 @@ function refresh(data) {
   $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
-  badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
+  badge('textures-badge', data.texturesInstalled ? 'Installed' : data.textureFilesInstalled ? 'Finish setup' : 'Not installed', data.texturesInstalled,
     config.settings.textures && !data.texturesInstalled);
+  const movieRequirements = !config.settings.eclipse && !data.cutscenesInstalled ? data.cutsceneRequirements : null;
+  const gb = bytes => (Math.ceil(bytes / 1e8) / 10).toFixed(1);
+  const textureBytes = data.textureFilesInstalled ? 0 : 1e9;
+  const textureFree = data.textureFilesInstalled ? 0 : 3e9;
+  const sizeNote = movieRequirements
+    ? `About ${gb(movieRequirements.downloadBytes + textureBytes)} GB to download; allow ${gb(movieRequirements.freeBytes + textureFree)} GB of free space for setup.`
+    : config.settings.eclipse || data.cutscenesInstalled ? 'About 1 GB to download; allow 3 GB of free space for setup.'
+      : 'Includes HD Sunshine cutscenes. Several GB will download; extra disk space is needed for setup.';
   $('texture-info').textContent = data.texturesInstalled
-    ? config.settings.textures ? 'Ready for the next time you play.' : 'Already downloaded. Turn on to use them.'
-    : config.settings.textures ? `${data.binaryReady ? 'Close Settings and choose Download HD textures.' : 'HD textures will download during setup.'} About 1 GB to download; needs about 3 GB of free space.`
-      : 'About 1 GB to download; needs about 3 GB of free space.';
+    ? config.settings.textures ? config.settings.eclipse ? 'HD textures are ready for Eclipse.' : 'HD textures and cutscenes are ready for Sunshine.' : 'Already downloaded. Turn on to use them.'
+    : config.settings.textures ? `${data.binaryReady ? 'Close Settings and choose Finish HD setup.' : 'HD visuals will download during setup.'} ${sizeNote}`
+      : sizeNote;
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
   $('eclipse-note').hidden = !config.settings.eclipse;

@@ -57,6 +57,21 @@ function activityFromLine(line) {
     return { detail: `Downloading HD textures · ${mb(received)}${total ? ` of ${mb(total)}` : ' downloaded'}`,
       percent: total ? Math.floor(received / total * 100) : null };
   }
+  if (value === 'Checking HD cutscenes') return { detail: 'Checking HD cutscenes', percent: null };
+  if (value === 'Preparing HD cutscenes from your disc') return { detail: 'Preparing HD cutscenes from your disc', percent: null };
+  const movieDownload = value.match(/^HD movie download: (\d+)\/(\d+) bytes(?: \(movie (\d+)\/21\))?$/);
+  if (movieDownload) {
+    const done = Number(movieDownload[1]), total = Number(movieDownload[2]);
+    if (!Number.isSafeInteger(done) || !Number.isSafeInteger(total) || total <= 0 || done > total) return null;
+    const movie = Number(movieDownload[3]);
+    if (movieDownload[3] && (movie < 1 || movie > 21)) return null;
+    return { detail: `Downloading HD cutscenes${movie ? ` · movie ${movie} of 21` : ''} · ${(done / 1e6).toFixed(1)} of ${(total / 1e6).toFixed(1)} MB`,
+      percent: Math.floor(movie ? (movie - 1 + done / total) * 100 / 21 : done * 100 / total) };
+  }
+  const movies = value.match(/^Installing HD cutscenes: (\d+)\/21 movies$/);
+  if (movies && Number(movies[1]) <= 21) return { detail: `Installing HD cutscenes · ${movies[1]} of 21 movies`,
+    percent: Math.floor(Number(movies[1]) * 100 / 21) };
+  if (value === 'HD cutscenes installed: 21/21 movies') return { detail: 'HD cutscenes installed', percent: 100 };
   if (value === 'Checking HD texture download')
     return { detail: 'Checking HD textures', percent: null };
   if (/^Unpacking GMS\.7z/.test(value))

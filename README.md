@@ -66,9 +66,9 @@ Windows and Linux offer both 64-bit and 32-bit game builds. Keep the default **6
 
 ### HD textures
 
-HD textures are **on by default for first-time setup**. They add more detail to the game and use about **1 GB to download** and **3 GB once installed**. You can turn them off in **Settings → Visuals**. Existing users keep their saved choice.
+HD textures are **on by default for first-time setup**. In Sunshine mode, this also installs all 21 enhanced cutscenes at 3× resolution, preserving their timing and original audio. Textures use about **1 GB to download** and **3 GB installed**; the movie patches add about **5.7 GB to download** and **5.8 GB installed**. Movie setup needs about **7.8 GB free**, plus room for textures if needed. You can turn HD visuals off in **Settings → Visuals**. Existing users keep their saved choice.
 
-If you enable them later and they haven't been installed, Play becomes **Download HD textures**. Select it to download and install the pack; the button returns to Play when it's ready. Progress shows the amount downloaded, followed by checking and unpacking. Previously downloaded textures are reused.
+If HD setup is incomplete, choose **Finish HD setup** to download and prepare the missing files. Previously installed textures and movies are reused. The launcher shows download progress and checks all movies before activating the pack. Failed or cancelled setup keeps the previous pack. Your original disc and saves stay intact. Eclipse keeps its own movies.
 
 ### Updates
 
@@ -98,7 +98,7 @@ Eclipse needs a full, unmodified North American ISO; compressed CISO files won't
 
 ## Need help?
 
-- **Setup or a download failed:** open **View activity** on the error message to see what happened, then try setup again. A failed HD texture download leaves **Download HD textures** available to retry.
+- **Setup or a download failed:** open **View activity** on the error message to see what happened, then try setup again. A failed HD download leaves **Finish HD setup** available to retry.
 - **A game update failed:** use **Play installed version** in Manage game. After a successful update, **Play previous version** is also available there.
 - **Mac says the launcher is on a read-only volume:** quit the launcher, move SMS Launcher.app into Applications, eject the DMG, and reopen it from Applications.
 - **Need to free up space:** use **See removable files** in Manage game, then **Free up space**. The launcher keeps your disc file and saved games.
@@ -190,3 +190,11 @@ macOS automatic updates require signed builds using the `MAC_CSC_LINK` and `MAC_
 The launcher honors `SMS_SAVE_DIR` or `save_dir` in the port's `settings.txt` and displays the resolved path. Verified backups live outside the launcher and port folders in `~/SMS Launcher Backups`.
 
 Source updates build in separate folders and switch preferences only after success. Rebuilds preserve the previous binary and metadata; a recovery journal restores interrupted builds on the next start. Cleanup refuses custom save folders inside removable build output. Restore verifies the backup and saves current progress first. Disc images and patched discs are not included in save backups. A single-instance lock prevents overlapping updates and save operations.
+
+### HD cutscene integration
+
+The HD textures switch controls both textures and Sunshine's complete movie pack.
+Movie patches are reconstructed using the player's own North American Sunshine disc image (GMSE01); Python is needed for installation, but FFmpeg and an AI runtime are not needed to install or play them.
+The catalog pins every original movie, downloaded patch and reconstructed movie by SHA-256.
+The installed pack carries over across game updates.
+See the [port's HD cutscene guide](https://github.com/chasem-dev/sms-pc-port/blob/main/docs/HD-CUTSCENES.md) for manual and offline installation.

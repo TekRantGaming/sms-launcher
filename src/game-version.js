@@ -105,7 +105,7 @@ function carryUserFiles(previous, next) {
   if (previous === next) return;
   const settings = path.join(previous, 'settings.txt');
   if (fs.existsSync(settings)) fs.copyFileSync(settings, path.join(next, 'settings.txt'));
-  for (const folder of ['textures', 'eclipse']) {
+  for (const folder of ['textures', 'hd-cutscenes', 'eclipse']) {
     const origin = path.join(previous, 'mods', folder);
     const target = path.join(next, 'mods', folder);
     if (!fs.existsSync(origin) || fs.existsSync(target)) continue;

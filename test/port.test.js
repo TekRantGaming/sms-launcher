@@ -147,3 +147,32 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+
+test('HD movies follow textures and only complete packs are recognized', t => {
+  const root = temporary();t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const folder = port.cutscenePackDirectory(root);
+  const movies = Array.from({ length: 21 }, (_, i) => ({ disc_path: `data/movie${i}.thp`, target_bytes: 8 }));
+  const catalog = { schema: 1, release: 'test-v1', movies };
+  fs.mkdirSync(path.join(root, 'tools', 'media'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'tools', 'media', 'cutscene-release.json'), JSON.stringify(catalog));
+  fs.mkdirSync(path.join(folder, 'files', 'data'), { recursive: true });
+  fs.writeFileSync(path.join(folder, 'installed.json'), JSON.stringify(catalog));
+  assert.equal(port.cutscenePackInstalled(root), false);
+  fs.writeFileSync(path.join(folder, 'sms-hd-cutscenes-v1.complete'), 'test-v1\n');
+  for (const movie of movies) fs.writeFileSync(path.join(folder, 'files', movie.disc_path), 'HD movie');
+  assert.equal(port.cutscenePackInstalled(root), true);
+  fs.writeFileSync(path.join(folder, 'files', movies[20].disc_path), 'damaged');
+  assert.equal(port.cutscenePackInstalled(root), false);
+  const settings = port.normalizeSettings({ textures: true, eclipse: false });
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', root).SMS_HD_CUTSCENES, folder);
+  assert.equal(port.buildEnvironment({ ...settings, textures: false }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
+  assert.equal(port.buildEnvironment({ ...settings, eclipse: true }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
+  for (const platform of ['linux', 'darwin']) assert.deepEqual(port.commandFor(root, 'cutscenes', ['/my/disc.iso'], platform).args,
+    ['tools/media/install_cutscenes.py', '--iso', '/my/disc.iso']);
+  const msys = path.join(root, 'MSYS2');fs.mkdirSync(path.join(msys, 'usr', 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(msys, 'usr', 'bin', 'bash.exe'), '');
+  const cmd = port.commandFor(root, 'cutscenes', ['C:\\own game.iso'], 'win32', { MSYS2_ROOT: msys });
+  assert.match(cmd.args[1], /install_cutscenes.py --iso/);
+  assert.equal(cmd.args.at(-1), 'C:\\own game.iso');
+});
