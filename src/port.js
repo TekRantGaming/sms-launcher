@@ -96,8 +96,14 @@ function cutscenePackInstalled(root) {
   } catch (_) { return false; }
 }
 
+function cutscenePackSupported(root) {
+  return ['install_cutscenes.py', 'cutscene-release.json'].some(file =>
+    fs.existsSync(path.join(root, 'tools', 'media', file)));
+}
+
 function hdVisualsInstalled(root, settings) {
-  return texturePackInstalled(root) && (settings.eclipse || cutscenePackInstalled(root));
+  // Older playable installations keep their texture-only setup until updated.
+  return texturePackInstalled(root) && (settings.eclipse || !cutscenePackSupported(root) || cutscenePackInstalled(root));
 }
 
 function texturePackDirectory(root) { return path.join(root, 'mods', 'textures'); }
@@ -226,5 +232,5 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
 }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
-  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackRequirements, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
+  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, playableInstall };

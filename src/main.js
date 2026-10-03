@@ -269,7 +269,7 @@ async function installTextures(root = requireRepo()) {
     await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install UHD textures');
     if (!port.texturePackInstalled(root)) throw new Error('Texture installer finished without a usable texture pack.');
   } else log('HD textures are already installed.');
-  if (!config.settings.eclipse && !port.cutscenePackInstalled(root)) {
+  if (!config.settings.eclipse && port.cutscenePackSupported(root) && !port.cutscenePackInstalled(root)) {
     const rom = port.validateRom(config.rom);
     const cmd = port.commandFor(root, 'cutscenes', [rom], process.platform, toolEnv());
     await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install HD cutscenes');
@@ -392,6 +392,7 @@ function state() {
     texturesInstalled: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
     textureFilesInstalled: repoReady && port.texturePackInstalled(config.repo),
     cutscenesInstalled: repoReady && port.cutscenePackInstalled(config.repo),
+    cutscenesSupported: repoReady && port.cutscenePackSupported(config.repo),
     cutsceneRequirements: repoReady ? port.cutscenePackRequirements(config.repo) : null,
     binaryReady: ready,
     tools: toolsStatus(),

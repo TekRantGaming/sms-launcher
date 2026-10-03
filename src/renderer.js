@@ -100,11 +100,11 @@ function showWizardStep(data) {
   $('setup-flow').hidden = ready;
   $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
-    ? downloadTextures ? data.config.settings.eclipse ? 'Set up HD textures to finish setup.' : 'Set up HD textures and cutscenes to finish setup.'
+    ? downloadTextures ? 'Set up HD visuals to finish setup.'
       : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
   $('setup-install-description').textContent = needsTextureDownload(data)
-    ? data.config.settings.eclipse
+    ? data.config.settings.eclipse || (data.repoReady && !data.cutscenesSupported && !data.config.settings.autoUpdate)
       ? "We'll download HD textures, then get the game ready to play. This can take a while."
       : "We'll download HD textures and prepare HD cutscenes using your disc image, then get the game ready to play. This can take a while."
     : "We'll prepare a playable copy using your disc image. This can take a while.";
@@ -202,7 +202,7 @@ function refresh(data) {
     : config.settings.eclipse || data.cutscenesInstalled ? 'About 1 GB to download; allow 3 GB of free space for setup.'
       : 'Includes HD Sunshine cutscenes. Several GB will download; extra disk space is needed for setup.';
   $('texture-info').textContent = data.texturesInstalled
-    ? config.settings.textures ? config.settings.eclipse ? 'HD textures are ready for Eclipse.' : 'HD textures and cutscenes are ready for Sunshine.' : 'Already downloaded. Turn on to use them.'
+    ? config.settings.textures ? config.settings.eclipse ? 'HD textures are ready for Eclipse.' : data.cutscenesSupported ? 'HD textures and cutscenes are ready for Sunshine.' : 'HD textures are ready. Update the game to add HD cutscenes.' : 'Already downloaded. Turn on to use them.'
     : config.settings.textures ? `${data.binaryReady ? 'Close Settings and choose Finish HD setup.' : 'HD visuals will download during setup.'} ${sizeNote}`
       : sizeNote;
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
@@ -365,7 +365,7 @@ for (const [id, method] of Object.entries({
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
 $('play').addEventListener('click', () => {
-  if (wizardStep === 0) runWizardAction(current.binaryReady && needsTextureDownload(current) ? 'installTextures' : 'launchGame');
+  if (wizardStep === 0) runWizardAction('launchGame');
   else if (wizardStep === 1) {
     if (current.platform.id === 'macos' && !current.tools.appleReady) { showMacHelp(); return; }
     if (current.repoReady && current.tools.ready) { wizardStep = 2; refresh(current); }

@@ -176,3 +176,19 @@ test('HD movies follow textures and only complete packs are recognized', t => {
   assert.match(cmd.args[1], /install_cutscenes.py --iso/);
   assert.equal(cmd.args.at(-1), 'C:\\own game.iso');
 });
+
+
+test('older installed games remain playable with HD textures until updated', t => {
+  const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const settings = port.normalizeSettings({ textures: true, eclipse: false, autoUpdate: false });
+  const textures = port.texturePackDirectory(root);
+  fs.mkdirSync(textures, { recursive: true });
+  fs.writeFileSync(path.join(textures, 'tex1_existing.png'), 'texture');
+  assert.equal(port.cutscenePackSupported(root), false);
+  assert.equal(port.hdVisualsInstalled(root, settings), true);
+  const media = path.join(root, 'tools', 'media'); fs.mkdirSync(media, { recursive: true });
+  fs.writeFileSync(path.join(media, 'install_cutscenes.py'), 'installer');
+  assert.equal(port.cutscenePackSupported(root), true);
+  assert.equal(port.hdVisualsInstalled(root, settings), false);
+  assert.equal(port.hdVisualsInstalled(root, { ...settings, eclipse: true }), true);
+});
