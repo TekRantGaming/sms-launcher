@@ -3,12 +3,12 @@
   "platforms": {
     "linux": {
       "toolset": "2026-10-05.1",
-      "name": "sms-build-tools-linux-x64-2026-09-28.2.tar.gz",
-      "url": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-09-28.2/sms-build-tools-linux-x64-2026-09-28.2.tar.gz",
-      "sha256": "0922ff10ddede13cf123adb7d87a58c3970f98b5d01b44f38c3df69eb217760d",
-      "size": 1060730774,
-      "sources": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-09-28.2/sms-build-tools-linux-x64-2026-09-28.2-sources.tar.gz",
-      "notices": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-09-28.2/sms-build-tools-linux-x64-2026-09-28.2-NOTICES.md"
+      "name": "sms-build-tools-linux-x64-2026-10-05.1.tar.gz",
+      "url": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-10-05.1/sms-build-tools-linux-x64-2026-10-05.1.tar.gz",
+      "sha256": "e01511073764e33267ad61e1bdfb9413f06a83d0536366481f4b2f17db8d24d8",
+      "size": 1266171545,
+      "sources": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-10-05.1/sms-build-tools-linux-x64-2026-10-05.1-sources.tar.gz",
+      "notices": "https://github.com/chasem-dev/sms-launcher/releases/download/build-tools-linux-x64-2026-10-05.1/sms-build-tools-linux-x64-2026-10-05.1-NOTICES.md"
     },
     "win32": {
       "toolset": "2026-10-05.1",
