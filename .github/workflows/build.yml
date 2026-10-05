@@ -1,25 +1,69 @@
 name: Build launcher
-# Every pull request builds the launcher for each platform and comments with
-# the downloads. A pull request from this repository is also published as the
-# moving pre-release "pr-<number>", and a manual run from main with "beta" as
-# the moving pre-release "beta": players opt into either under Settings >
-# Manage game > Launcher updates. Stable players never see a pre-release.
+# Pull requests are built for each platform as a check. Previews are only
+# built when a maintainer runs this workflow by hand:
+#   - with a pull request number: published as the moving pre-release
+#     "pr-<number>", with a comment on the pull request;
+#   - from main with "beta": published as the moving pre-release "beta".
+# Players opt into either under Settings > Manage game > Launcher updates.
+# Stable players never see a pre-release.
 on:
   pull_request:
   workflow_dispatch:
     inputs:
+      pr:
+        description: Pull request number to build and publish as a preview
+        type: string
+        default: ''
       beta:
         description: Publish this build of main as the Beta channel
         type: boolean
         default: false
 permissions:
   contents: read
-env:
-  PREVIEW: ${{ github.event_name == 'pull_request' || (inputs.beta && github.ref == 'refs/heads/main') }}
-  CHANNEL: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'beta' }}
-  SUFFIX: ${{ github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number) || 'beta' }}
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      preview: ${{ steps.plan.outputs.preview }}
+      channel: ${{ steps.plan.outputs.channel }}
+      suffix: ${{ steps.plan.outputs.suffix }}
+      sha: ${{ steps.plan.outputs.sha }}
+      pr: ${{ steps.plan.outputs.pr }}
+      title: ${{ steps.plan.outputs.title }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ inputs.pr }}
+          BETA: ${{ inputs.beta }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          out() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+          if [ "$EVENT" != workflow_dispatch ] || { [ -z "$PR" ] && [ "$BETA" != true ]; }; then
+            out preview false; out sha "$SHA"; exit 0
+          fi
+          if [ -n "$PR" ] && [ "$BETA" = true ]; then
+            echo "::error::Choose a pull request number or beta, not both."; exit 1
+          fi
+          if [ -n "$PR" ]; then
+            [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::\"$PR\" is not a pull request number."; exit 1; }
+            info=$(gh pr view "$PR" --json state,headRefOid,title,isCrossRepository) || exit 1
+            [ "$(jq -r .state <<<"$info")" = OPEN ] || { echo "::error::Pull request #$PR is not open."; exit 1; }
+            if [ "$(jq -r .isCrossRepository <<<"$info")" = true ]; then
+              echo "::warning::#$PR comes from a fork: its code builds with this repository's signing secrets."
+            fi
+            out preview true; out channel "pr-$PR"; out suffix "pr$PR"; out pr "$PR"
+            out sha "$(jq -r .headRefOid <<<"$info")"
+            out title "$(jq -r .title <<<"$info" | tr -d '\r\n' | cut -c1-200)"
+          else
+            [ "$REF" = refs/heads/main ] || { echo "::error::Run Beta from main."; exit 1; }
+            out preview true; out channel beta; out suffix beta; out sha "$SHA"
+          fi
   package:
+    needs: plan
     strategy:
       fail-fast: false
       matrix:
@@ -34,8 +78,14 @@ jobs:
             target: win
             args: --win --x64
     runs-on: ${{ matrix.os }}
+    env:
+      PREVIEW: ${{ needs.plan.outputs.preview }}
+      CHANNEL: ${{ needs.plan.outputs.channel }}
+      SUFFIX: ${{ needs.plan.outputs.suffix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -64,7 +114,7 @@ jobs:
           RUN: ${{ github.run_number }}
           REPO: ${{ github.repository }}
       - name: Configure optional macOS signing
-        if: runner.os == 'macOS'
+        if: env.PREVIEW == 'true' && runner.os == 'macOS'
         shell: bash
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -75,7 +125,7 @@ jobs:
             printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
           fi
       - name: Configure optional Windows signing
-        if: runner.os == 'Windows'
+        if: env.PREVIEW == 'true' && runner.os == 'Windows'
         shell: bash
         env:
           WINDOWS_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
@@ -100,12 +150,8 @@ jobs:
             dist/latest*.yml
           if-no-files-found: error
   publish:
-    # Forks get a read-only token: their pull requests are built but not published.
-    if: >-
-      !cancelled() && needs.package.result == 'success' &&
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository ||
-       inputs.beta && github.ref == 'refs/heads/main')
-    needs: package
+    needs: [plan, package]
+    if: needs.plan.outputs.preview == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -118,66 +164,57 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          PR: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PR: ${{ needs.plan.outputs.pr }}
+          PR_TITLE: ${{ needs.plan.outputs.title }}
         run: |
           version=$(sed -n 's/^version: //p' dist/latest.yml)
           if [ -n "$PR" ]; then
             title="Preview #$PR: $PR_TITLE"
-            notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: choose \"Pull request #$PR\" under Settings > Manage game > Launcher updates. Replaced on every push and deleted when the pull request closes."
+            notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: choose \"Pull request #$PR\" under Settings > Manage game > Launcher updates. Replaced by the next preview of this pull request and deleted when it closes."
           else
             title="Beta $version"
             notes="Beta build of main at ${SHA:0:7}. Choose \"Beta\" under Settings > Manage game > Launcher updates."
           fi
+          # A tag on a fork's commit cannot be created here; tag main instead and name the commit in the notes.
+          target="$SHA"
+          gh api "repos/$GH_REPO/commits/$SHA" --silent 2>/dev/null || target=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
           gh release delete "$CHANNEL" --cleanup-tag --yes 2>/dev/null || true
-          gh release create "$CHANNEL" dist/* --prerelease --latest=false --target "$SHA" --title "$title" --notes "$notes"
+          gh release create "$CHANNEL" dist/* --prerelease --latest=false --target "$target" --title "$title" --notes "$notes"
   comment:
-    # Pull requests from forks get a read-only token, so they get the builds without the comment.
-    if: >-
-      !cancelled() && github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    needs: [package, publish]
+    needs: [plan, publish]
+    if: needs.plan.outputs.pr != ''
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       pull-requests: write
     steps:
-      - name: Post or update the preview build comment
+      - name: Post or update the preview comment
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          PR: ${{ github.event.pull_request.number }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-          RESULT: ${{ needs.package.result }}
-          PUBLISHED: ${{ needs.publish.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR: ${{ needs.plan.outputs.pr }}
+          SHA: ${{ needs.plan.outputs.sha }}
         run: |
           marker='<!-- launcher-preview-builds -->'
-          run_url="https://github.com/$REPO/actions/runs/$RUN_ID"
-          links=$(gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | [.name, .id, .size_in_bytes] | @tsv' |
-            sort | while IFS=$'\t' read -r name id size; do
-              case "$name" in *linux*) os=Linux;; *mac*) os=macOS;; *win*) os=Windows;; *) os=$name;; esac
-              echo "| $os | [$name.zip]($run_url/artifacts/$id) | $((size / 1048576)) MB |"
+          release="https://github.com/$REPO/releases/tag/pr-$PR"
+          assets=$(gh release view "pr-$PR" --repo "$REPO" --json assets --jq '.assets[] | [.name, .url, .size] | @tsv' |
+            grep -E '\.(exe|dmg|AppImage)\s' | sort | while IFS=$'\t' read -r name url size; do
+              case "$name" in *.AppImage) os=Linux;; *.dmg) os=macOS;; *) os=Windows;; esac
+              echo "| $os | [$name]($url) | $((size / 1048576)) MB |"
             done)
           {
             echo "$marker"
-            echo "### Preview builds for ${SHA:0:7}"
+            echo "### Preview build of ${SHA:0:7}"
             echo
-            if [ -n "$links" ]; then
-              echo "| Platform | Download | Size |"
-              echo "| --- | --- | --- |"
-              echo "$links"
-            else
-              echo "No builds were produced."
-            fi
+            echo "**In the launcher:** Settings → Manage game → Launcher updates → **Pull request #$PR**. It moves to each new preview of this pull request; switch back to Stable any time."
             echo
-            [ "$RESULT" = success ] || echo "⚠️ At least one platform failed to build: see [the run]($run_url)."
-            if [ "$PUBLISHED" = success ]; then
-              echo "**Try it in the launcher:** Settings → Manage game → Launcher updates → **Pull request #$PR**. It updates with each push to this pull request; switch back to Stable any time. ([pre-release](https://github.com/$REPO/releases/tag/pr-$PR))"
-              echo
-            fi
-            echo "For testing only, not a release. Downloads above need a GitHub login and expire after 90 days."
+            echo "| Platform | Installer | Size |"
+            echo "| --- | --- | --- |"
+            echo "$assets"
+            echo
+            echo "For testing only, not a release ([pre-release]($release), [run]($RUN_URL)). Removed when this pull request closes."
           } > body.md
           existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
