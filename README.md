@@ -74,7 +74,9 @@ If HD setup is incomplete, choose **Finish HD setup** to download and prepare th
 
 ### Updates
 
-When a game update is ready, the main button becomes **Update & play**. Your current game stays available until the new setup succeeds.
+When a game update is ready, the main button becomes **Update & play**. Choose **Skip update & play** beside it to launch your installed version without downloading or rebuilding. Your current game stays available until the new setup succeeds.
+
+If optional HD downloads are unfinished, **Play installed version** also lets you play now using the packs already installed. Missing HD packs stay off for that launch; your visual preferences remain saved for later setup.
 
 Launcher updates download automatically when **Update automatically** is enabled and install when you quit. If automatic updates aren't available for your installation, download and install the latest launcher from the [releases page](https://github.com/chasem-dev/sms-launcher/releases/latest).
 

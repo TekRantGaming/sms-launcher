@@ -39,6 +39,10 @@ h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
 .subtle:hover:not(:disabled), .outline:hover:not(:disabled) { background: #f0f6f5; border-color: #bbcecc; }
 .helper, .autosave { color: #849297; font-size: 11px; }
 .launch-panel { position: relative; flex-shrink: 0; overflow: hidden; padding: 18px 21px; border: 1px solid #176677; border-radius: 12px; background: radial-gradient(circle at 92% -32%, #29a8b3 0, #29a8b300 35%), linear-gradient(120deg, #173f59, #116e77); color: #fff; box-shadow: 0 8px 22px #13485820; }
+.installed-play-option { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.installed-play-option .outline { border-color: #a9d6d5; background: #ffffff12; color: #fff; }
+.installed-play-option .outline:hover:not(:disabled) { background: #ffffff27; }
+.installed-play-option p { margin: 0; color: #d2e8e8; font-size: 12px; line-height: 1.5; }
 .launch-row { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .launch-actions { display: flex; gap: 9px; }
 .launch-actions button { min-width: 118px; padding: 11px 16px; }

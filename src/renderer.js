@@ -192,6 +192,11 @@ function refresh(data) {
   showWizardStep(data);
   renderMacTools(data.tools);
   $('play').disabled = Boolean(data.active) || setupPending;
+  $('installed-play-option').hidden = !data.binaryReady || !data.romReady ||
+    (!data.game.needsUpdate && !needsTextureDownload(data));
+  $('skip-update-play').disabled = Boolean(data.active) || setupPending;
+  $('skip-update-play').textContent = data.game.needsUpdate ? 'Skip update & play' : 'Play installed version';
+  $('installed-play-note').textContent = `Play ${data.game.installedVersion ? `game ${data.game.installedVersion}` : 'your installed game'} now. Update or finish HD setup when you're ready.`;
   for (const button of document.querySelectorAll('[data-setup-back]')) button.disabled = Boolean(data.active) || setupPending;
   $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
@@ -243,8 +248,8 @@ function refresh(data) {
     ? `Game ${data.game.availableVersion} will be installed during setup.` : data.game.needsUpdate
     ? `Game ${data.game.availableVersion} is ready to set up. Your current version stays available until setup succeeds.`
     : 'Your game is up to date.';
-  $('play-installed').hidden = !data.binaryReady || !data.game.needsUpdate;
-  $('play-installed').disabled = Boolean(data.active);
+  $('play-installed').hidden = !data.binaryReady || (!data.game.needsUpdate && !needsTextureDownload(data));
+  $('play-installed').disabled = Boolean(data.active) || !data.romReady || setupPending;
   $('play-previous').hidden = !data.game.previousReady;
   $('play-previous').disabled = Boolean(data.active);
   $('save-path').textContent = `Saved games: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
@@ -430,7 +435,7 @@ function appendLog(line) {
 for (const [id, method] of Object.entries({
   'choose-rom': 'chooseRom', 'choose-rom-settings': 'chooseRom',
   'choose-repo-settings': 'chooseRepo', 'choose-location': 'chooseLocation',
-  'update-port': 'updatePort', 'play-installed': 'play', 'play-previous': 'playPrevious', 'build': 'build', 'install-eclipse': 'installEclipse',
+  'update-port': 'updatePort', 'play-installed': 'play', 'skip-update-play': 'play', 'play-previous': 'playPrevious', 'build': 'build', 'install-eclipse': 'installEclipse',
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
