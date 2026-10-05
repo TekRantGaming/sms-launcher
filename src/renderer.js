@@ -79,7 +79,12 @@ function backupReason(reason) {
 }
 
 function needsTextureDownload(data) {
-  return data.config.settings.textures && !data.texturesInstalled;
+  return data.repoReady && !data.hdVisualsReady;
+}
+
+function wantsCutscenes(data) {
+  const { cutscenes, textures, eclipse } = data.config.settings;
+  return cutscenes && textures && !eclipse && (!data.repoReady || data.cutscenesSupported);
 }
 
 function requiredStep(data) {
@@ -103,10 +108,10 @@ function showWizardStep(data) {
     ? downloadTextures ? 'Set up HD visuals to finish setup.'
       : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
-  $('setup-install-description').textContent = needsTextureDownload(data)
-    ? data.config.settings.eclipse || (data.repoReady && !data.cutscenesSupported && !data.config.settings.autoUpdate)
-      ? "We'll download HD textures, then get the game ready to play. This can take a while."
-      : "We'll download HD textures and prepare HD cutscenes using your disc image, then get the game ready to play. This can take a while."
+  const hd = [data.config.settings.textures && !data.texturesInstalled ? 'download HD textures' : '',
+    wantsCutscenes(data) && !data.cutscenesInstalled ? 'prepare HD cutscenes using your disc image' : ''].filter(Boolean).join(' and ');
+  $('setup-install-description').textContent = hd
+    ? `We'll ${hd}, then get the game ready to play. This can take a while.`
     : "We'll prepare a playable copy using your disc image. This can take a while.";
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
@@ -191,20 +196,27 @@ function refresh(data) {
   $('build').hidden = !data.binaryReady || !data.romReady;
   $('rebuild-note').hidden = $('build').hidden;
   $('build').disabled = Boolean(data.active);
-  badge('textures-badge', data.texturesInstalled ? 'Installed' : data.textureFilesInstalled ? 'Finish setup' : 'Not installed', data.texturesInstalled,
-    config.settings.textures && !data.texturesInstalled);
-  const movieRequirements = !config.settings.eclipse && !data.cutscenesInstalled ? data.cutsceneRequirements : null;
   const gb = bytes => (Math.ceil(bytes / 1e8) / 10).toFixed(1);
-  const textureBytes = data.textureFilesInstalled ? 0 : 1e9;
-  const textureFree = data.textureFilesInstalled ? 0 : 3e9;
-  const sizeNote = movieRequirements
-    ? `About ${gb(movieRequirements.downloadBytes + textureBytes)} GB to download; allow ${gb(movieRequirements.freeBytes + textureFree)} GB of free space for setup.`
-    : config.settings.eclipse || data.cutscenesInstalled ? 'About 1 GB to download; allow 3 GB of free space for setup.'
-      : 'Includes HD Sunshine cutscenes. Several GB will download; extra disk space is needed for setup.';
+  const finish = data.binaryReady ? 'Close Settings and choose Finish HD setup.' : '';
+  badge('textures-badge', data.texturesInstalled ? 'Installed' : 'Not installed', data.texturesInstalled,
+    config.settings.textures && !data.texturesInstalled);
   $('texture-info').textContent = data.texturesInstalled
-    ? config.settings.textures ? config.settings.eclipse ? 'HD textures are ready for Eclipse.' : data.cutscenesSupported ? 'HD textures and cutscenes are ready for Sunshine.' : 'HD textures are ready. Update the game to add HD cutscenes.' : 'Already downloaded. Turn on to use them.'
-    : config.settings.textures ? `${data.binaryReady ? 'Close Settings and choose Finish HD setup.' : 'HD visuals will download during setup.'} ${sizeNote}`
-      : sizeNote;
+    ? config.settings.textures ? 'HD textures are ready.' : 'Already downloaded. Turn on to use them.'
+    : `${config.settings.textures ? `${finish || 'HD textures will download during setup.'} ` : ''}About 1 GB to download; allow 3 GB of free space for setup.`;
+  // The movie pack's size comes from the game's own list of movies.
+  const movies = data.cutsceneRequirements;
+  $('cutscenes-description').textContent =
+    `Sharper Sunshine movies, made from your own disc. About ${movies ? gb(movies.downloadBytes) : '5.4'} GB to download.`;
+  badge('cutscenes-badge', config.settings.eclipse ? 'Sunshine only' : !config.settings.textures ? 'Needs HD textures'
+    : data.cutscenesInstalled ? 'Installed' : 'Not installed',
+    data.cutscenesInstalled && !config.settings.eclipse, wantsCutscenes(data) && !data.cutscenesInstalled);
+  $('cutscene-info').textContent = config.settings.eclipse ? 'Eclipse plays its own movies.'
+    : config.settings.cutscenes && !config.settings.textures ? 'Turn on HD textures to play HD cutscenes.'
+    : data.cutscenesInstalled ? config.settings.cutscenes ? 'HD cutscenes are ready for Sunshine.' : 'Already set up. Turn on to use them.'
+      : !config.settings.cutscenes ? ''
+        : data.repoReady && !data.cutscenesSupported ? 'Update the game to add HD cutscenes.'
+          : `${finish || 'HD cutscenes will be made from your disc during setup.'}${movies ? ` Allow ${gb(movies.freeBytes)} GB of free space for setup.` : ''}`;
+  $('cutscene-info').hidden = !$('cutscene-info').textContent;
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
   $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
   $('eclipse-note').hidden = !config.settings.eclipse;
@@ -255,10 +267,10 @@ function refresh(data) {
     return option;
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
-  for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  for (const key of ['fps60', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate', 'updateChannel'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
   changing = false;
 }
@@ -395,7 +407,7 @@ function runWizardAction(method) {
 function settingsValue() {
   return {
     arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value),
-    fps60: $('fps60').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked,
+    fps60: $('fps60').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value
   };
 }
@@ -441,7 +453,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate', 'updateChannel'])
+for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
   $(key).addEventListener('change', saveSettings);
 $('open-maintenance').addEventListener('click', loadUpdateChannels);
 window.sms.onLog(appendLog);

@@ -59,6 +59,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     fps60: input.fps60 !== false,
     hudEdges: Boolean(input.hudEdges),
     textures: Boolean(input.textures),
+    // HD cutscenes are a separate 5 GB download, off unless chosen.
+    cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
     autoUpdate: input.autoUpdate !== false,
     updateChannel: normalizeChannel(input.updateChannel)
@@ -103,9 +105,24 @@ function cutscenePackSupported(root) {
     fs.existsSync(path.join(root, 'tools', 'media', file)));
 }
 
+// Settings from preferences.json. Before HD cutscenes had their own setting, HD
+// textures brought them: players who already have the movie pack keep it.
+function savedSettings(saved, repo) {
+  if (!saved) return { textures: true };
+  if ('cutscenes' in saved) return saved;
+  return { ...saved, cutscenes: Boolean(saved.textures && repo && cutscenePackInstalled(repo)) };
+}
+
+// Eclipse plays its own movies, so HD cutscenes apply to Sunshine only. The
+// game also only plays them with HD textures on (platform/thp/hd_movie_pack.cpp
+// takes SMS_TEXTURE_PACKS=0 to mean no HD movies either).
+function wantsCutscenes(settings) { return Boolean(settings.cutscenes && settings.textures && !settings.eclipse); }
+
+// Every HD download the settings ask for is in place. Older playable
+// installations (without the movie pack's files) keep playing until updated.
 function hdVisualsInstalled(root, settings) {
-  // Older playable installations keep their texture-only setup until updated.
-  return texturePackInstalled(root) && (settings.eclipse || !cutscenePackSupported(root) || cutscenePackInstalled(root));
+  return (!settings.textures || texturePackInstalled(root)) &&
+    (!wantsCutscenes(settings) || !cutscenePackSupported(root) || cutscenePackInstalled(root));
 }
 
 function texturePackDirectory(root) { return path.join(root, 'mods', 'textures'); }
@@ -138,7 +155,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',
-    SMS_HD_CUTSCENES: settings.textures && !settings.eclipse ? cutscenePackDirectory(root) : '0'
+    SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
   };
   return env;
 }
@@ -233,6 +250,6 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
   };
 }
 
-module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings,
-  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
+module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings,
+  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, playableInstall };

@@ -113,7 +113,7 @@ function loadConfig() {
   config = {
     repo: typeof saved.repo === 'string' ? saved.repo : defaultRepo(),
     rom: typeof saved.rom === 'string' ? saved.rom : '',
-    settings: port.normalizeSettings(saved.settings || { textures: true }),
+    settings: port.normalizeSettings(port.savedSettings(saved.settings, typeof saved.repo === 'string' ? saved.repo : defaultRepo())),
     installRoot: typeof saved.installRoot === 'string' ? saved.installRoot : null,
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
     previousInstall: saved.previousInstall || null,
@@ -310,12 +310,12 @@ async function installEclipse(root = requireRepo()) {
 
 async function installTextures(root = requireRepo()) {
   await ensureBuildTools();
-  if (!port.texturePackInstalled(root)) {
+  if (config.settings.textures && !port.texturePackInstalled(root)) {
     const cmd = port.commandFor(root, 'textures', [], process.platform, toolEnv());
     await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install UHD textures');
     if (!port.texturePackInstalled(root)) throw new Error('Texture installer finished without a usable texture pack.');
-  } else log('HD textures are already installed.');
-  if (!config.settings.eclipse && port.cutscenePackSupported(root) && !port.cutscenePackInstalled(root)) {
+  } else if (config.settings.textures) log('HD textures are already installed.');
+  if (port.wantsCutscenes(config.settings) && port.cutscenePackSupported(root) && !port.cutscenePackInstalled(root)) {
     const rom = port.validateRom(config.rom);
     const cmd = port.commandFor(root, 'cutscenes', [rom], process.platform, toolEnv());
     await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install HD cutscenes');
@@ -348,7 +348,7 @@ async function build(forceFresh = false) {
       throw new Error('The update folder has changed. Choose another setup location in Settings and try again.');
     game.carryUserFiles(original, root);
   }
-  if (settings.textures && !port.hdVisualsInstalled(root, settings)) await installTextures(root);
+  if (!port.hdVisualsInstalled(root, settings)) await installTextures(root);
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
   const disc = port.gameDisc(root, rom, settings.eclipse);
   const env = toolEnv(port.buildEnvironment(settings, disc, root));
@@ -376,7 +376,7 @@ async function setupGame() {
   requireRepo();
   port.validateRom(config.rom);
   if (!game.isCurrent(config.repo, config.settings, currentSource())) await build();
-  else if (config.settings.textures && !port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
+  else if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   return state();
 }
 
@@ -385,7 +385,7 @@ async function play(installation = null) {
   const settings = installation?.settings || config.settings;
   const rom = port.validateRom(installation?.rom || config.rom);
   if (!binaryReady(root, settings)) throw new Error('Set up this version of the game before playing.');
-  if (settings.textures && !port.hdVisualsInstalled(root, settings))
+  if (!port.hdVisualsInstalled(root, settings))
     throw new Error('HD visuals need to be set up. Return to the main screen to finish setup, or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
@@ -408,7 +408,7 @@ async function launchGame() {
   requireRepo();
   port.validateRom(config.rom);
   if (!binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()))) await build();
-  if (config.settings.textures && !port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
+  if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   return play();
 }
 
@@ -435,8 +435,8 @@ function state() {
     config, platform: info, repoReady,
     romReady: Boolean(config.rom) && !romError, romError,
     eclipseInstalled: repoReady && fs.existsSync(path.join(config.repo, port.ECLIPSE_ISO)),
-    texturesInstalled: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
-    textureFilesInstalled: repoReady && port.texturePackInstalled(config.repo),
+    hdVisualsReady: repoReady && port.hdVisualsInstalled(config.repo, config.settings),
+    texturesInstalled: repoReady && port.texturePackInstalled(config.repo),
     cutscenesInstalled: repoReady && port.cutscenePackInstalled(config.repo),
     cutscenesSupported: repoReady && port.cutscenePackSupported(config.repo),
     cutsceneRequirements: repoReady ? port.cutscenePackRequirements(config.repo) : null,
