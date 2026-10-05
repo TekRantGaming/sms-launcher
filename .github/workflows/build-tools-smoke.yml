@@ -51,9 +51,7 @@ jobs:
           fi
       - name: Verify Finder tool detection and compile Sunshine without a ROM
         run: node scripts/smoke-mac-tools.js
-  # Informational until Eclipse builds everywhere: a failure here never fails the run or blocks a release.
   compile-eclipse:
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
