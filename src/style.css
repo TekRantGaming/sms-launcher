@@ -270,3 +270,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 }
 @media (max-height: 720px) { .intro .eyebrow { display: block; } }
 @media (max-width: 920px) { .topbar { padding: 0 18px; } .viewport, .statusbar { padding-left: 18px; padding-right: 18px; } .brand { min-width: 0; } }
+
+#game-source summary { cursor: pointer; list-style: none; }
+#game-source summary::-webkit-details-marker { display: none; }
+#game-source summary h2 { display: inline; }
+#game-source summary small { margin-left: 6px; color: #6b8186; font-size: 11px; font-weight: 500; }
+#game-source summary::after { content: '›'; float: right; color: #6b8186; transition: transform .15s; }
+#game-source[open] summary::after { transform: rotate(90deg); }
+.source-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px 12px; margin-top: 10px; }
+.source-grid label { display: flex; flex-direction: column; gap: 4px; color: #405a60; font-size: 12px; }
+.source-grid input { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 12px; }
+.source-grid input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }

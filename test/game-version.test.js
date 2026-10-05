@@ -138,6 +138,40 @@ test('download selects exact port and decomp commits even when the branch has ne
   assert.equal(fs.readdirSync(root).some(name => name.startsWith('failed.download-')),false);
 });
 
+test('a decomp from another fork and commit survives the port\'s own submodule update', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms checkout fork-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const env = { ...process.env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'protocol.file.allow', GIT_CONFIG_VALUE_0: 'always' };
+  const git = (cwd, args) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: ['ignore','pipe','pipe'] }).trim();
+  function repo(name) {
+    const dir = path.join(root, name); fs.mkdirSync(dir);
+    git(dir, ['init', '-b', game.release.branch]);
+    git(dir, ['config','user.name','CI']); git(dir, ['config','user.email','ci@example.invalid']);
+    fs.writeFileSync(path.join(dir,'file.txt'),'one'); git(dir,['add','.']); git(dir,['commit','-m','first']);
+    return dir;
+  }
+  const decomp = repo('decomp');
+  const origin = repo('origin');
+  git(origin, ['submodule','add',decomp,'decomp']); git(origin,['commit','-am','pin decomp']);
+  // The fork has a commit the port does not pin.
+  const fork = path.join(root, 'fork');
+  git(root, ['clone', '-q', decomp, fork]);
+  git(fork, ['config','user.name','CI']); git(fork, ['config','user.email','ci@example.invalid']);
+  fs.writeFileSync(path.join(fork,'file.txt'),'fork'); git(fork,['commit','-qam','fork change']);
+  const source = { ...game.release, custom: true, repository: origin, commit: git(origin,['rev-parse','HEAD']),
+    decomp: git(fork,['rev-parse','HEAD']), decompRepository: fork };
+  const capture = async (command,args,cwd,environment) => execFileSync(command,args,{cwd,env:environment,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  const run = async (command,args,options) => capture(command,args,options.cwd,options.env);
+  const destination = path.join(root,'installed');
+  await game.checkout(destination, { source, env, run, capture });
+  assert.equal(game.matchesSource(destination, source), true);
+  assert.equal(fs.readFileSync(path.join(destination,'decomp','file.txt'),'utf8'),'fork');
+  git(destination, ['submodule', 'update', '--init', 'decomp']);  // what build.sh runs
+  assert.equal(game.gitRevision(path.join(destination,'decomp')), source.decomp);
+  assert.notEqual(game.snapshotPath('/x/sms', { arch: '64', eclipse: false }, source),
+    game.snapshotPath('/x/sms', { arch: '64', eclipse: false }));
+});
+
 test('build records the matching tool location and requests preparation again if those tools are removed', async t => {
   const { root, directory, binary, backups } = fixture(t);
   const toolRoot = path.join(root, 'private-tools');

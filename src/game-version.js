@@ -32,9 +32,11 @@ function gitRevision(root) {
   } catch (_) { return null; }
 }
 
-function identity(settings, platform = process.platform, arch = process.arch) {
+// `source` is the game the launcher sets up: this release's (game-release.json)
+// or one chosen under Settings (src/game-source.js), with the same fields.
+function identity(settings, platform = process.platform, arch = process.arch, source = release) {
   const asset = tools.assetFor(platform, arch);
-  return { schema: 1, gameVersion: release.version, commit: release.commit, decomp: release.decomp,
+  return { schema: 1, gameVersion: source.version, commit: source.commit, decomp: source.decomp,
     platform, hostArch: arch, gameArch: settings.arch, eclipse: Boolean(settings.eclipse),
     toolVersion: tools.toolsetFor(platform, arch), toolSha256: asset.sha256 };
 }
@@ -56,18 +58,22 @@ function compilerToolRoot(root, settings) {
   } catch (_) { return null; }
 }
 
-function isCurrent(root, settings) {
-  if (!fs.existsSync(port.binaryPath(root, settings))) return false;
-  const record = installed(root, settings);
-  const expected = identity(settings);
-  return Boolean(record && Object.keys(expected).every(key => record[key] === expected[key]) &&
-    (!record.toolRoot || fs.existsSync(record.toolRoot)) &&
-    gitRevision(root) === release.commit && gitRevision(path.join(root, 'decomp')) === release.decomp);
+function matchesSource(root, source = release) {
+  return gitRevision(root) === source.commit && gitRevision(path.join(root, 'decomp')) === source.decomp;
 }
 
-function snapshotPath(base, settings) {
-  const expected = identity(settings);
-  return path.join(`${base}.releases`, `${release.commit.slice(0, 12)}-${tools.platformId()}-${expected.toolSha256.slice(0, 12)}`);
+function isCurrent(root, settings, source = release) {
+  if (!fs.existsSync(port.binaryPath(root, settings))) return false;
+  const record = installed(root, settings);
+  const expected = identity(settings, undefined, undefined, source);
+  return Boolean(record && Object.keys(expected).every(key => record[key] === expected[key]) &&
+    (!record.toolRoot || fs.existsSync(record.toolRoot)) && matchesSource(root, source));
+}
+
+function snapshotPath(base, settings, source = release) {
+  const expected = identity(settings, undefined, undefined, source);
+  const decomp = source.custom ? `-${source.decomp.slice(0, 12)}` : '';
+  return path.join(`${base}.releases`, `${source.commit.slice(0, 12)}${decomp}-${tools.platformId()}-${expected.toolSha256.slice(0, 12)}`);
 }
 
 async function checkout(root, { git = 'git', run, capture, env, source = release, reference } = {}) {
@@ -75,7 +81,7 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
   const temporary = `${root}.download-${crypto.randomUUID()}`;
   let promoted = false;
   try {
-    const args = ['clone', '--config', 'core.longpaths=true', '--no-checkout', '--branch', source.branch];
+    const args = ['clone', '--config', 'core.longpaths=true', '--no-checkout', ...(source.branch ? ['--branch', source.branch] : [])];
     if (reference && fs.existsSync(path.join(reference, '.git')))
       args.push('--reference-if-able', reference, '--dissociate');
     args.push(source.repository, temporary);
@@ -84,12 +90,19 @@ async function checkout(root, { git = 'git', run, capture, env, source = release
     await run(git, ['checkout', '--detach', source.commit], { cwd: temporary, env }, 'Select game release');
     const actual = await capture(git, ['rev-parse', 'HEAD'], temporary, env);
     const tree = await capture(git, ['ls-tree', 'HEAD', 'decomp'], temporary, env);
-    if (actual !== source.commit || !tree.startsWith(`160000 commit ${source.decomp}\t`))
+    if (actual !== source.commit || (!source.decompRepository && !tree.startsWith(`160000 commit ${source.decomp}\t`)))
       throw new Error('The downloaded game files did not match this release. Please retry.');
     // MSYS submodules may use absolute gitdir/worktree paths. Initialize them
     // after promotion so none of their paths refer to the temporary checkout.
     fs.renameSync(temporary, root);
     promoted = true;
+    if (source.decompRepository) {
+      // Another decomp: clone it from there, and record its commit in the index
+      // so the port's own `git submodule update` keeps it.
+      await run(git, ['submodule', 'init', 'decomp'], { cwd: root, env }, 'Choose decomp source');
+      await run(git, ['config', 'submodule.decomp.url', source.decompRepository], { cwd: root, env }, 'Choose decomp source');
+      await run(git, ['update-index', '--cacheinfo', `160000,${source.decomp},decomp`], { cwd: root, env }, 'Choose decomp commit');
+    }
     await run(git, ['-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive'], { cwd: root, env }, 'Prepare game release');
     const decomp = await capture(git, ['rev-parse', 'HEAD'], path.join(root, 'decomp'), env);
     if (decomp !== source.decomp || gitRevision(root) !== source.commit || gitRevision(path.join(root, 'decomp')) !== source.decomp)
@@ -114,7 +127,7 @@ function carryUserFiles(previous, next) {
   }
 }
 
-async function buildSafely(root, settings, saveDir, compile, backups = saves.backupRoot()) {
+async function buildSafely(root, settings, saveDir, compile, backups = saves.backupRoot(), source = release) {
   const directory = path.dirname(port.binaryPath(root, settings));
   const previous = `${directory}.previous-${crypto.randomUUID()}`;
   const hadBuild = fs.existsSync(directory);
@@ -125,9 +138,9 @@ async function buildSafely(root, settings, saveDir, compile, backups = saves.bac
     if (hadBuild) saves.moveBuildKeepingSaves(directory, previous, saveDir, backups);
     const result = await compile();
     if (!fs.existsSync(port.binaryPath(root, settings))) throw new Error('Setup finished without a playable game. Please retry.');
-    if (gitRevision(root) !== release.commit || gitRevision(path.join(root, 'decomp')) !== release.decomp)
+    if (!matchesSource(root, source))
       throw new Error('Game files changed during setup. Please retry.');
-    const record = { ...identity(settings), toolRoot: compilerToolRoot(root, settings), builtAt: new Date().toISOString() };
+    const record = { ...identity(settings, undefined, undefined, source), toolRoot: compilerToolRoot(root, settings), builtAt: new Date().toISOString() };
     const file = metadataPath(root, settings);
     fs.writeFileSync(`${file}.tmp`, JSON.stringify(record, null, 2));
     fs.renameSync(`${file}.tmp`, file);
@@ -159,4 +172,4 @@ function recoverBuild(root, settings) {
   return true;
 }
 
-module.exports = { release, gitRevision, identity, installed, compilerToolRoot, isCurrent, snapshotPath, checkout, carryUserFiles, buildSafely, recoverBuild };
+module.exports = { release, gitRevision, matchesSource, identity, installed, compilerToolRoot, isCurrent, snapshotPath, checkout, carryUserFiles, buildSafely, recoverBuild };

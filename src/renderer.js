@@ -257,6 +257,7 @@ function refresh(data) {
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   renderUpdateChannels(config.settings.updateChannel);
+  renderGameSource(data);
   for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
   changing = false;
@@ -280,6 +281,43 @@ async function loadUpdateChannels() {
   catch (_) { return; }
   if (current) { changing = true; renderUpdateChannels(current.config.settings.updateChannel); changing = false; }
 }
+
+const sourceFields = { port: ['source-port-repository', 'source-port-ref'], decomp: ['source-decomp-repository', 'source-decomp-ref'] };
+let sourceShown = false;
+function renderGameSource(data) {
+  const chosen = data.gameSource;
+  // Fill the fields from the saved choice once, so typing is never overwritten.
+  if (!sourceShown) {
+    sourceShown = true;
+    for (const [part, [repository, ref]] of Object.entries(sourceFields)) {
+      $(repository).value = chosen?.override[part]?.repository || '';
+      $(ref).value = chosen?.override[part]?.ref || '';
+    }
+    $('game-source').open = Boolean(chosen);
+  }
+  $('game-source-note').textContent = chosen
+    ? `Building from ${chosen.version}. Update game to build it, or to follow a branch's newest commit.`
+    : `Using this launcher's release (game ${data.game.availableVersion}).`;
+  for (const id of ['apply-game-source', 'reset-game-source', ...Object.values(sourceFields).flat()])
+    $(id).disabled = Boolean(data.active);
+  $('reset-game-source').hidden = !chosen;
+}
+function gameSourceValue() {
+  const value = {};
+  for (const [part, [repository, ref]] of Object.entries(sourceFields))
+    value[part] = { repository: $(repository).value, ref: $(ref).value };
+  return value;
+}
+async function setGameSource(value) {
+  setMessage('');
+  try { refresh(await window.sms.setGameSource(value)); }
+  catch (error) { showError(error); }
+}
+$('apply-game-source').addEventListener('click', () => setGameSource(gameSourceValue()));
+$('reset-game-source').addEventListener('click', () => {
+  for (const id of Object.values(sourceFields).flat()) $(id).value = '';
+  setGameSource(null);
+});
 
 async function sync() { refresh(await window.sms.state()); }
 
