@@ -23,12 +23,29 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Mark the build as a preview
+        if: github.event_name == 'pull_request'
+        shell: bash
+        # A prerelease version names the files after the pull request, and with
+        # no publish setting the build has no update feed: a preview never
+        # replaces itself with a release.
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.version = `${pkg.version}-pr${process.env.PR}.${process.env.RUN}`;
+            pkg.build.publish = null;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+            console.log(`Preview version ${pkg.version}`);'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          RUN: ${{ github.run_number }}
       - run: npm run dist -- --${{ matrix.target }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
         with:
-          name: launcher-${{ matrix.target }}
+          name: launcher-${{ matrix.target }}${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.pull_request.number) || '' }}
           path: |
             dist/*.AppImage
             dist/*.dmg
@@ -36,3 +53,52 @@ jobs:
             dist/*.exe
             dist/latest*.yml
           if-no-files-found: error
+  comment:
+    # Pull requests from forks get a read-only token, so they get the builds without the comment.
+    if: >-
+      !cancelled() && github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Post or update the preview build comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          RESULT: ${{ needs.package.result }}
+        run: |
+          marker='<!-- launcher-preview-builds -->'
+          run_url="https://github.com/$REPO/actions/runs/$RUN_ID"
+          links=$(gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | [.name, .id, .size_in_bytes] | @tsv' |
+            sort | while IFS=$'\t' read -r name id size; do
+              case "$name" in *linux*) os=Linux;; *mac*) os=macOS;; *win*) os=Windows;; *) os=$name;; esac
+              echo "| $os | [$name.zip]($run_url/artifacts/$id) | $((size / 1048576)) MB |"
+            done)
+          {
+            echo "$marker"
+            echo "### Preview builds for ${SHA:0:7}"
+            echo
+            if [ -n "$links" ]; then
+              echo "| Platform | Download | Size |"
+              echo "| --- | --- | --- |"
+              echo "$links"
+            else
+              echo "No builds were produced."
+            fi
+            echo
+            [ "$RESULT" = success ] || echo "⚠️ At least one platform failed to build: see [the run]($run_url)."
+            echo "For testing only: these are not releases and do not update themselves. Downloads need a GitHub login and expire after 90 days."
+          } > body.md
+          existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@body.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file body.md
+          fi
