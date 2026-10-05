@@ -416,6 +416,8 @@ function setupAppUpdater() {
   }
   const { autoUpdater } = require('electron-updater');
   if (url) autoUpdater.setFeedURL({ provider: 'generic', url });
+  // Only stable releases from main; never a prerelease, even if one is published.
+  autoUpdater.allowPrerelease = false;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   const set = (state, message) => { appUpdate = { state, message }; broadcast('app-update', appUpdate); };
