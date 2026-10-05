@@ -113,8 +113,10 @@ function savedSettings(saved, repo) {
   return { ...saved, cutscenes: Boolean(saved.textures && repo && cutscenePackInstalled(repo)) };
 }
 
-// Eclipse plays its own movies, so HD cutscenes apply to Sunshine only.
-function wantsCutscenes(settings) { return Boolean(settings.cutscenes && !settings.eclipse); }
+// Eclipse plays its own movies, so HD cutscenes apply to Sunshine only. The
+// game also only plays them with HD textures on (platform/thp/hd_movie_pack.cpp
+// takes SMS_TEXTURE_PACKS=0 to mean no HD movies either).
+function wantsCutscenes(settings) { return Boolean(settings.cutscenes && settings.textures && !settings.eclipse); }
 
 // Every HD download the settings ask for is in place. Older playable
 // installations (without the movie pack's files) keep playing until updated.

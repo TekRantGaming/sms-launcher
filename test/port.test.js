@@ -170,15 +170,16 @@ test('HD movies have their own setting and only complete packs are recognized', 
   assert.equal(port.savedSettings({ textures: false }, root).cutscenes, false);
   assert.deepEqual(port.savedSettings(undefined, root), { textures: true });
   assert.equal(port.normalizeSettings({ textures: true }).cutscenes, false);
-  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true })), true);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: true, cutscenes: true })), false);
   fs.writeFileSync(path.join(folder, 'files', movies[20].disc_path), 'damaged');
   assert.equal(port.cutscenePackInstalled(root), false);
-  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true })), false);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: false, cutscenes: true })), true);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true, eclipse: true })), true);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({})), true);
-  const settings = port.normalizeSettings({ cutscenes: true, eclipse: false });
+  const settings = port.normalizeSettings({ textures: true, cutscenes: true, eclipse: false });
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', root).SMS_HD_CUTSCENES, folder);
+  // The game plays HD movies only with HD textures on, so none are set up or passed without them.
+  assert.equal(port.buildEnvironment({ ...settings, textures: false }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
   assert.equal(port.buildEnvironment({ ...settings, cutscenes: false, textures: true }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
   assert.equal(port.buildEnvironment({ ...settings, eclipse: true }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
   for (const platform of ['linux', 'darwin']) assert.deepEqual(port.commandFor(root, 'cutscenes', ['/my/disc.iso'], platform).args,
