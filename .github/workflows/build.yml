@@ -1,7 +1,23 @@
 name: Build launcher
+# Every pull request builds the launcher for each platform and comments with
+# the downloads. A pull request from this repository is also published as the
+# moving pre-release "pr-<number>", and a manual run from main with "beta" as
+# the moving pre-release "beta": players opt into either under Settings >
+# Manage game > Launcher updates. Stable players never see a pre-release.
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      beta:
+        description: Publish this build of main as the Beta channel
+        type: boolean
+        default: false
+permissions:
+  contents: read
+env:
+  PREVIEW: ${{ github.event_name == 'pull_request' || (inputs.beta && github.ref == 'refs/heads/main') }}
+  CHANNEL: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'beta' }}
+  SUFFIX: ${{ github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number) || 'beta' }}
 jobs:
   package:
     strategy:
@@ -10,10 +26,13 @@ jobs:
         include:
           - os: ubuntu-latest
             target: linux
+            args: --linux --x64
           - os: macos-latest
             target: mac
+            args: --mac --universal
           - os: windows-latest
             target: win
+            args: --win --x64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -23,42 +42,102 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Mark the build as a preview
-        if: github.event_name == 'pull_request'
+      - name: Make this a preview build
+        if: env.PREVIEW == 'true'
         shell: bash
-        # A prerelease version names the files after the pull request, and with
-        # no publish setting the build has no update feed: a preview never
-        # replaces itself with a release.
+        # A pre-release version (<version>-pr<N>.<run> or <version>-beta.<run>)
+        # whose update feed is its own channel's pre-release, and the dashed
+        # file names GitHub keeps on upload.
         run: |
           node -e '
             const fs = require("fs");
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            pkg.version = `${pkg.version}-pr${process.env.PR}.${process.env.RUN}`;
-            pkg.build.publish = null;
+            const { SUFFIX, RUN, CHANNEL, REPO } = process.env;
+            pkg.version = `${pkg.version}-${SUFFIX}.${RUN}`;
+            pkg.build.publish = { provider: "generic", url: `https://github.com/${REPO}/releases/download/${CHANNEL}` };
+            pkg.build.detectUpdateChannel = false;
+            pkg.build.nsis.artifactName = "SMS-Launcher-Setup-${version}.${ext}";
+            pkg.build.linux.artifactName = "SMS-Launcher-${version}.${ext}";
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-            console.log(`Preview version ${pkg.version}`);'
+            console.log(`Preview ${pkg.version} on channel ${CHANNEL}`);'
         env:
-          PR: ${{ github.event.pull_request.number }}
           RUN: ${{ github.run_number }}
-      - run: npm run dist -- --${{ matrix.target }}
+          REPO: ${{ github.repository }}
+      - name: Configure optional macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$MAC_CSC_LINK" && -n "$MAC_CSC_KEY_PASSWORD" ]]; then
+            printf 'CSC_LINK=%s\n' "$MAC_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - name: Configure optional Windows signing
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          WINDOWS_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WINDOWS_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$WINDOWS_CSC_LINK" && -n "$WINDOWS_CSC_KEY_PASSWORD" ]]; then
+            printf 'WIN_CSC_LINK=%s\n' "$WINDOWS_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'WIN_CSC_KEY_PASSWORD=%s\n' "$WINDOWS_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - run: npm run dist -- ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
         with:
-          name: launcher-${{ matrix.target }}${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.pull_request.number) || '' }}
+          name: launcher-${{ matrix.target }}${{ env.PREVIEW == 'true' && format('-{0}', env.SUFFIX) || '' }}
           path: |
             dist/*.AppImage
             dist/*.dmg
             dist/*.zip
             dist/*.exe
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
+  publish:
+    # Forks get a read-only token: their pull requests are built but not published.
+    if: >-
+      !cancelled() && needs.package.result == 'success' &&
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository ||
+       inputs.beta && github.ref == 'refs/heads/main')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Replace the channel's pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          version=$(sed -n 's/^version: //p' dist/latest.yml)
+          if [ -n "$PR" ]; then
+            title="Preview #$PR: $PR_TITLE"
+            notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: choose \"Pull request #$PR\" under Settings > Manage game > Launcher updates. Replaced on every push and deleted when the pull request closes."
+          else
+            title="Beta $version"
+            notes="Beta build of main at ${SHA:0:7}. Choose \"Beta\" under Settings > Manage game > Launcher updates."
+          fi
+          gh release delete "$CHANNEL" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$CHANNEL" dist/* --prerelease --latest=false --target "$SHA" --title "$title" --notes "$notes"
   comment:
     # Pull requests from forks get a read-only token, so they get the builds without the comment.
     if: >-
       !cancelled() && github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: package
+    needs: [package, publish]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -72,6 +151,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           SHA: ${{ github.event.pull_request.head.sha }}
           RESULT: ${{ needs.package.result }}
+          PUBLISHED: ${{ needs.publish.result }}
         run: |
           marker='<!-- launcher-preview-builds -->'
           run_url="https://github.com/$REPO/actions/runs/$RUN_ID"
@@ -93,7 +173,11 @@ jobs:
             fi
             echo
             [ "$RESULT" = success ] || echo "⚠️ At least one platform failed to build: see [the run]($run_url)."
-            echo "For testing only: these are not releases and do not update themselves. Downloads need a GitHub login and expire after 90 days."
+            if [ "$PUBLISHED" = success ]; then
+              echo "**Try it in the launcher:** Settings → Manage game → Launcher updates → **Pull request #$PR**. It updates with each push to this pull request; switch back to Stable any time. ([pre-release](https://github.com/$REPO/releases/tag/pr-$PR))"
+              echo
+            fi
+            echo "For testing only, not a release. Downloads above need a GitHub login and expire after 90 days."
           } > body.md
           existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)

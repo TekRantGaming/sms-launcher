@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { normalizeChannel } = require('./update-channel');
 
 const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
@@ -59,7 +60,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     hudEdges: Boolean(input.hudEdges),
     textures: Boolean(input.textures),
     eclipse: Boolean(input.eclipse),
-    autoUpdate: input.autoUpdate !== false
+    autoUpdate: input.autoUpdate !== false,
+    updateChannel: normalizeChannel(input.updateChannel)
   };
 }
 

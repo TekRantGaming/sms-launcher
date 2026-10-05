@@ -256,9 +256,29 @@ function refresh(data) {
   }));
   for (const key of ['arch', 'widescreen', 'resolution']) $(key).value = String(config.settings[key]);
   for (const key of ['fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
-  for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
+  renderUpdateChannels(config.settings.updateChannel);
+  for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
   changing = false;
+}
+
+let updateChannels = [{ id: 'stable', label: 'Stable' }];
+function renderUpdateChannels(chosen) {
+  const list = updateChannels.some(item => item.id === chosen) ? updateChannels
+    : updateChannels.concat({ id: chosen, label: chosen, missing: true });
+  $('updateChannel').replaceChildren(...list.map(item => {
+    const option = document.createElement('option');
+    option.value = item.id;
+    option.textContent = item.missing ? `${item.label} (no longer available)` : item.label;
+    if (item.detail) option.title = item.detail;
+    return option;
+  }));
+  $('updateChannel').value = chosen;
+}
+async function loadUpdateChannels() {
+  try { updateChannels = await window.sms.updateChannels(); }
+  catch (_) { return; }
+  if (current) { changing = true; renderUpdateChannels(current.config.settings.updateChannel); changing = false; }
 }
 
 async function sync() { refresh(await window.sms.state()); }
@@ -338,7 +358,7 @@ function settingsValue() {
   return {
     arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value),
     fps60: $('fps60').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked,
-    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked
+    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value
   };
 }
 
@@ -383,8 +403,9 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate'])
+for (const key of ['arch', 'widescreen', 'resolution', 'fps60', 'hudEdges', 'textures', 'eclipse', 'autoUpdate', 'updateChannel'])
   $(key).addEventListener('change', saveSettings);
+$('open-maintenance').addEventListener('click', loadUpdateChannels);
 window.sms.onLog(appendLog);
 window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
