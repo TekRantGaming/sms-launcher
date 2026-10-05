@@ -24,14 +24,14 @@ const MSYS2 = {
 };
 const LINUX_PACKAGES = [
   'python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch', 'binutils',
-  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
+  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'clang=21.1.8', 'clangxx=21.1.8', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
   'libegl-devel', 'libgl-devel', '7zip=26.03', 'bash', 'coreutils',
   'grep', 'sed', 'gawk', 'findutils', 'curl', 'file'
 ];
 const WINDOWS_PACKAGES = [
   'mingw-w64-x86_64-gcc', 'mingw-w64-x86_64-cmake', 'mingw-w64-x86_64-SDL2',
   'mingw-w64-x86_64-ninja', 'mingw-w64-x86_64-python', 'mingw-w64-x86_64-7zip',
-  'mingw-w64-x86_64-clang', 'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
+  'mingw-w64-x86_64-clang', 'mingw-w64-x86_64-llvm-tools', 'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
   'patch', 'git'
 ];
 
@@ -82,7 +82,7 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       fs.symlinkSync(target, link);
     }
     const required = platform === 'darwin' ? ['git', 'cmake', 'ninja', 'make', 'patch', 'python3', 'llvm-objcopy', 'clang++', '7z', 'bash']
-      : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', '7z', 'bash'];
+      : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', 'clang', 'clang++', '7z', 'bash'];
     for (const name of required)
       if (!fs.existsSync(path.join(bin, name))) throw new Error(`Build tool ${name} is missing after download.`);
     if (platform === 'linux') await require('./prepare-linux32').prepare(prefix, run);
