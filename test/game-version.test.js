@@ -29,7 +29,7 @@ test('legacy builds require one verified update; display settings and launcher v
   assert.equal(Boolean(game.isCurrent(root, settings)), false);
   fs.writeFileSync(path.join(path.dirname(port.binaryPath(root, settings)), 'launcher-build.json'),
     JSON.stringify({ ...game.identity(settings), launcherVersion: '0.0.1' }));
-  assert.equal(game.isCurrent(root, { ...settings, resolution: 4, fps60: false, textures: true }), true);
+  assert.equal(game.isCurrent(root, { ...settings, resolution: 4, fps60: false, textures: true, fullscreen: true }), true);
   const marker = path.join(path.dirname(port.binaryPath(root, settings)), 'launcher-build.json');
   fs.writeFileSync(marker, JSON.stringify({ ...game.identity(settings), toolSha256: '0'.repeat(64) }));
   assert.equal(game.isCurrent(root, settings), false);

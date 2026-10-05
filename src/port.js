@@ -58,6 +58,7 @@ function normalizeSettings(input = {}, platform = process.platform) {
     arch, widescreen, resolution,
     fps60: input.fps60 !== false,
     hudEdges: Boolean(input.hudEdges),
+    fullscreen: Boolean(input.fullscreen),
     textures: Boolean(input.textures),
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
@@ -152,6 +153,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_WIDESCREEN: settings.widescreen,
     SMS_WIDESCREEN_HUD: settings.hudEdges ? 'edges' : 'centre',
     SMS_FRAME_RATE: settings.fps60 ? '60' : '30',
+    SMS_FULLSCREEN: settings.fullscreen ? '1' : '0',
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',
