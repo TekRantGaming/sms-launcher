@@ -389,10 +389,11 @@ async function play(installation = null) {
     throw new Error('HD visuals need to be set up. Return to the main screen to finish setup, or turn them off in Settings.');
   const disc = port.gameDisc(root, rom, settings.eclipse);
   makeSaveBackup('before-play');
+  const saveDir = saves.prepareSaveDirectory(currentSaveDirectory());
   const recordedTools = game.installed(root, settings)?.toolRoot || game.compilerToolRoot(root, settings);
   const env = recordedTools
-    ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() })
-    : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: currentSaveDirectory() });
+    ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
+    : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir });
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
