@@ -9,6 +9,7 @@ const saves = require('./saves');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
+const gameSource = require('./game-source');
 const { activityFromLine, cleanOutputLine, createLineReader } = require('./progress');
 
 let window;
@@ -49,6 +50,47 @@ function log(message) {
   }
 }
 
+// A game source chosen under Settings, with the commits it resolved to.
+function savedGameSource(saved) {
+  try {
+    const override = gameSource.normalizeOverride(saved?.override);
+    const resolved = saved?.resolved;
+    if (!override || !/^[a-f0-9]{40}$/.test(resolved?.commit) || !/^[a-f0-9]{40}$/.test(resolved?.decomp)) return null;
+    return { override, resolved: { ...resolved, custom: true, override } };
+  } catch (_) { return null; }
+}
+
+function currentSource() { return config.gameSource?.resolved || game.release; }
+
+async function chooseGameSource(input) {
+  await ensureBuildTools();
+  const override = gameSource.normalizeOverride(input);
+  if (!override) {
+    config.gameSource = null;
+    saveConfig();
+    log(`Game source: this launcher release (${game.release.version}). Update game to switch back.`);
+    return state();
+  }
+  const resolved = await gameSource.resolve(override, { capture, env: toolEnv() });
+  config.gameSource = { override, resolved };
+  saveConfig();
+  log(`Game source: ${resolved.repository} at ${resolved.commit.slice(0, 12)}, decomp ${resolved.decompRepository || 'pinned by it'} at ${resolved.decomp.slice(0, 12)}. Update game to build it.`);
+  return state();
+}
+
+// Update game follows a chosen branch to its newest commit.
+async function refreshGameSource() {
+  if (!config.gameSource) return;
+  try {
+    const resolved = await gameSource.resolve(config.gameSource.override, { capture, env: toolEnv() });
+    if (resolved.commit !== config.gameSource.resolved.commit || resolved.decomp !== config.gameSource.resolved.decomp) {
+      config.gameSource = { ...config.gameSource, resolved };
+      saveConfig();
+      log(`Game source moved to ${resolved.version}.`);
+    }
+  } catch (error) { log(`Could not check the chosen game source for changes: ${error.message}`); }
+}
+
 function configFile() { return path.join(app.getPath('userData'), 'preferences.json'); }
 
 function defaultRepo() {
@@ -75,7 +117,8 @@ function loadConfig() {
     installRoot: typeof saved.installRoot === 'string' ? saved.installRoot : null,
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
     previousInstall: saved.previousInstall || null,
-    completedSetup: Boolean(saved.completedSetup)
+    completedSetup: Boolean(saved.completedSetup),
+    gameSource: savedGameSource(saved.gameSource)
   };
   for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
     for (const arch of port.platformInfo().arches)
@@ -236,8 +279,9 @@ async function updatePort() {
   requireRepo();
   port.validateRom(config.rom);
   await ensureBuildTools();
-  if (game.isCurrent(config.repo, config.settings)) {
-    log('Your game is up to date for this launcher release.');
+  await refreshGameSource();
+  if (game.isCurrent(config.repo, config.settings, currentSource())) {
+    log(config.gameSource ? 'Your game is up to date with the chosen game source.' : 'Your game is up to date for this launcher release.');
     return state();
   }
   await build();
@@ -253,7 +297,7 @@ async function installPort() {
       throw new Error('That folder is not empty. Choose another download location.');
     fs.rmdirSync(destination);
   }
-  await game.checkout(destination, { run: launch, capture, env: toolEnv() });
+  await game.checkout(destination, { run: launch, capture, env: toolEnv(), source: currentSource() });
   return { ok: true };
 }
 
@@ -292,16 +336,15 @@ async function build(forceFresh = false) {
   const saveDirectory = currentSaveDirectory();
   makeSaveBackup('before-port-update');
   await ensureBuildTools();
+  const source = currentSource();
   let root = original;
   const sourceMarker = path.join(root, 'launcher-source.json');
-  const freshPinnedSource = fs.existsSync(sourceMarker) && !binaryReady(root, settings) &&
-    game.gitRevision(root) === game.release.commit && game.gitRevision(path.join(root, 'decomp')) === game.release.decomp;
-  if (forceFresh || (!game.isCurrent(root, settings) && !freshPinnedSource)) {
-    root = game.snapshotPath(config.installRoot || original, settings);
-    if (forceFresh || (fs.existsSync(root) && (game.gitRevision(root) !== game.release.commit ||
-        game.gitRevision(path.join(root, 'decomp')) !== game.release.decomp))) root += `.fresh-${Date.now()}`;
-    if (!fs.existsSync(root)) await game.checkout(root, { run: launch, capture, env: toolEnv(), reference: original });
-    if (game.gitRevision(root) !== game.release.commit || game.gitRevision(path.join(root, 'decomp')) !== game.release.decomp)
+  const freshPinnedSource = fs.existsSync(sourceMarker) && !binaryReady(root, settings) && game.matchesSource(root, source);
+  if (forceFresh || (!game.isCurrent(root, settings, source) && !freshPinnedSource)) {
+    root = game.snapshotPath(config.installRoot || original, settings, source);
+    if (forceFresh || (fs.existsSync(root) && !game.matchesSource(root, source))) root += `.fresh-${Date.now()}`;
+    if (!fs.existsSync(root)) await game.checkout(root, { run: launch, capture, env: toolEnv(), reference: original, source });
+    if (!game.matchesSource(root, source))
       throw new Error('The update folder has changed. Choose another setup location in Settings and try again.');
     game.carryUserFiles(original, root);
   }
@@ -314,7 +357,8 @@ async function build(forceFresh = false) {
     ? port.eclipseBuildCommand(root, settings, process.platform, env)
     : port.commandFor(root, 'build', [disc], process.platform, env);
   const result = await game.buildSafely(root, settings, saveDirectory,
-    () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port'));
+    () => launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, settings.eclipse ? 'Build Eclipse port' : 'Build Sunshine port'),
+    undefined, source);
   // Preferences switch only after a successful build. Closing the app or a
   // failed download/build leaves the last installation selected and playable.
   const earlier = { ...config };
@@ -324,14 +368,14 @@ async function build(forceFresh = false) {
       ? { repo: original, settings, rom, saveDirectory } : config.previousInstall };
   try { saveConfig(); }
   catch (error) { config = earlier; throw error; }
-  log(`Game ${game.release.version} is ready. Your saved games stay in the same folder.`);
+  log(`Game ${source.version} is ready. Your saved games stay in the same folder.`);
   return result;
 }
 
 async function setupGame() {
   requireRepo();
   port.validateRom(config.rom);
-  if (!game.isCurrent(config.repo, config.settings)) await build();
+  if (!game.isCurrent(config.repo, config.settings, currentSource())) await build();
   else if (config.settings.textures && !port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   return state();
 }
@@ -363,7 +407,7 @@ async function play(installation = null) {
 async function launchGame() {
   requireRepo();
   port.validateRom(config.rom);
-  if (!binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings))) await build();
+  if (!binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()))) await build();
   if (config.settings.textures && !port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
   return play();
 }
@@ -398,10 +442,11 @@ function state() {
     cutsceneRequirements: repoReady ? port.cutscenePackRequirements(config.repo) : null,
     binaryReady: ready,
     tools: toolsStatus(),
-    game: { launcherVersion: app.getVersion(), availableVersion: game.release.version,
+    gameSource: config.gameSource ? { override: config.gameSource.override, version: config.gameSource.resolved.version } : null,
+    game: { launcherVersion: app.getVersion(), availableVersion: currentSource().version,
       installedVersion: installedBuild?.gameVersion || null,
       installedToolVersion: installedBuild?.toolVersion || null,
-      toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings),
+      toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
     active: activityState(), appUpdate, logs: logLines,
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
@@ -565,6 +610,7 @@ function registerHandlers() {
     }] };
   for (const [channel, [label, callback]] of Object.entries(actions))
     ipcMain.handle(channel, () => exclusive(label, callback));
+  ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
   ipcMain.handle('restore-saves', async (_event, id) => {
