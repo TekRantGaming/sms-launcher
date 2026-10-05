@@ -149,7 +149,7 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
 });
 
 
-test('HD movies follow textures and only complete packs are recognized', t => {
+test('HD movies have their own setting and only complete packs are recognized', t => {
   const root = temporary();t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const folder = port.cutscenePackDirectory(root);
   const movies = Array.from({ length: 21 }, (_, i) => ({ disc_path: `data/movie${i}.thp`, target_bytes: 8 }));
@@ -159,14 +159,27 @@ test('HD movies follow textures and only complete packs are recognized', t => {
   fs.mkdirSync(path.join(folder, 'files', 'data'), { recursive: true });
   fs.writeFileSync(path.join(folder, 'installed.json'), JSON.stringify(catalog));
   assert.equal(port.cutscenePackInstalled(root), false);
+  // An older preferences.json with HD textures on but no movie pack: movies stay off.
+  assert.equal(port.savedSettings({ textures: true }, root).cutscenes, false);
   fs.writeFileSync(path.join(folder, 'sms-hd-cutscenes-v1.complete'), 'test-v1\n');
   for (const movie of movies) fs.writeFileSync(path.join(folder, 'files', movie.disc_path), 'HD movie');
   assert.equal(port.cutscenePackInstalled(root), true);
+  // ...and with the pack already set up, they stay on.
+  assert.equal(port.savedSettings({ textures: true }, root).cutscenes, true);
+  assert.equal(port.savedSettings({ textures: true, cutscenes: false }, root).cutscenes, false);
+  assert.equal(port.savedSettings({ textures: false }, root).cutscenes, false);
+  assert.deepEqual(port.savedSettings(undefined, root), { textures: true });
+  assert.equal(port.normalizeSettings({ textures: true }).cutscenes, false);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true })), true);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: true, cutscenes: true })), false);
   fs.writeFileSync(path.join(folder, 'files', movies[20].disc_path), 'damaged');
   assert.equal(port.cutscenePackInstalled(root), false);
-  const settings = port.normalizeSettings({ textures: true, eclipse: false });
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true })), false);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true, eclipse: true })), true);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({})), true);
+  const settings = port.normalizeSettings({ cutscenes: true, eclipse: false });
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', root).SMS_HD_CUTSCENES, folder);
-  assert.equal(port.buildEnvironment({ ...settings, textures: false }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
+  assert.equal(port.buildEnvironment({ ...settings, cutscenes: false, textures: true }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
   assert.equal(port.buildEnvironment({ ...settings, eclipse: true }, '/my/disc.iso', root).SMS_HD_CUTSCENES, '0');
   for (const platform of ['linux', 'darwin']) assert.deepEqual(port.commandFor(root, 'cutscenes', ['/my/disc.iso'], platform).args,
     ['tools/media/install_cutscenes.py', '--iso', '/my/disc.iso']);
@@ -178,9 +191,9 @@ test('HD movies follow textures and only complete packs are recognized', t => {
 });
 
 
-test('older installed games remain playable with HD textures until updated', t => {
+test('older installed games remain playable with HD cutscenes on until updated', t => {
   const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const settings = port.normalizeSettings({ textures: true, eclipse: false, autoUpdate: false });
+  const settings = port.normalizeSettings({ textures: true, cutscenes: true, eclipse: false, autoUpdate: false });
   const textures = port.texturePackDirectory(root);
   fs.mkdirSync(textures, { recursive: true });
   fs.writeFileSync(path.join(textures, 'tex1_existing.png'), 'texture');
