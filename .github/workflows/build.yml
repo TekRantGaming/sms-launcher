@@ -1,38 +1,225 @@
 name: Build launcher
+# Pull requests are built for each platform as a check. Previews are only
+# built when a maintainer runs this workflow by hand:
+#   - with a pull request number: published as the moving pre-release
+#     "pr-<number>", with a comment on the pull request;
+#   - from main with "beta": published as the moving pre-release "beta".
+# Players opt into either under Settings > Manage game > Launcher updates.
+# Stable players never see a pre-release.
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to build and publish as a preview
+        type: string
+        default: ''
+      beta:
+        description: Publish this build of main as the Beta channel
+        type: boolean
+        default: false
+permissions:
+  contents: read
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      preview: ${{ steps.plan.outputs.preview }}
+      channel: ${{ steps.plan.outputs.channel }}
+      suffix: ${{ steps.plan.outputs.suffix }}
+      sha: ${{ steps.plan.outputs.sha }}
+      pr: ${{ steps.plan.outputs.pr }}
+      title: ${{ steps.plan.outputs.title }}
+    steps:
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ inputs.pr }}
+          BETA: ${{ inputs.beta }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          out() { printf '%s=%s\n' "$1" "$2" >> "$GITHUB_OUTPUT"; }
+          if [ "$EVENT" != workflow_dispatch ] || { [ -z "$PR" ] && [ "$BETA" != true ]; }; then
+            out preview false; out sha "$SHA"; exit 0
+          fi
+          if [ -n "$PR" ] && [ "$BETA" = true ]; then
+            echo "::error::Choose a pull request number or beta, not both."; exit 1
+          fi
+          if [ -n "$PR" ]; then
+            [[ "$PR" =~ ^[1-9][0-9]*$ ]] || { echo "::error::\"$PR\" is not a pull request number."; exit 1; }
+            info=$(gh pr view "$PR" --json state,headRefOid,title,isCrossRepository) || exit 1
+            [ "$(jq -r .state <<<"$info")" = OPEN ] || { echo "::error::Pull request #$PR is not open."; exit 1; }
+            if [ "$(jq -r .isCrossRepository <<<"$info")" = true ]; then
+              echo "::warning::#$PR comes from a fork: its code builds with this repository's signing secrets."
+            fi
+            out preview true; out channel "pr-$PR"; out suffix "pr$PR"; out pr "$PR"
+            out sha "$(jq -r .headRefOid <<<"$info")"
+            out title "$(jq -r .title <<<"$info" | tr -d '\r\n' | cut -c1-200)"
+          else
+            [ "$REF" = refs/heads/main ] || { echo "::error::Run Beta from main."; exit 1; }
+            out preview true; out channel beta; out suffix beta; out sha "$SHA"
+          fi
   package:
+    needs: plan
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             target: linux
+            args: --linux --x64
           - os: macos-latest
             target: mac
+            args: --mac --universal
           - os: windows-latest
             target: win
+            args: --win --x64
     runs-on: ${{ matrix.os }}
+    env:
+      PREVIEW: ${{ needs.plan.outputs.preview }}
+      CHANNEL: ${{ needs.plan.outputs.channel }}
+      SUFFIX: ${{ needs.plan.outputs.suffix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run dist -- --${{ matrix.target }}
+      - name: Make this a preview build
+        if: env.PREVIEW == 'true'
+        shell: bash
+        # A pre-release version (<version>-pr<N>.<run> or <version>-beta.<run>)
+        # whose update feed is its own channel's pre-release, and the dashed
+        # file names GitHub keeps on upload.
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const { SUFFIX, RUN, CHANNEL, REPO } = process.env;
+            pkg.version = `${pkg.version}-${SUFFIX}.${RUN}`;
+            pkg.build.publish = { provider: "generic", url: `https://github.com/${REPO}/releases/download/${CHANNEL}` };
+            pkg.build.detectUpdateChannel = false;
+            pkg.build.nsis.artifactName = "SMS-Launcher-Setup-${version}.${ext}";
+            pkg.build.linux.artifactName = "SMS-Launcher-${version}.${ext}";
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+            console.log(`Preview ${pkg.version} on channel ${CHANNEL}`);'
+        env:
+          RUN: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+      - name: Configure optional macOS signing
+        if: env.PREVIEW == 'true' && runner.os == 'macOS'
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$MAC_CSC_LINK" && -n "$MAC_CSC_KEY_PASSWORD" ]]; then
+            printf 'CSC_LINK=%s\n' "$MAC_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - name: Configure optional Windows signing
+        if: env.PREVIEW == 'true' && runner.os == 'Windows'
+        shell: bash
+        env:
+          WINDOWS_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WINDOWS_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$WINDOWS_CSC_LINK" && -n "$WINDOWS_CSC_KEY_PASSWORD" ]]; then
+            printf 'WIN_CSC_LINK=%s\n' "$WINDOWS_CSC_LINK" >> "$GITHUB_ENV"
+            printf 'WIN_CSC_KEY_PASSWORD=%s\n' "$WINDOWS_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          fi
+      - run: npm run dist -- ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
         with:
-          name: launcher-${{ matrix.target }}
+          name: launcher-${{ matrix.target }}${{ env.PREVIEW == 'true' && format('-{0}', env.SUFFIX) || '' }}
           path: |
             dist/*.AppImage
             dist/*.dmg
             dist/*.zip
             dist/*.exe
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
+  publish:
+    needs: [plan, package]
+    if: needs.plan.outputs.preview == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Replace the channel's pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PR: ${{ needs.plan.outputs.pr }}
+          PR_TITLE: ${{ needs.plan.outputs.title }}
+        run: |
+          version=$(sed -n 's/^version: //p' dist/latest.yml)
+          if [ -n "$PR" ]; then
+            title="Preview #$PR: $PR_TITLE"
+            notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: choose \"Pull request #$PR\" under Settings > Manage game > Launcher updates. Replaced by the next preview of this pull request and deleted when it closes."
+          else
+            title="Beta $version"
+            notes="Beta build of main at ${SHA:0:7}. Choose \"Beta\" under Settings > Manage game > Launcher updates."
+          fi
+          # A tag on a fork's commit cannot be created here; tag main instead and name the commit in the notes.
+          target="$SHA"
+          gh api "repos/$GH_REPO/commits/$SHA" --silent 2>/dev/null || target=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          gh release delete "$CHANNEL" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$CHANNEL" dist/* --prerelease --latest=false --target "$target" --title "$title" --notes "$notes"
+  comment:
+    needs: [plan, publish]
+    if: needs.plan.outputs.pr != ''
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post or update the preview comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR: ${{ needs.plan.outputs.pr }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          marker='<!-- launcher-preview-builds -->'
+          release="https://github.com/$REPO/releases/tag/pr-$PR"
+          assets=$(gh release view "pr-$PR" --repo "$REPO" --json assets --jq '.assets[] | [.name, .url, .size] | @tsv' |
+            grep -E '\.(exe|dmg|AppImage)\s' | sort | while IFS=$'\t' read -r name url size; do
+              case "$name" in *.AppImage) os=Linux;; *.dmg) os=macOS;; *) os=Windows;; esac
+              echo "| $os | [$name]($url) | $((size / 1048576)) MB |"
+            done)
+          {
+            echo "$marker"
+            echo "### Preview build of ${SHA:0:7}"
+            echo
+            echo "**In the launcher:** Settings → Manage game → Launcher updates → **Pull request #$PR**. It moves to each new preview of this pull request; switch back to Stable any time."
+            echo
+            echo "| Platform | Installer | Size |"
+            echo "| --- | --- | --- |"
+            echo "$assets"
+            echo
+            echo "For testing only, not a release ([pre-release]($release), [run]($RUN_URL)). Removed when this pull request closes."
+          } > body.md
+          existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id" | head -n 1)
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -F body=@body.md > /dev/null
+          else
+            gh pr comment "$PR" --repo "$REPO" --body-file body.md
+          fi

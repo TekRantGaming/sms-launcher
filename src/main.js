@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, net } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -8,6 +8,7 @@ const port = require('./port');
 const saves = require('./saves');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
+const updateChannel = require('./update-channel');
 const { activityFromLine, cleanOutputLine, createLineReader } = require('./progress');
 
 let window;
@@ -16,6 +17,7 @@ let active = null;
 let preparingTools = false;
 let operation = null;
 let appUpdate = { state: 'idle', message: '' };
+let updater = null;
 const logLines = [];
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
@@ -407,28 +409,68 @@ function state() {
   };
 }
 
+// Stable never sees a pre-release. Beta and pull request previews are opt-in,
+// and may be older than what is installed, so leaving one can go back down.
+function applyUpdateChannel() {
+  if (!updater) return;
+  const channel = config.settings.updateChannel;
+  const url = process.env.SMS_LAUNCHER_UPDATE_URL;
+  updater.setFeedURL(url ? { provider: 'generic', url } : updateChannel.feedFor(channel));
+  updater.channel = 'latest';
+  updater.allowPrerelease = channel !== 'stable';
+  updater.allowDowngrade = channel !== 'stable' || app.getVersion().includes('-');
+}
+
+async function checkAppUpdate() {
+  if (!updater) return appUpdate;
+  try { await updater.checkForUpdates(); }
+  catch (error) {
+    const missing = config.settings.updateChannel !== 'stable' && /\b404\b/.test(error.message);
+    appUpdate = { state: 'error', message: missing
+      ? `${updateChannel.channelLabel(config.settings.updateChannel)} is no longer available. Choose another update channel in Settings.`
+      : `Launcher update check failed: ${error.message}` };
+    broadcast('app-update', appUpdate);
+  }
+  return appUpdate;
+}
+
+async function updateChannels() {
+  let releases = [];
+  try {
+    const response = await net.fetch(`https://api.github.com/repos/${updateChannel.REPOSITORY}/releases?per_page=100`,
+      { headers: { Accept: 'application/vnd.github+json' } });
+    if (response.ok) releases = await response.json();
+  } catch (_) { /* offline: Stable and the current choice are still offered */ }
+  const channels = updateChannel.channelsFromReleases(releases);
+  const chosen = config.settings.updateChannel;
+  if (!channels.some(item => item.id === chosen))
+    channels.push({ id: chosen, label: updateChannel.channelLabel(chosen), detail: 'No longer available', missing: true });
+  return channels;
+}
+
 function setupAppUpdater() {
   const url = process.env.SMS_LAUNCHER_UPDATE_URL;
   const bundledFeed = fs.existsSync(path.join(process.resourcesPath, 'app-update.yml'));
   if (!app.isPackaged || (!url && !bundledFeed) || (process.platform === 'linux' && !process.env.APPIMAGE)) {
     appUpdate = { state: 'unconfigured', message: app.isPackaged ? 'Launcher updates are unavailable for this install.' : 'Launcher updates come with new releases.' };
+    ipcMain.handle('check-app-update', () => appUpdate);
     return;
   }
-  const { autoUpdater } = require('electron-updater');
-  if (url) autoUpdater.setFeedURL({ provider: 'generic', url });
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  ({ autoUpdater: updater } = require('electron-updater'));
+  updater.autoDownload = true;
+  updater.autoInstallOnAppQuit = true;
+  applyUpdateChannel();
   const set = (state, message) => { appUpdate = { state, message }; broadcast('app-update', appUpdate); };
-  autoUpdater.on('checking-for-update', () => set('checking', 'Checking launcher updates…'));
-  autoUpdater.on('update-available', () => set('downloading', 'Downloading launcher update…'));
-  autoUpdater.on('update-not-available', () => set('current', 'Launcher is up to date.'));
-  autoUpdater.on('download-progress', progress => set('downloading', `Downloading launcher update: ${Math.round(progress.percent)}%`));
-  autoUpdater.on('update-downloaded', () => set('ready', 'Launcher update downloaded; it will install when you quit.'));
-  autoUpdater.on('error', error => set('error', `Launcher update check failed: ${error.message}`));
-  const check = () => { if (config.settings.autoUpdate) autoUpdater.checkForUpdates().catch(error => set('error', error.message)); };
+  updater.on('checking-for-update', () => set('checking', 'Checking launcher updates…'));
+  updater.on('update-available', info => set('downloading', `Downloading launcher ${info.version}…`));
+  updater.on('update-not-available', () => set('current', 'Launcher is up to date.'));
+  updater.on('download-progress', progress => set('downloading', `Downloading launcher update: ${Math.round(progress.percent)}%`));
+  updater.on('update-downloaded', info => set('ready', `Launcher ${info.version} downloaded; it will install when you quit.`));
+  updater.on('error', error => set('error', `Launcher update check failed: ${error.message}`));
+  const check = () => { if (config.settings.autoUpdate) checkAppUpdate(); };
   setTimeout(check, 10000);
   setInterval(check, 30 * 60 * 1000);
-  ipcMain.handle('check-app-update', () => autoUpdater.checkForUpdates().then(() => appUpdate));
+  ipcMain.handle('check-app-update', () => checkAppUpdate());
 }
 
 function registerHandlers() {
@@ -462,10 +504,17 @@ function registerHandlers() {
     const settings = port.normalizeSettings(input);
     if (settings.arch !== config.settings.arch || settings.eclipse !== config.settings.eclipse)
       config.previousInstall = port.playableInstall({ ...config, saveDirectory: currentSaveDirectory() }) || config.previousInstall;
+    const channelChanged = settings.updateChannel !== config.settings.updateChannel;
     config.settings = settings;
     saveConfig();
+    if (channelChanged) {
+      applyUpdateChannel();
+      log(`Launcher updates now follow ${updateChannel.channelLabel(settings.updateChannel)}.`);
+      checkAppUpdate();
+    }
     return state();
   });
+  ipcMain.handle('update-channels', () => updateChannels());
   ipcMain.handle('choose-rom', async () => {
     if (operation || active) throw new Error('Finish the current task before changing game files.');
     const chosen = await dialog.showOpenDialog(window, {
