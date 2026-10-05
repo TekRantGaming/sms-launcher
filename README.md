@@ -58,6 +58,8 @@ After setup, the main screen is just **Play** and the **Settings cog** beside it
 
 Open Settings to change screen format, smoothness, picture sharpness, and HD textures. Changes take effect the next time you start the game.
 
+Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
+
 - **Game files** lets you change the setup folder or choose a different disc file.
 - **Manage game** has updates, rebuilding, save backups, and space cleanup.
 - **Versions** shows your launcher, game, and setup tool versions for support.
