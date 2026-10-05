@@ -289,6 +289,7 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       if (platform === 'linux') await run(path.join(prefix, 'bin', 'bash'),
         [path.join(prefix, 'targets', 'linux32', 'relocate-sdk.sh')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare 32-bit game support');
+      if (platform === 'linux') require('./linux-tool-paths').repairGccSpecs(prefix);
     } else {
       // Machine-specific contents are excluded from the archive; MSYS2 still needs these folders.
       for (const directory of ['tmp', 'home'])
