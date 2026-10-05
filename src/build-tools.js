@@ -138,6 +138,9 @@ function environmentAtRoot(root, base = process.env, platform = process.platform
     const result = {
       ...base, PATH: [bin, base.PATH || ''].join(path.delimiter),
       CC: path.join(bin, 'gcc'), CXX: path.join(bin, 'g++'),
+      // GNU Make cannot quote its absolute path in recursive commands.
+      // Resolve recursive invocations through the private PATH, including spaces.
+      MAKE: 'make',
       CMAKE_PREFIX_PATH: [prefix, base.CMAKE_PREFIX_PATH || ''].filter(Boolean).join(path.delimiter),
       PKG_CONFIG_PATH: [path.join(prefix, 'lib', 'pkgconfig'), base.PKG_CONFIG_PATH || ''].filter(Boolean).join(path.delimiter)
     };
