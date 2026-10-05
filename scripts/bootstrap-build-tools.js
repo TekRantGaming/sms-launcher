@@ -31,7 +31,7 @@ const LINUX_PACKAGES = [
 const WINDOWS_PACKAGES = [
   'mingw-w64-x86_64-gcc', 'mingw-w64-x86_64-cmake', 'mingw-w64-x86_64-SDL2',
   'mingw-w64-x86_64-ninja', 'mingw-w64-x86_64-python', 'mingw-w64-x86_64-7zip',
-  'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
+  'mingw-w64-x86_64-clang', 'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
   'patch', 'git'
 ];
 
@@ -101,6 +101,8 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       { cwd: msys, env }, 'Prepare build tools');
     if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'g++.exe')))
       throw new Error('Windows compiler is missing after tool setup.');
+    if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'clang++.exe')))
+      throw new Error('The Eclipse compiler is missing after tool setup.');
     const runtimes = path.join(msys, 'opt', 'i686-w64-mingw32', 'bin');
     for (const version of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32')))
       for (const file of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32', version)).filter(name => name.endsWith('.dll')))

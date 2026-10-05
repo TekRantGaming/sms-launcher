@@ -10,7 +10,7 @@ const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const gameSource = require('./game-source');
-const { activityFromLine, cleanOutputLine, createLineReader } = require('./progress');
+const { activityFromLine, cleanOutputLine, createLineReader, failureReason } = require('./progress');
 
 let window;
 let config;
@@ -162,9 +162,11 @@ function launch(command, args, options = {}, label = 'Task') {
     active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
       percent: null, startedAt: Date.now() };
     broadcast('activity', activityState());
+    const recent = [];
     function line(value) {
       if (!value) return;
       log(value);
+      if (recent.push(value) > 80) recent.shift();
       const progress = activityFromLine(value);
       if (progress && active && active.child === child) {
         Object.assign(active, progress);
@@ -181,7 +183,9 @@ function launch(command, args, options = {}, label = 'Task') {
       active = null;
       broadcast('activity', activityState());
       if (error || code !== 0) {
-        const message = error ? error.message : `${label} exited with code ${code}. See the activity log.`;
+        const reason = error ? '' : failureReason(recent);
+        const message = error ? error.message
+          : `${label} exited with code ${code}${reason ? `: ${reason}` : ''}. See the activity log.`;
         log(`✕ ${message}`);
         reject(new Error(message));
       } else {

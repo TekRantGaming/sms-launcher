@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { activityFromLine, cleanOutputLine, createLineReader } = require('../src/progress');
+const { activityFromLine, cleanOutputLine, createLineReader, failureReason } = require('../src/progress');
 
 test('shows real percentages for build and source downloads', () => {
   assert.deepEqual(activityFromLine('[ 42%] Building C object'), { detail: 'Building your game', percent: 42 });
@@ -79,4 +79,25 @@ test('HD movie setup reports its own download and complete-movie progress', () =
   assert.deepEqual(activityFromLine('HD movie download: 1500000/3000000 bytes (movie 8/21)'),
     { detail: 'Downloading HD cutscenes · movie 8 of 21 · 1.5 of 3.0 MB', percent: 35 });
   assert.equal(activityFromLine('HD movie download: 1500000/3000000 bytes (movie 22/21)'), null);
+});
+
+test('failed tasks report the line that explains them', () => {
+  assert.equal(failureReason([
+    '-- SMS port: building -m64',
+    'CMake Error at cmake/eclipse.cmake:17 (message):',
+    "  SMS_ECLIPSE needs clang/clang++ (Eclipse's sources are written for clang)",
+    'Call Stack (most recent call first):',
+    '  CMakeLists.txt:410 (include)',
+    '-- Configuring incomplete, errors occurred!'
+  ]), "SMS_ECLIPSE needs clang/clang++ (Eclipse's sources are written for clang)");
+  assert.equal(failureReason([
+    '[12/900] Building CXX object a.obj',
+    'FAILED: b.obj',
+    "b.cpp:3:1: error: unknown type name 'foo'",
+    '1 error generated.',
+    'ninja: build stopped: subcommand failed.'
+  ]), "b.cpp:3:1: error: unknown type name 'foo'");
+  assert.equal(failureReason(['Eclipse needs clang and clang++. Update the launcher, then try again.']),
+    'Eclipse needs clang and clang++. Update the launcher, then try again');
+  assert.equal(failureReason([]), '');
 });

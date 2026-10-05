@@ -91,4 +91,19 @@ function activityFromLine(line) {
   return null;
 }
 
-module.exports = { activityFromLine, cleanOutputLine, createLineReader };
+// The line that best explains a failed task, from its last lines of output.
+function failureReason(lines) {
+  const recent = lines.map(line => cleanOutputLine(line).trim()).filter(Boolean);
+  const cmake = recent.findLastIndex(line => /^CMake Error\b/.test(line));
+  const detail = [];
+  if (cmake >= 0) for (const line of recent.slice(cmake + 1)) {
+    if (/^(?:Call Stack|CMake |-- )/.test(line)) break;
+    detail.push(line);
+  }
+  const reason = detail.join(' ') || recent.findLast(line =>
+    !/^(?:ninja: build stopped|make(?:\[\d+\])?: \*\*\*|-- Configuring incomplete|\d+ errors? generated|compilation terminated)/.test(line) &&
+    /\berror\b|fatal|FAILED|failed|missing|not found|No such file|cannot|could not/i.test(line)) || recent.at(-1) || '';
+  return reason.slice(0, 400).replace(/[.\s]+$/, '');
+}
+
+module.exports = { activityFromLine, cleanOutputLine, createLineReader, failureReason };
