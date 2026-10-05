@@ -17,7 +17,8 @@ for (const platform of platforms) {
   if (!['linux', 'win32'].includes(platform)) throw new Error('Unsupported platform.');
   const job = jobs.find(item => item.name.endsWith(`, ${platform})`));
   if (job?.conclusion !== 'success' || !job.steps.some(step =>
-    step.name === 'Compile with the relocated archive' && step.conclusion === 'success'))
+    step.name === 'Compile with the relocated archive' && step.conclusion === 'success') ||
+      !job.steps.some(step => step.name === 'Compile and start Eclipse with the relocated archive' && step.conclusion === 'success'))
     throw new Error(`The previous ${platform} compilation check did not succeed.`);
   process.stdout.write(`Verified ${platform} tools in workflow ${runId}, source ${run.head_sha}.\n`);
 }

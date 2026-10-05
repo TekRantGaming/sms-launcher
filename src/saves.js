@@ -29,6 +29,17 @@ function saveDirectory(root, env = process.env, platform = process.platform) {
   return path.resolve(env.HOME || os.homedir(), '.local', 'share', 'sms-port', 'card-a');
 }
 
+// The game makes the card folder one '/'-separated level at a time and Windows
+// mkdir fails on a missing parent, so a backslash path never gets created.
+function gameSaveDirectory(dir, platform = process.platform) {
+  return platform === 'win32' ? dir.replace(/\\/g, '/') : dir;
+}
+
+function prepareSaveDirectory(dir, platform = process.platform) {
+  fs.mkdirSync(dir, { recursive: true });
+  return gameSaveDirectory(dir, platform);
+}
+
 function backupRoot(home = os.homedir()) { return path.join(home, 'SMS Launcher Backups'); }
 
 function isCardFile(name) { return name === 'index.txt' || /\.(dat|stat)$/.test(name); }
@@ -133,5 +144,5 @@ function moveBuildKeepingSaves(buildDirectory, destination, saveDir, backups = b
   return backup;
 }
 
-module.exports = { saveDirectory, backupRoot, cleanupWouldRemoveSaves,
+module.exports = { saveDirectory, gameSaveDirectory, prepareSaveDirectory, backupRoot, cleanupWouldRemoveSaves,
   backupSaves, listBackups, restoreBackup, moveBuildKeepingSaves };

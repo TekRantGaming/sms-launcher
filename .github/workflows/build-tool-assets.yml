@@ -24,11 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-24.04
-            platform: linux
-          - os: windows-2025
-            platform: win32
+        include: ${{ fromJSON(inputs.platform == 'linux' && '[{"os":"ubuntu-22.04","platform":"linux"}]' || inputs.platform == 'win32' && '[{"os":"windows-2025","platform":"win32"}]' || '[{"os":"ubuntu-22.04","platform":"linux"},{"os":"windows-2025","platform":"win32"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
@@ -59,6 +55,11 @@ jobs:
         run: node scripts/smoke-build-tools.js
         env:
           SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-${{ matrix.platform }}.json
+      - name: Compile and start Eclipse with the relocated archive
+        if: inputs.platform == 'all' || inputs.platform == matrix.platform
+        run: node scripts/smoke-eclipse.js
+        env:
+          SMS_TOOL_ASSET_MANIFEST: tool-assets/manifest-${{ matrix.platform }}.json
       - uses: actions/upload-artifact@v4
         # Retain prepared archives for diagnosis/reverification if smoke fails.
         # The publish job still requires successful preparation and smoke.
@@ -72,7 +73,7 @@ jobs:
   publish:
     needs: prepare-tools
     if: always() && (inputs.verified_run != '' || needs.prepare-tools.result == 'success')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
       actions: read

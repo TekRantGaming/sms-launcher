@@ -27,6 +27,19 @@ test('switching build tools preserves custom saves in place and keeps the old bu
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('the game gets a Windows save folder it can create and write', () => {
+  assert.equal(saves.gameSaveDirectory('C:\\Users\\Shadow\\AppData\\Roaming\\sms-port\\card-a', 'win32'),
+    'C:/Users/Shadow/AppData/Roaming/sms-port/card-a');
+  assert.equal(saves.gameSaveDirectory('/home/me/.local/share/sms-port/card-a', 'linux'), '/home/me/.local/share/sms-port/card-a');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-prepare-'));
+  const card = path.join(root, 'sms-port', 'card-a');
+  try {
+    assert.equal(saves.prepareSaveDirectory(card, 'linux'), card);
+    assert.equal(fs.statSync(card).isDirectory(), true);
+    assert.equal(saves.prepareSaveDirectory(card, 'linux'), card);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('a failed save restore puts the original build and progress back', context => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-save-tool-rollback-'));
   const build = path.join(root, 'build');

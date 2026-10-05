@@ -49,6 +49,9 @@ test('offers only platform-supported architectures and keeps builds separate', (
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_DISC_IMAGE, '/my/disc.iso');
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_MOD, 'none');
+  assert.equal(settings.fullscreen, false);
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_FULLSCREEN, '0');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ fullscreen: true }), '/my/disc.iso', '/port').SMS_FULLSCREEN, '1');
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS, '0');
   assert.equal(port.buildEnvironment({ ...settings, textures: true }, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS,
     path.join('/port', 'mods', 'textures'));
@@ -108,7 +111,7 @@ test('Eclipse builder uses its own CMake tree without bundling the patched disc'
     fs.mkdirSync(path.join(repo, 'cmake'), { recursive: true });
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(repo, 'cmake', 'eclipse.cmake'), '');
-    for (const name of ['git', 'cmake']) {
+    for (const name of ['git', 'cmake', 'clang', 'clang++']) {
       const file = path.join(bin, name);
       fs.writeFileSync(file, '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$CALL_LOG"\n');
       fs.chmodSync(file, 0o755);
@@ -122,6 +125,24 @@ test('Eclipse builder uses its own CMake tree without bundling the patched disc'
     assert.match(calls, /-DSMS_ECLIPSE=ON/);
     assert.match(calls, /-DSMS_BUNDLE_DISC=/);
     assert.match(calls, /build\/linux-64-eclipse/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Eclipse builder explains a missing clang before configuring', () => {
+  if (process.platform !== 'linux') return;
+  const dir = temporary();
+  try {
+    const repo = path.join(dir, 'port');
+    const bin = path.join(dir, 'bin');
+    fs.mkdirSync(path.join(repo, 'cmake'), { recursive: true });
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(repo, 'cmake', 'eclipse.cmake'), '');
+    fs.symlinkSync(spawnSync('sh', ['-c', 'command -v uname'], { encoding: 'utf8' }).stdout.trim(), path.join(bin, 'uname'));
+    const result = spawnSync('/bin/bash', [path.join(__dirname, '..', 'scripts', 'build-eclipse.sh'), repo, '64'], {
+      env: { PATH: bin }, encoding: 'utf8'
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Eclipse needs clang and clang\+\+/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 

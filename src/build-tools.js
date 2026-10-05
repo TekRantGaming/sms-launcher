@@ -138,6 +138,9 @@ function environmentAtRoot(root, base = process.env, platform = process.platform
     const result = {
       ...base, PATH: [bin, base.PATH || ''].join(path.delimiter),
       CC: path.join(bin, 'gcc'), CXX: path.join(bin, 'g++'),
+      // GNU Make cannot quote its absolute path in recursive commands.
+      // Resolve recursive invocations through the private PATH, including spaces.
+      MAKE: 'make',
       CMAKE_PREFIX_PATH: [prefix, base.CMAKE_PREFIX_PATH || ''].filter(Boolean).join(path.delimiter),
       PKG_CONFIG_PATH: [path.join(prefix, 'lib', 'pkgconfig'), base.PKG_CONFIG_PATH || ''].filter(Boolean).join(path.delimiter)
     };
@@ -286,6 +289,7 @@ async function prepare(userData, { platform = process.platform, run, progress = 
       if (platform === 'linux') await run(path.join(prefix, 'bin', 'bash'),
         [path.join(prefix, 'targets', 'linux32', 'relocate-sdk.sh')],
         { env: { ...process.env, PATH: path.join(prefix, 'bin') } }, 'Prepare 32-bit game support');
+      if (platform === 'linux') require('./linux-tool-paths').repairGccSpecs(prefix);
     } else {
       // Machine-specific contents are excluded from the archive; MSYS2 still needs these folders.
       for (const directory of ['tmp', 'home'])

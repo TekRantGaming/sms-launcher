@@ -5,9 +5,48 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const tar = require('tar');
 const tools = require('../src/build-tools');
 const x64Tools = { skip: process.arch !== 'x64' && 'Linux/Windows tool archives require an x64 host.' };
+
+test('Linux private Make builds a nested CMake project when the tools path contains spaces', {
+  skip: process.platform !== 'linux'
+}, t => {
+  const cmake = spawnSync('sh', ['-c', 'command -v cmake'], { encoding: 'utf8' }).stdout.trim();
+  const make = spawnSync('sh', ['-c', 'command -v make'], { encoding: 'utf8' }).stdout.trim();
+  if (!cmake || !make) return t.skip('This integration check requires CMake and GNU Make.');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms private tools with spaces-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const bin = path.join(root, 'env', 'bin');
+  const source = path.join(root, 'project');
+  const child = path.join(source, 'child');
+  fs.mkdirSync(bin, { recursive: true });
+  fs.mkdirSync(child, { recursive: true });
+  fs.symlinkSync(make, path.join(bin, 'make'));
+  fs.writeFileSync(path.join(source, 'CMakeLists.txt'), `
+    cmake_minimum_required(VERSION 3.20)
+    project(path_probe NONE)
+    include(ExternalProject)
+    ExternalProject_Add(child SOURCE_DIR "\${CMAKE_CURRENT_SOURCE_DIR}/child"
+      BINARY_DIR "\${CMAKE_CURRENT_BINARY_DIR}/child" INSTALL_COMMAND "")
+  `);
+  fs.writeFileSync(path.join(child, 'CMakeLists.txt'), `
+    cmake_minimum_required(VERSION 3.20)
+    project(child NONE)
+    add_custom_target(path_probe ALL COMMAND "\${CMAKE_COMMAND}" -E touch "\${CMAKE_BINARY_DIR}/passed")
+  `);
+  const build = path.join(root, 'build');
+  const env = tools.environmentAtRoot(root, { ...process.env, PATH: `${bin}:${process.env.PATH}` }, 'linux');
+  for (const args of [
+    ['-S', source, '-B', build, '-G', 'Unix Makefiles', `-DCMAKE_MAKE_PROGRAM:FILEPATH=${path.join(bin, 'make')}`],
+    ['--build', build]
+  ]) {
+    const result = spawnSync(cmake, args, { env, encoding: 'utf8', timeout: 30000 });
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  }
+  assert.ok(fs.existsSync(path.join(build, 'child', 'passed')));
+});
 
 test('a corrupt tool archive preserves the existing tools', x64Tools, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-tools-test-'));

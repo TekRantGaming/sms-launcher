@@ -24,14 +24,15 @@ const MSYS2 = {
 };
 const LINUX_PACKAGES = [
   'python=3.12', 'git=2.55', 'cmake=4.4.3', 'make', 'patch', 'binutils',
-  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
+  'gcc_linux-64=16.2', 'gxx_linux-64=16.2', 'clang_impl_linux-64=21.1.8', 'clangxx_impl_linux-64=21.1.8',
+  'libclang13=21.1.8', 'sysroot_linux-64=2.17', 'sdl2=2.32.56',
   'libegl-devel', 'libgl-devel', '7zip=26.03', 'bash', 'coreutils',
   'grep', 'sed', 'gawk', 'findutils', 'curl', 'file'
 ];
 const WINDOWS_PACKAGES = [
   'mingw-w64-x86_64-gcc', 'mingw-w64-x86_64-cmake', 'mingw-w64-x86_64-SDL2',
   'mingw-w64-x86_64-ninja', 'mingw-w64-x86_64-python', 'mingw-w64-x86_64-7zip',
-  'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
+  'mingw-w64-x86_64-clang', 'mingw-w64-x86_64-llvm-tools', 'mingw-w64-cross-mingw32-gcc', 'mingw-w64-i686-SDL2',
   'patch', 'git'
 ];
 
@@ -69,9 +70,18 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
         fs.writeFileSync(path.join(bin, name), `#!/bin/sh\nexec /usr/bin/${name} "$@"\n`, { mode: 0o755 });
       }
     }
+    if (platform === 'linux') {
+      // Match conda's driver configuration without adding its OpenMP runtime.
+      // Every compiler and library uses the same LLVM source release.
+      const config = '-isystem <CFGDIR>/../include\n$-Wl,-L,<CFGDIR>/../lib\n$-Wl,-rpath,<CFGDIR>/../lib\n' +
+        '$-Wl,-rpath-link,<CFGDIR>/../lib\n--sysroot=<CFGDIR>/../x86_64-conda-linux-gnu/sysroot\n';
+      for (const name of ['clang', 'clang++'])
+        fs.writeFileSync(path.join(bin, `x86_64-conda-linux-gnu-${name}.cfg`), config);
+    }
     const aliases = platform === 'darwin' ? [['llvm-objcopy', 'llvm-objcopy-21']] : [['gcc', 'x86_64-conda-linux-gnu-gcc'],
       ['g++', 'x86_64-conda-linux-gnu-g++'], ['cc', 'x86_64-conda-linux-gnu-gcc'],
-      ['c++', 'x86_64-conda-linux-gnu-g++']];
+      ['c++', 'x86_64-conda-linux-gnu-g++'], ['clang', 'x86_64-conda-linux-gnu-clang'],
+      ['clang++', 'x86_64-conda-linux-gnu-clang++']];
     for (const [name, target] of aliases) {
       if (platform === 'darwin' && !fs.existsSync(path.join(bin, target))) {
         if (fs.existsSync(path.join(bin, name))) continue;
@@ -82,7 +92,7 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       fs.symlinkSync(target, link);
     }
     const required = platform === 'darwin' ? ['git', 'cmake', 'ninja', 'make', 'patch', 'python3', 'llvm-objcopy', 'clang++', '7z', 'bash']
-      : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', '7z', 'bash'];
+      : ['git', 'cmake', 'make', 'patch', 'python3', 'objcopy', 'g++', 'clang', 'clang++', '7z', 'bash'];
     for (const name of required)
       if (!fs.existsSync(path.join(bin, name))) throw new Error(`Build tool ${name} is missing after download.`);
     if (platform === 'linux') await require('./prepare-linux32').prepare(prefix, run);
@@ -101,6 +111,8 @@ async function prepareFromUpstream(userData, { platform = process.platform, run,
       { cwd: msys, env }, 'Prepare build tools');
     if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'g++.exe')))
       throw new Error('Windows compiler is missing after tool setup.');
+    if (!fs.existsSync(path.join(msys, 'mingw64', 'bin', 'clang++.exe')))
+      throw new Error('The Eclipse compiler is missing after tool setup.');
     const runtimes = path.join(msys, 'opt', 'i686-w64-mingw32', 'bin');
     for (const version of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32')))
       for (const file of fs.readdirSync(path.join(msys, 'opt', 'lib', 'gcc', 'i686-w64-mingw32', version)).filter(name => name.endsWith('.dll')))

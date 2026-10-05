@@ -43,6 +43,8 @@ if [[ "$os" == macos ]]; then
   fi
   cmake_args+=(-DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_C_COMPILER="$llvm_bin/clang" -DCMAKE_CXX_COMPILER="$llvm_bin/clang++" -DSMS_SDL2_FRAMEWORK="$framework")
 fi
+command -v clang >/dev/null && command -v clang++ >/dev/null || {
+  echo "Eclipse needs clang and clang++, which these build tools do not include. Update the launcher, then try again." >&2; exit 1; }
 
 git submodule update --init decomp
 cmake -S . -B "$bdir" "${cmake_args[@]}"
