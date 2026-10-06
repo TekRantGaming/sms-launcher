@@ -70,7 +70,8 @@ h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
 .quick-control, .switch.compact { min-width: 0; min-height: 62px; padding: 10px 13px; border: 1px solid #e5ebea; border-radius: 9px; background: #fafbfa; }
 .quick-control { display: grid; gap: 5px; color: #435b60; font-size: 12px; font-weight: 650; }
 select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font-size: 12px; }
-.switch { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e6ebea; cursor: pointer; }
+/* Keep checkbox focus inside its switch so it cannot scroll the dialog header away. */
+.switch { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e6ebea; cursor: pointer; }
 .switch span { display: grid; gap: 4px; }
 .switch strong { display: flex; align-items: center; gap: 7px; color: #334b51; font-size: 13px; font-weight: 650; }
 .switch small { color: #7a8b8f; font-size: 11px; }
