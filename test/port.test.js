@@ -196,7 +196,7 @@ test('HD movies have their own setting and only complete packs are recognized', 
   assert.equal(port.cutscenePackInstalled(root), false);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: false, cutscenes: true })), true);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: false, cutscenes: true, eclipse: true })), true);
-  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({})), true);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({})), false);
   const settings = port.normalizeSettings({ textures: true, cutscenes: true, eclipse: false });
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', root).SMS_HD_CUTSCENES, folder);
   // The game plays HD movies only with HD textures on, so none are set up or passed without them.
