@@ -387,8 +387,8 @@ async function setupGame() {
 
 async function play(installation = null) {
   const root = installation?.repo || requireRepo();
-  // Camera controls are the player's, not the build's: an earlier install plays with them too.
-  const settings = installation ? { ...installation.settings, invertCameraX: config.settings.invertCameraX,
+  // Camera controls and volume are the player's, not the build's: an earlier install plays with them too.
+  const settings = installation ? { ...installation.settings, volume: config.settings.volume, invertCameraX: config.settings.invertCameraX,
     invertCameraY: config.settings.invertCameraY } : config.settings;
   const rom = port.validateRom(installation?.rom || config.rom);
   if (!binaryReady(root, settings)) throw new Error('Set up this version of the game before playing.');
