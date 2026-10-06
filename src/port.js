@@ -57,11 +57,19 @@ function normalizeSettings(input = {}, platform = process.platform) {
   const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 4;
   const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
     ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
+  // Exclusive fullscreen switches the display to this size (desktop keeps its own); the refresh rate stays the desktop's.
+  const exclusiveResolution = /^\d{3,5}x\d{3,5}$/.test(String(input.exclusiveResolution)) ? String(input.exclusiveResolution) : 'desktop';
   return {
     arch, widescreen, resolution,
     fps60: input.fps60 !== false,
     hudEdges: input.hudEdges !== false,
     fullscreen: Boolean(input.fullscreen),
+    // Borderless (desktop) fullscreen, or exclusive, which changes the display mode.
+    fullscreenMode: input.fullscreenMode === 'exclusive' ? 'exclusive' : 'desktop',
+    exclusiveResolution,
+    // The monitor under the mouse (usually the launcher's), or the primary one.
+    display: input.display === 'primary' ? 'primary' : 'launcher',
+    vsync: ['off', 'on', 'adaptive'].includes(input.vsync) ? input.vsync : 'off',
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
     // Master volume in percent; 100 leaves the game's sound as it is.
@@ -162,7 +170,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_WIDESCREEN: settings.widescreen,
     SMS_WIDESCREEN_HUD: settings.hudEdges ? 'edges' : 'centre',
     SMS_FRAME_RATE: settings.fps60 ? '60' : '30',
-    SMS_FULLSCREEN: settings.fullscreen ? '1' : '0',
+    SMS_FULLSCREEN: settings.fullscreen ? (settings.fullscreenMode === 'exclusive' ? 'exclusive' : '1') : '0',
+    SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
     SMS_VOLUME: String(settings.volume ?? 100),
@@ -171,6 +180,9 @@ function buildEnvironment(settings, disc, root) {
     SMS_MOD: 'none',
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
   };
+  if (settings.fullscreen && settings.fullscreenMode === 'exclusive' && /^\d+x\d+$/.test(settings.exclusiveResolution || ''))
+    env.SMS_FULLSCREEN_MODE = settings.exclusiveResolution;
+  if (settings.display === 'primary') env.SMS_DISPLAY = '0';
   return env;
 }
 

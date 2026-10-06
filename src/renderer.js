@@ -349,7 +349,8 @@ function refresh(data) {
     option.textContent = arch === '64' && platform.arches.length > 1 ? '64-bit (recommended)' : `${arch}-bit`;
     return option;
   }));
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume']) $(key).value = String(config.settings[key]);
+  renderExclusiveResolutions(config.settings.exclusiveResolution);
+  for (const key of ['arch', 'widescreen', 'resolution', 'vsync', 'fullscreenMode', 'exclusiveResolution', 'display', 'volume']) $(key).value = String(config.settings[key]);
   renderVolume();
   for (const key of ['fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
@@ -357,8 +358,9 @@ function refresh(data) {
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'vsync', 'fps60', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
+  renderFullscreenChoices(Boolean(data.active));
   changing = false;
 }
 
@@ -493,10 +495,28 @@ function runWizardAction(method) {
 
 function renderVolume() { $('volume-value').textContent = `${$('volume').value}%`; }
 
+// Exclusive fullscreen sizes up to this screen's own (the game picks the closest mode the display has).
+function renderExclusiveResolutions(chosen) {
+  const display = globalThis.screen || { width: 1920, height: 1080 }, scale = globalThis.devicePixelRatio || 1;
+  const nativeWidth = Math.round(display.width * scale), nativeHeight = Math.round(display.height * scale);
+  const sizes = ['1280x720', '1600x900', '1920x1080', '2560x1080', '2560x1440', '3440x1440', '3840x2160']
+    .filter(size => { const [w, h] = size.split('x').map(Number); return w <= nativeWidth && h <= nativeHeight; });
+  if (chosen && chosen !== 'desktop' && !sizes.includes(chosen)) sizes.push(chosen);
+  const option = (value, label) => { const item = document.createElement('option'); item.value = value; item.textContent = label; return item; };
+  $('exclusiveResolution').replaceChildren(option('desktop', `Desktop resolution (${nativeWidth}×${nativeHeight})`),
+    ...sizes.map(size => option(size, size.replace('x', '×'))));
+}
+
+function renderFullscreenChoices(busy = false) {
+  $('fullscreenMode').disabled = busy || !$('fullscreen').checked;
+  $('exclusiveResolution').disabled = busy || !$('fullscreen').checked || $('fullscreenMode').value !== 'exclusive';
+}
+
 function settingsValue() {
   return {
     arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value), volume: Number($('volume').value),
-    fps60: $('fps60').checked, fullscreen: $('fullscreen').checked,
+    fps60: $('fps60').checked, fullscreen: $('fullscreen').checked, fullscreenMode: $('fullscreenMode').value,
+    exclusiveResolution: $('exclusiveResolution').value, display: $('display').value, vsync: $('vsync').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
     keyBindings
@@ -576,8 +596,9 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'vsync', 'fps60', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
   $(key).addEventListener('change', saveSettings);
+for (const key of ['fullscreen', 'fullscreenMode']) $(key).addEventListener('change', () => renderFullscreenChoices());
 $('volume').addEventListener('input', renderVolume);
 $('open-maintenance').addEventListener('click', loadUpdateChannels);
 window.sms.onLog(appendLog);

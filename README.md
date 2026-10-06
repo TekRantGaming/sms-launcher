@@ -60,7 +60,7 @@ Open Settings to change screen format, smoothness, picture sharpness, and HD tex
 
 On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, **Sharpest (4×)** picture sharpness, **icons at the screen edges**, and **60 fps** gameplay. Existing users keep their saved settings.
 
-Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
+Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs. **Monitor** opens the game on the same monitor as the launcher or on the primary one, and **Settings → Performance → Vsync** chooses Off, On or Adaptive. F11 or Alt+Enter switches full screen while playing.
 
 **Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
 

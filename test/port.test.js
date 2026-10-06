@@ -82,6 +82,32 @@ test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
 });
 
+test('display choices default to today\'s behaviour and reach the game when chosen', () => {
+  const defaults = port.normalizeSettings({});
+  assert.equal(defaults.fullscreenMode, 'desktop');
+  assert.equal(defaults.exclusiveResolution, 'desktop');
+  assert.equal(defaults.display, 'launcher');
+  assert.equal(defaults.vsync, 'off');
+  const env = port.buildEnvironment(defaults, '/my/disc.iso', '/port');
+  assert.equal(env.SMS_FULLSCREEN, '0');
+  assert.equal(env.SMS_VSYNC, '0');
+  assert.equal(env.SMS_FULLSCREEN_MODE, undefined);
+  assert.equal(env.SMS_DISPLAY, undefined);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ fullscreen: true }), '/my/disc.iso', '/port').SMS_FULLSCREEN, '1');
+  const exclusive = port.buildEnvironment(port.normalizeSettings({ fullscreen: true, fullscreenMode: 'exclusive',
+    exclusiveResolution: '1920x1080', display: 'primary', vsync: 'adaptive' }), '/my/disc.iso', '/port');
+  assert.equal(exclusive.SMS_FULLSCREEN, 'exclusive');
+  assert.equal(exclusive.SMS_FULLSCREEN_MODE, '1920x1080');
+  assert.equal(exclusive.SMS_DISPLAY, '0');
+  assert.equal(exclusive.SMS_VSYNC, 'adaptive');
+  const windowed = port.buildEnvironment(port.normalizeSettings({ fullscreenMode: 'exclusive', exclusiveResolution: '1920x1080' }), '/my/disc.iso', '/port');
+  assert.equal(windowed.SMS_FULLSCREEN, '0');
+  assert.equal(windowed.SMS_FULLSCREEN_MODE, undefined);
+  assert.equal(port.normalizeSettings({ exclusiveResolution: '1920x1080; rm' }).exclusiveResolution, 'desktop');
+  assert.equal(port.normalizeSettings({ vsync: 'sometimes' }).vsync, 'off');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ vsync: 'on' }), '/my/disc.iso', '/port').SMS_VSYNC, '1');
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
