@@ -10,7 +10,7 @@ const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const gameSource = require('./game-source');
-const { activityFromLine, cleanOutputLine, createLineReader, failureReason } = require('./progress');
+const { cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('./progress');
 
 let window;
 let config;
@@ -162,12 +162,12 @@ function launch(command, args, options = {}, label = 'Task') {
     active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
       percent: null, startedAt: Date.now() };
     broadcast('activity', activityState());
-    const recent = [];
+    const recent = [], readActivity = createActivityReader();
     function line(value) {
       if (!value) return;
       log(value);
       if (recent.push(value) > 80) recent.shift();
-      const progress = activityFromLine(value);
+      const progress = readActivity(value);
       if (progress && active && active.child === child) {
         Object.assign(active, progress);
         broadcast('activity', activityState());
@@ -177,14 +177,15 @@ function launch(command, args, options = {}, label = 'Task') {
     child.stdout.on('data', bytes => stdout.write(bytes));
     child.stderr.on('data', bytes => stderr.write(bytes));
     let settled = false;
-    function done(error, code) {
+    function done(error, code, signal) {
       if (settled) return;
       settled = true;
       active = null;
       broadcast('activity', activityState());
       if (error || code !== 0) {
-        const reason = error ? '' : failureReason(recent);
-        const message = error ? error.message
+        const crash = error ? null : crashReason(code, signal);
+        const reason = error || crash ? '' : failureReason(recent);
+        const message = error ? error.message : crash ? `${label} ${crash}. See the activity log.`
           : `${label} exited with code ${code}${reason ? `: ${reason}` : ''}. See the activity log.`;
         log(`✕ ${message}`);
         reject(new Error(message));
@@ -194,10 +195,10 @@ function launch(command, args, options = {}, label = 'Task') {
       }
     }
     child.on('error', error => done(error));
-    child.on('close', code => {
+    child.on('close', (code, signal) => {
       stdout.end();
       stderr.end();
-      done(null, code);
+      done(null, code, signal);
     });
   });
 }
