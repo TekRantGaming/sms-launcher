@@ -135,3 +135,13 @@ test('a crash is reported as a crash, not as the last warning the game printed',
     [null, 'SIGTERM', 'linux'], [0, null, 'darwin'], [130, null, 'darwin']])
     assert.equal(crashReason(code, signal, platform), null);
 });
+
+test('shows decomp patching as progress, which can be slow on some computers', () => {
+  assert.deepEqual(activityFromLine('-- SMS port: applying decomp patches (1/213)'),
+    { detail: "Preparing the game's source · patch 1 of 213", percent: 0 });
+  assert.deepEqual(activityFromLine('-- SMS port: applying decomp patches (213/213)'),
+    { detail: "Preparing the game's source · patch 213 of 213", percent: 100 });
+  for (const invalid of ['-- SMS port: applying decomp patches (5/0)', '-- SMS port: applying decomp patches (9/3)'])
+    assert.equal(activityFromLine(invalid), null);
+  assert.deepEqual(activityFromLine('-- SMS port: 213 decomp patch(es) applied'), null);
+});
