@@ -58,6 +58,8 @@ After setup, the main screen is just **Play** and the **Settings cog** beside it
 
 Open Settings to change screen format, smoothness, picture sharpness, and HD textures. Changes take effect the next time you start the game.
 
+On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, **Sharpest (4×)** picture sharpness, **icons at the screen edges**, and **60 fps** gameplay. Existing users keep their saved settings.
+
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
 
 - **Game files** lets you change the setup folder or choose a different disc file.

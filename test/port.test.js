@@ -45,7 +45,7 @@ test('offers only platform-supported architectures and keeps builds separate', (
   assert.equal(port.normalizeSettings({ arch: '32' }, 'win32').arch, '32');
   assert.equal(port.normalizeSettings({ arch: '32' }, 'linux').arch, '32');
   assert.match(port.binaryPath('/port', windows, 'win32'), /windows-64[\\/]sms.exe$/);
-  const settings = port.normalizeSettings({ eclipse: true, arch: '64' }, 'linux');
+  const settings = port.normalizeSettings({ eclipse: true, arch: '64', textures: false }, 'linux');
   assert.match(port.binaryPath('/port', settings, 'linux'), /linux-64-eclipse[\\/]sms$/);
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_DISC_IMAGE, '/my/disc.iso');
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_MOD, 'none');
