@@ -1,5 +1,5 @@
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('sms', {
   state: () => ipcRenderer.invoke('state'),
@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('sms', {
   cleanPreview: () => ipcRenderer.invoke('clean-preview'),
   clean: () => ipcRenderer.invoke('clean'),
   backupSaves: () => ipcRenderer.invoke('backup-saves'),
+  importDolphinSave: file => {
+    const filePath = file ? webUtils.getPathForFile(file) : null;
+    if (file && !filePath) throw new Error('Drop a .gci file from your computer.');
+    return ipcRenderer.invoke('import-dolphin-save', filePath);
+  },
   restoreSaves: id => ipcRenderer.invoke('restore-saves', id),
   openBackups: () => ipcRenderer.invoke('open-backups'),
   stop: () => ipcRenderer.invoke('stop'),

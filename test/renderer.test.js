@@ -18,15 +18,16 @@ function state() {
 }
 
 async function renderer(data = state()) {
-  const calls = [], elements = new Map();
+  const calls = [], elements = new Map(), droppedFiles = [];
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
     return { hidden: false, disabled: false, textContent: '', value: '', style: {}, open: false,
-      classList: { contains: name => names.has(name), toggle(name, enabled) {
+      classList: { contains: name => names.has(name), add: name => names.add(name), remove: name => names.delete(name), toggle(name, enabled) {
         if (enabled) names.add(name); else names.delete(name);
       } },
-      addEventListener: (event, callback) => listeners.set(event, callback),
-      click() { if (!this.disabled) return listeners.get('click')?.(); },
+      addEventListener: (event, callback) => { if (!listeners.has(event)) listeners.set(event, []); listeners.get(event).push(callback); },
+      click() { if (!this.disabled) for (const callback of listeners.get('click') || []) callback(); },
+      dispatch(event, value) { for (const callback of listeners.get(event) || []) callback(value); },
       setAttribute() {}, removeAttribute() {}, replaceChildren() {}, append() {}, focus() {},
       close() { this.open = false; }, showModal() { this.open = true; } };
   }
@@ -35,10 +36,11 @@ async function renderer(data = state()) {
     elements.set(match[1], element(match[0].match(/class="([^"]+)"/)?.[1]));
   const sms = {
     state: async () => data, windowState: async () => ({}),
+    importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
     onLog() {}, onActivity() {}, onAppUpdate() {}, onWindowState() {},
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
-  const context = vm.createContext({ console, setInterval() {}, window: { sms }, document: {
+  const context = vm.createContext({ console, setInterval() {}, window: { sms, addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
       return selector === '.launcher-modal' ? ['page-settings', 'activity-log', 'mac-tools-help'].map(id => elements.get(id)) : [];
@@ -46,7 +48,7 @@ async function renderer(data = state()) {
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
   await new Promise(setImmediate);
-  return { elements, calls, async refresh() { vm.runInContext('refresh(current)', context); },
+  return { elements, calls, droppedFiles, async refresh() { vm.runInContext('refresh(current)', context); },
     async click(id) { elements.get(id).click(); await new Promise(setImmediate); } };
 }
 
@@ -60,6 +62,30 @@ test('home screen offers update or installed play and skip calls the launch-only
   assert.deepEqual(ui.calls, ['play']);
   await ui.click('play');
   assert.deepEqual(ui.calls, ['play', 'launchGame']);
+});
+
+test('Dolphin save import offers a chooser and drop, reports success and refuses busy or multiple drops', async () => {
+  const data = state(), ui = await renderer(data);
+  await ui.click('import-dolphin-save');
+  assert.deepEqual(ui.calls, ['importDolphinSave']);
+  assert.match(ui.elements.get('dolphin-import-result').textContent, /imported/);
+  const file = { name: 'Sunshine.gci' }, drop = ui.elements.get('dolphin-save-drop');
+  let prevented = false;
+  const event = files => ({ preventDefault() { prevented = true; }, dataTransfer: { files } });
+  drop.dispatch('drop', event([file]));
+  await new Promise(setImmediate);
+  assert.equal(prevented, true);
+  assert.equal(ui.droppedFiles[1], file);
+  drop.dispatch('drop', event([file, file]));
+  assert.match(ui.elements.get('dolphin-import-result').textContent, /one Dolphin/);
+  assert.equal(ui.calls.length, 2);
+  data.active = { label: 'Play Super Mario Sunshine' };
+  await ui.refresh();
+  assert.equal(ui.elements.get('import-dolphin-save').disabled, true);
+  await ui.click('import-dolphin-save');
+  drop.dispatch('drop', event([file]));
+  await new Promise(setImmediate);
+  assert.equal(ui.calls.length, 2);
 });
 
 test('installed play is unavailable before setup, without a disc, or while busy', async () => {
