@@ -57,8 +57,10 @@ function normalizeSettings(input = {}, platform = process.platform) {
   const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 4;
   const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
     ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
+  // Anisotropic texture filtering; 0 is the game's own filtering.
+  const anisotropic = [0, 2, 4, 8, 16].includes(Number(input.anisotropic)) ? Number(input.anisotropic) : 0;
   return {
-    arch, widescreen, resolution,
+    arch, widescreen, resolution, anisotropic,
     fps60: input.fps60 !== false,
     hudEdges: input.hudEdges !== false,
     fullscreen: Boolean(input.fullscreen),
@@ -167,6 +169,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
     SMS_VOLUME: String(settings.volume ?? 100),
     SMS_GX_SCALE: String(settings.resolution),
+    SMS_ANISO: String(settings.anisotropic ?? 0),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'

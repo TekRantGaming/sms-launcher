@@ -349,7 +349,7 @@ function refresh(data) {
     option.textContent = arch === '64' && platform.arches.length > 1 ? '64-bit (recommended)' : `${arch}-bit`;
     return option;
   }));
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume']) $(key).value = String(config.settings[key]);
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'anisotropic']) $(key).value = String(config.settings[key]);
   renderVolume();
   for (const key of ['fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
@@ -357,7 +357,7 @@ function refresh(data) {
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'anisotropic', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
   changing = false;
 }
@@ -495,7 +495,7 @@ function renderVolume() { $('volume-value').textContent = `${$('volume').value}%
 
 function settingsValue() {
   return {
-    arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value), volume: Number($('volume').value),
+    arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value), volume: Number($('volume').value), anisotropic: Number($('anisotropic').value),
     fps60: $('fps60').checked, fullscreen: $('fullscreen').checked,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
@@ -576,7 +576,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'anisotropic', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 $('open-maintenance').addEventListener('click', loadUpdateChannels);

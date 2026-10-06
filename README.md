@@ -62,6 +62,8 @@ On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, *
 
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
 
+**Settings → Performance → Texture filtering** turns on anisotropic filtering (2× to 16×), which keeps floors and walls sharp at a distance. It is off (Original) by default and takes effect on the next launch.
+
 **Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
 
 **Settings → Sound → Volume** sets the game's master volume, from 0 to 100% (full by default). It takes effect on the next launch.

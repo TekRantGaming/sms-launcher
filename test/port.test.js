@@ -82,6 +82,14 @@ test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
 });
 
+test('texture filtering defaults to the original and reaches the game as SMS_ANISO', () => {
+  assert.equal(port.normalizeSettings({}).anisotropic, 0);
+  assert.equal(port.normalizeSettings({ anisotropic: '16' }).anisotropic, 16);
+  assert.equal(port.normalizeSettings({ anisotropic: 3 }).anisotropic, 0);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/my/disc.iso', '/port').SMS_ANISO, '0');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ anisotropic: 8 }), '/my/disc.iso', '/port').SMS_ANISO, '8');
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
