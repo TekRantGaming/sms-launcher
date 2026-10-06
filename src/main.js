@@ -533,6 +533,13 @@ function setupAppUpdater() {
   setTimeout(check, 10000);
   setInterval(check, 30 * 60 * 1000);
   ipcMain.handle('check-app-update', () => checkAppUpdate());
+  ipcMain.handle('install-app-update', () => {
+    if (appUpdate.state !== 'ready') throw new Error('No launcher update is ready to install.');
+    if (operation || active) throw new Error('Finish the current task or close the game before installing the update.');
+    // Install silently, then relaunch from the installer itself. Opening the
+    // launcher by hand while the installer still runs gets that copy closed.
+    updater.quitAndInstall(true, true);
+  });
 }
 
 function registerHandlers() {

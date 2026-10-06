@@ -232,7 +232,7 @@ function refresh(data) {
   $('choose-rom-settings').disabled = Boolean(data.active);
   $('choose-repo-settings').disabled = Boolean(data.active);
   renderActivity(data.active);
-  $('app-update').textContent = data.appUpdate.message;
+  renderAppUpdate(data.appUpdate);
   const installedVersion = data.binaryReady ? data.game.installedVersion : null;
   const gameVersion = installedVersion || (data.binaryReady ? 'Version unavailable' : 'Not installed');
   $('version-summary').textContent = `Launcher v${data.game.launcherVersion} · Game ${installedVersion || (data.binaryReady ? 'version unavailable' : 'not installed')}`;
@@ -468,7 +468,12 @@ window.sms.onActivity(value => {
   renderActivity(value);
   if (changed) sync().catch(showError);
 });
-window.sms.onAppUpdate(value => { $('app-update').textContent = value.message; });
+function renderAppUpdate(value) {
+  $('app-update').textContent = value.message;
+  $('install-app-update').hidden = value.state !== 'ready';
+}
+window.sms.onAppUpdate(renderAppUpdate);
+$('install-app-update').addEventListener('click', () => window.sms.installAppUpdate().catch(showError));
 function renderWindowState(value) {
   const fullscreen = Boolean(value.fullscreen);
   $('window-fullscreen').setAttribute('aria-pressed', String(fullscreen));

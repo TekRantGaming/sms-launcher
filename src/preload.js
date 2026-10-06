@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('sms', {
   stop: () => ipcRenderer.invoke('stop'),
   openDocs: () => ipcRenderer.invoke('open-docs'),
   checkAppUpdate: () => ipcRenderer.invoke('check-app-update'),
+  installAppUpdate: () => ipcRenderer.invoke('install-app-update'),
   updateChannels: () => ipcRenderer.invoke('update-channels'),
   windowState: () => ipcRenderer.invoke('window-state'),
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),

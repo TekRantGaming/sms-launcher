@@ -90,6 +90,8 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4aa98a; }
 .status-separator { color: #b7c2c2; }
 .status-link { padding: 0; border: 0; background: transparent; color: #1c737a; font-size: 11px; }
+#install-app-update { text-decoration: underline; cursor: pointer; }
+#install-app-update[hidden] { display: none; }
 .status-link:hover { text-decoration: underline; }
 .byo { margin-left: auto; }
 .message { position: fixed; z-index: 10; top: 70px; right: 26px; max-width: 430px; padding: 11px 14px; border: 1px solid #bcd8d4; border-radius: 9px; background: #e9f5f2; color: #255a5c; box-shadow: 0 8px 24px #20353618; font-size: 12px; }
