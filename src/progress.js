@@ -91,6 +91,57 @@ function activityFromLine(line) {
   return null;
 }
 
+// cmake/eclipse.cmake fetches these one at a time and git's own progress lines
+// do not say which, so a task's activity remembers the one being downloaded.
+const ECLIPSE_SOURCES = [['eclipse', 'Super Mario Eclipse'], ['bse', 'Better Sunshine Engine'],
+  ['moveset', 'Better Sunshine Moveset'], ['shi', 'Sunshine Header Interface']];
+
+function createActivityReader() {
+  let source = null;
+  return function read(line) {
+    const value = cleanOutputLine(line).trim();
+    const fetch = value.match(/^-- SMS_ECLIPSE: fetching (\w+) [a-f0-9]{40}$/);
+    if (fetch) {
+      const index = ECLIPSE_SOURCES.findIndex(([name]) => name === fetch[1]);
+      source = index >= 0 ? `${ECLIPSE_SOURCES[index][1]} (${index + 1} of ${ECLIPSE_SOURCES.length})` : fetch[1];
+      return { detail: `Downloading Eclipse sources · ${source}`, percent: null };
+    }
+    if (source && /^remote: (?:Enumerating|Counting|Compressing) objects/.test(value))
+      return { detail: `Downloading Eclipse sources · ${source} · waiting for GitHub`, percent: null };
+    const git = source && value.match(/^(Receiving objects|Resolving deltas|Updating files):\s*(\d{1,3})%(?:.*?,\s*([\d.]+ [KMG]iB)(?:\s*\|\s*([\d.]+ [KMG]iB\/s))?)?/);
+    if (git) {
+      const step = git[1] === 'Receiving objects' ? 'Downloading' : git[1] === 'Resolving deltas' ? 'Unpacking' : 'Writing';
+      const size = git[3] ? ` · ${git[3]}${git[4] ? ` at ${git[4]}` : ''}` : '';
+      return { detail: `${step} Eclipse sources · ${source}${size}`, percent: Math.min(100, Number(git[2])) };
+    }
+    const activity = activityFromLine(value);
+    if (activity) source = null;
+    return activity;
+  };
+}
+
+// A task that did not exit by itself. Its last output is then whatever it
+// printed before, not the reason. Linux: killed by the signal (the game's crash
+// handler re-raises it). macOS: the game's handler exits with the shell's
+// 128 + signal instead (platform/port_runtime.cpp: a re-raised signal hangs
+// under Rosetta). Windows: an exception status, or a native program's crash as
+// MSYS bash reports it (the signal in the second byte: 2816 for SIGSEGV).
+const CRASH_SIGNALS = { SIGSEGV: 'a memory access error', SIGBUS: 'a memory access error', SIGILL: 'an illegal instruction',
+  SIGFPE: 'a math error', SIGABRT: 'an internal error' };
+// Signal numbers as macOS and MSYS (Cygwin) number them, and as Linux does.
+const BSD_SIGNALS = { 4: 'SIGILL', 6: 'SIGABRT', 8: 'SIGFPE', 10: 'SIGBUS', 11: 'SIGSEGV' };
+const LINUX_SIGNALS = { 4: 'SIGILL', 6: 'SIGABRT', 7: 'SIGBUS', 8: 'SIGFPE', 11: 'SIGSEGV' };
+const WINDOWS_STATUSES = { 0xC0000005: 'SIGSEGV', 0xC00000FD: 'SIGSEGV', 0xC000001D: 'SIGILL', 0xC0000094: 'SIGFPE',
+  0xC0000409: 'SIGABRT' };
+
+function crashReason(code, signal, platform = process.platform) {
+  let name = signal;
+  if (!name && Number.isInteger(code))
+    name = platform === 'win32' ? BSD_SIGNALS[code / 256] || WINDOWS_STATUSES[code >>> 0]
+      : (platform === 'darwin' ? BSD_SIGNALS : LINUX_SIGNALS)[code - 128];
+  return CRASH_SIGNALS[name] ? `crashed with ${CRASH_SIGNALS[name]}` : null;
+}
+
 // The line that best explains a failed task, from its last lines of output.
 function failureReason(lines) {
   const recent = lines.map(line => cleanOutputLine(line).trim()).filter(Boolean);
@@ -106,4 +157,4 @@ function failureReason(lines) {
   return reason.slice(0, 400).replace(/[.\s]+$/, '');
 }
 
-module.exports = { activityFromLine, cleanOutputLine, createLineReader, failureReason };
+module.exports = { activityFromLine, cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason };

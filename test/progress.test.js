@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { activityFromLine, cleanOutputLine, createLineReader, failureReason } = require('../src/progress');
+const { activityFromLine, cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('../src/progress');
 
 test('shows real percentages for build and source downloads', () => {
   assert.deepEqual(activityFromLine('[ 42%] Building C object'), { detail: 'Building your game', percent: 42 });
@@ -100,4 +100,38 @@ test('failed tasks report the line that explains them', () => {
   assert.equal(failureReason(['Eclipse needs clang and clang++. Update the launcher, then try again.']),
     'Eclipse needs clang and clang++. Update the launcher, then try again');
   assert.equal(failureReason([]), '');
+});
+
+test('names each Eclipse source while git downloads it', () => {
+  const read = createActivityReader();
+  assert.deepEqual(read('-- SMS_ECLIPSE: fetching bse fd6273014545ac0174fa54fada02edd9212f63d8'),
+    { detail: 'Downloading Eclipse sources · Better Sunshine Engine (2 of 4)', percent: null });
+  assert.deepEqual(read('remote: Counting objects: 100% (211/211), done.'),
+    { detail: 'Downloading Eclipse sources · Better Sunshine Engine (2 of 4) · waiting for GitHub', percent: null });
+  assert.equal(read('From https://github.com/JoshuaMKW/BetterSunshineEngine'), null);
+  assert.deepEqual(read('Receiving objects:  94% (199/211), 45.39 MiB | 4.24 MiB/s'),
+    { detail: 'Downloading Eclipse sources · Better Sunshine Engine (2 of 4) · 45.39 MiB at 4.24 MiB/s', percent: 94 });
+  assert.deepEqual(read('Receiving objects:   3% (7/211)'),
+    { detail: 'Downloading Eclipse sources · Better Sunshine Engine (2 of 4)', percent: 3 });
+  assert.deepEqual(read('Updating files:  50% (94/188)'),
+    { detail: 'Writing Eclipse sources · Better Sunshine Engine (2 of 4)', percent: 50 });
+  assert.deepEqual(read('-- Configuring done'), { detail: 'Getting your game ready', percent: null });
+  assert.deepEqual(read('Receiving objects:  76% (123/160)'), { detail: 'Downloading files', percent: 76 });
+});
+
+test('a crash is reported as a crash, not as the last warning the game printed', () => {
+  // Windows: MSYS bash's report of a native crash, or the exception status itself.
+  assert.equal(crashReason(2816, null, 'win32'), 'crashed with a memory access error');
+  assert.equal(crashReason(2560, null, 'win32'), 'crashed with a memory access error');
+  assert.equal(crashReason(0xC0000005, null, 'win32'), 'crashed with a memory access error');
+  assert.equal(crashReason(-1073741819, null, 'win32'), 'crashed with a memory access error');
+  // Linux: the re-raised signal. macOS: the game's 128 + signal exit.
+  assert.equal(crashReason(null, 'SIGSEGV', 'linux'), 'crashed with a memory access error');
+  assert.equal(crashReason(null, 'SIGABRT', 'linux'), 'crashed with an internal error');
+  assert.equal(crashReason(139, null, 'darwin'), 'crashed with a memory access error');
+  assert.equal(crashReason(138, null, 'darwin'), 'crashed with a memory access error');
+  assert.equal(crashReason(135, null, 'linux'), 'crashed with a memory access error');
+  for (const [code, signal, platform] of [[1, null, 'win32'], [2, null, 'linux'], [256, null, 'win32'], [139, null, 'win32'],
+    [null, 'SIGTERM', 'linux'], [0, null, 'darwin'], [130, null, 'darwin']])
+    assert.equal(crashReason(code, signal, platform), null);
 });
