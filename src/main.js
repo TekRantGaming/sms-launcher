@@ -417,6 +417,18 @@ async function launchGame() {
   return play();
 }
 
+async function playInstalled() {
+  const root = requireRepo();
+  // Playing without setup uses only packs already on disk. Keep the player's
+  // preferences so choosing setup later still installs the requested visuals.
+  const settings = { ...config.settings,
+    textures: config.settings.textures && port.texturePackInstalled(root),
+    cutscenes: config.settings.cutscenes && port.cutscenePackInstalled(root) };
+  if (settings.textures !== config.settings.textures || settings.cutscenes !== config.settings.cutscenes)
+    log('Playing the installed game without missing HD downloads. Your visual settings are saved for later setup.');
+  return play({ repo: root, settings });
+}
+
 async function clean(dryRun) {
   await ensureBuildTools();
   const root = requireRepo();
@@ -607,7 +619,7 @@ function registerHandlers() {
   const actions = { 'install-port': ['Download port source', installPort],
     'update-port': ['Update game', updatePort], 'install-eclipse': ['Install Eclipse', () => installEclipse()],
     'install-textures': ['Install UHD textures', () => installTextures()], 'build': ['Build game', () => build(true)],
-    'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', () => play()],
+    'setup-game': ['Build game', setupGame], 'play': ['Play Super Mario Sunshine', playInstalled],
     'launch-game': ['Prepare game', launchGame],
     'play-previous': ['Play Super Mario Sunshine', () => {
       if (!config.previousInstall) throw new Error('There is no previous version available.');
