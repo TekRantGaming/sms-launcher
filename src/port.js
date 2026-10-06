@@ -66,6 +66,10 @@ function normalizeSettings(input = {}, platform = process.platform) {
     invertCameraY: Boolean(input.invertCameraY),
     // Master volume in percent; 100 leaves the game's sound as it is.
     volume,
+    // Straight to the title screen, past the logos and the opening movie.
+    skipMovies: Boolean(input.skipMovies),
+    // The game's frame-time overlay (toggled in game with the backtick key).
+    overlay: Boolean(input.overlay),
     textures: input.textures !== false,
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
@@ -166,6 +170,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
     SMS_VOLUME: String(settings.volume ?? 100),
+    SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
+    SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',

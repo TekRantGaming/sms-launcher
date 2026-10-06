@@ -82,6 +82,18 @@ test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
 });
 
+test('intro movies and the performance overlay are off by default and reach the game when chosen', () => {
+  const defaults = port.normalizeSettings({});
+  assert.equal(defaults.skipMovies, false);
+  assert.equal(defaults.overlay, false);
+  const env = port.buildEnvironment(defaults, '/my/disc.iso', '/port');
+  assert.equal(env.SMS_SKIP_MOVIES, '0');
+  assert.equal(env.SMS_OVERLAY, '0');
+  const chosen = port.buildEnvironment(port.normalizeSettings({ skipMovies: true, overlay: true }), '/my/disc.iso', '/port');
+  assert.equal(chosen.SMS_SKIP_MOVIES, '1');
+  assert.equal(chosen.SMS_OVERLAY, '1');
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

@@ -62,6 +62,8 @@ On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, *
 
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
 
+**Settings → Performance → Skip intro movies** goes straight to the title screen, and **Performance overlay** opens the game's frame-rate overlay at start (the backtick key toggles it in game). Both are off by default.
+
 **Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
 
 **Settings → Sound → Volume** sets the game's master volume, from 0 to 100% (full by default). It takes effect on the next launch.
