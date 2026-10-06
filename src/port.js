@@ -53,13 +53,13 @@ function normalizeSettings(input = {}, platform = process.platform) {
   const info = platformInfo(platform);
   const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
   const widescreen = ['off', '16:9', '16:10', '21:9'].includes(input.widescreen) ? input.widescreen : '16:9';
-  const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 2;
+  const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 4;
   return {
     arch, widescreen, resolution,
     fps60: input.fps60 !== false,
-    hudEdges: Boolean(input.hudEdges),
+    hudEdges: input.hudEdges !== false,
     fullscreen: Boolean(input.fullscreen),
-    textures: Boolean(input.textures),
+    textures: input.textures !== false,
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
