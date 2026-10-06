@@ -55,11 +55,14 @@ function normalizeSettings(input = {}, platform = process.platform) {
   const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
   const widescreen = ['off', '16:9', '16:10', '21:9'].includes(input.widescreen) ? input.widescreen : '16:9';
   const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 4;
+  // Migrate the previous 60 fps toggle without changing a saved preference.
+  const frameRate = [30, 60, 120].includes(Number(input.frameRate))
+    ? Number(input.frameRate) : input.fps60 === false ? 30 : 60;
   const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
     ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
   return {
     arch, widescreen, resolution,
-    fps60: input.fps60 !== false,
+    frameRate,
     hudEdges: input.hudEdges !== false,
     fullscreen: Boolean(input.fullscreen),
     invertCameraX: input.invertCameraX !== false,
@@ -161,7 +164,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_DISC_IMAGE: disc,
     SMS_WIDESCREEN: settings.widescreen,
     SMS_WIDESCREEN_HUD: settings.hudEdges ? 'edges' : 'centre',
-    SMS_FRAME_RATE: settings.fps60 ? '60' : '30',
+    SMS_FRAME_RATE: String(normalizeSettings(settings).frameRate),
     SMS_FULLSCREEN: settings.fullscreen ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',

@@ -60,6 +60,11 @@ Open Settings to change screen format, smoothness, picture sharpness, and HD tex
 
 On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, **Sharpest (4×)** picture sharpness, **icons at the screen edges**, and **60 fps** gameplay. Existing users keep their saved settings.
 
+Settings → Gameplay → Frame rate offers **30 fps (GameCube native)**, **60 fps (default)**, and **120 fps (optional)**.
+The previous 60 fps switch migrates to 30 or 60 without changing your saved preference.
+120 fps stays available on every display; it needs more CPU/GPU performance, and a display running at 120 Hz or faster shows its full benefit.
+Logos, menus, and movies stay at 30 fps.
+
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
 
 **Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
