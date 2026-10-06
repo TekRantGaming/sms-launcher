@@ -82,6 +82,13 @@ function activityFromLine(line) {
     return { detail: 'Making room for HD textures', percent: null };
   if (/^\s*\d+ MiB, MD5 /.test(value))
     return { detail: 'Download checked', percent: null };
+  // cmake/patches.cmake: one process per decomp patch, slow on some computers.
+  const patching = value.match(/^-- SMS port: applying decomp patches \((\d+)\/(\d+)\)$/);
+  if (patching) {
+    const done = Number(patching[1]), total = Number(patching[2]);
+    if (!Number.isSafeInteger(done) || !Number.isSafeInteger(total) || total <= 0 || done > total) return null;
+    return { detail: `Preparing the game's source · patch ${done} of ${total}`, percent: Math.floor(done * 100 / total) };
+  }
   if (/^-- (?:Configuring|Generating)/.test(value))
     return { detail: 'Getting your game ready', percent: null };
   if (/^Cloning into /.test(value))
