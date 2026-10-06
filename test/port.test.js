@@ -64,6 +64,18 @@ test('offers only platform-supported architectures and keeps builds separate', (
     path.join('/port', 'mods', 'textures'));
 });
 
+test('master volume defaults to full, is clamped to 0-100, and reaches the game as SMS_VOLUME', () => {
+  assert.equal(port.normalizeSettings({}).volume, 100);
+  assert.equal(port.normalizeSettings({ volume: 40 }).volume, 40);
+  assert.equal(port.normalizeSettings({ volume: '65' }).volume, 65);
+  assert.equal(port.normalizeSettings({ volume: 150 }).volume, 100);
+  assert.equal(port.normalizeSettings({ volume: -5 }).volume, 0);
+  assert.equal(port.normalizeSettings({ volume: 'loud' }).volume, 100);
+  assert.equal(port.normalizeSettings({ volume: null }).volume, 100);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/my/disc.iso', '/port').SMS_VOLUME, '100');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ volume: 0 }), '/my/disc.iso', '/port').SMS_VOLUME, '0');
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

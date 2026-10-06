@@ -54,6 +54,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
   const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
   const widescreen = ['off', '16:9', '16:10', '21:9'].includes(input.widescreen) ? input.widescreen : '16:9';
   const resolution = [1, 2, 3, 4].includes(Number(input.resolution)) ? Number(input.resolution) : 4;
+  const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
+    ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
   return {
     arch, widescreen, resolution,
     fps60: input.fps60 !== false,
@@ -61,6 +63,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     fullscreen: Boolean(input.fullscreen),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
+    // Master volume in percent; 100 leaves the game's sound as it is.
+    volume,
     textures: input.textures !== false,
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
@@ -158,6 +162,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_FULLSCREEN: settings.fullscreen ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
+    SMS_VOLUME: String(settings.volume ?? 100),
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',

@@ -104,6 +104,10 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .detail-panel h2, .maintenance-panel h2 { margin-bottom: 10px; }
 .field { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 53px; border-top: 1px solid #e6ebea; color: #405a60; font-size: 13px; }
 .field select { max-width: 200px; }
+.range-field > span { display: flex; flex-direction: column; gap: 2px; }
+.range-field strong { color: #223940; font-weight: 600; }
+.range-field output { color: #849196; font-size: 12px; font-variant-numeric: tabular-nums; }
+.range-field input[type=range] { flex: 0 1 200px; min-width: 0; accent-color: #17818a; }
 .detail-hint { margin-top: 15px; color: #849196; font-size: 12px; }
 .maintenance-panel .actions { margin: 11px 0; }
 .maintenance-panel .helper { display: block; margin: 8px 0; }
