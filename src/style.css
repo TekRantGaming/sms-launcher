@@ -286,3 +286,4 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .source-grid label { display: flex; flex-direction: column; gap: 4px; color: #405a60; font-size: 12px; }
 .source-grid input { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 12px; }
 .source-grid input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }
+.quick-grid.camera-grid { grid-template-columns: 1fr 1fr; margin-top: 12px; }

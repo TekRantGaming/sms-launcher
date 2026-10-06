@@ -62,6 +62,8 @@ On Windows, macOS, and Linux, the defaults are **64-bit**, **HD textures on**, *
 
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
 
+**Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
+
 - **Game files** lets you change the setup folder or choose a different disc file.
 - **Manage game** has updates, rebuilding, save backups, and space cleanup.
 - **Versions** shows your launcher, game, and setup tool versions for support.
