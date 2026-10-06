@@ -103,16 +103,19 @@ function showWizardStep(data) {
   const downloadTextures = ready && data.binaryReady && needsTextureDownload(data);
   $('page-home').classList.toggle('ready-mode', ready);
   $('setup-flow').hidden = ready;
-  $('home-title').textContent = ready ? 'Super Mario Sunshine' : 'Set up your game';
+  // Eclipse is chosen in Settings only: say so wherever it is installed or played.
+  const eclipse = data.config.settings.eclipse;
+  $('home-title').textContent = ready ? eclipse ? 'Super Mario Eclipse' : 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
     ? downloadTextures ? 'Set up HD visuals to finish setup.'
       : data.game.needsUpdate && data.config.settings.autoUpdate ? 'An update is ready. Your saves will carry over.' : 'Ready when you are.'
     : "Three steps, then you're ready to play.";
   const hd = [data.config.settings.textures && !data.texturesInstalled ? 'download HD textures' : '',
     wantsCutscenes(data) && !data.cutscenesInstalled ? 'prepare HD cutscenes using your disc image' : ''].filter(Boolean).join(' and ');
-  $('setup-install-description').textContent = hd
+  $('setup-install-description').textContent = (hd
     ? `We'll ${hd}, then get the game ready to play. This can take a while.`
-    : "We'll prepare a playable copy using your disc image. This can take a while.";
+    : "We'll prepare a playable copy using your disc image. This can take a while.") +
+    (eclipse ? ' Super Mario Eclipse (experimental) is on in Settings, so this sets up Eclipse instead of Super Mario Sunshine.' : '');
   $('setup-download-title').textContent = data.repoReady ? 'Download build tools' : 'Download setup files';
   $('setup-download-description').textContent = data.repoReady
     ? 'The setup files are ready. Download the tools needed to prepare your game.'
@@ -421,7 +424,8 @@ function settingsValue() {
 async function saveSettings() {
   if (changing) return;
   try { refresh(await window.sms.saveSettings(settingsValue())); }
-  catch (error) { showError(error); }
+  // A refused change (a task started) must not stay shown as if it were saved.
+  catch (error) { if (current) refresh(current); showError(error); }
 }
 
 function appendLog(line) {
@@ -467,6 +471,8 @@ window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
   if (current) current.active = value;
   renderActivity(value);
+  // Lock the settings now: the next state (sync) can take a while to arrive.
+  if (changed && current) refresh(current);
   if (changed) sync().catch(showError);
 });
 function renderAppUpdate(value) {
