@@ -195,7 +195,7 @@ test('HD movies have their own setting and only complete packs are recognized', 
   fs.writeFileSync(path.join(folder, 'files', movies[20].disc_path), 'damaged');
   assert.equal(port.cutscenePackInstalled(root), false);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: false, cutscenes: true })), true);
-  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ cutscenes: true, eclipse: true })), true);
+  assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({ textures: false, cutscenes: true, eclipse: true })), true);
   assert.equal(port.hdVisualsInstalled(root, port.normalizeSettings({})), true);
   const settings = port.normalizeSettings({ textures: true, cutscenes: true, eclipse: false });
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', root).SMS_HD_CUTSCENES, folder);
