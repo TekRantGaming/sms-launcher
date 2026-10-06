@@ -52,6 +52,13 @@ test('offers only platform-supported architectures and keeps builds separate', (
   assert.equal(settings.fullscreen, false);
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_FULLSCREEN, '0');
   assert.equal(port.buildEnvironment(port.normalizeSettings({ fullscreen: true }), '/my/disc.iso', '/port').SMS_FULLSCREEN, '1');
+  assert.equal(settings.invertCameraX, true);
+  assert.equal(settings.invertCameraY, false);
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_CAMERA_INVERT_X, '1');
+  assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_CAMERA_INVERT_Y, '0');
+  const inverted = port.normalizeSettings({ invertCameraX: false, invertCameraY: true });
+  assert.equal(port.buildEnvironment(inverted, '/my/disc.iso', '/port').SMS_CAMERA_INVERT_X, '0');
+  assert.equal(port.buildEnvironment(inverted, '/my/disc.iso', '/port').SMS_CAMERA_INVERT_Y, '1');
   assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS, '0');
   assert.equal(port.buildEnvironment({ ...settings, textures: true }, '/my/disc.iso', '/port').SMS_TEXTURE_PACKS,
     path.join('/port', 'mods', 'textures'));
