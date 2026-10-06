@@ -76,6 +76,12 @@ test('master volume defaults to full, is clamped to 0-100, and reaches the game 
   assert.equal(port.buildEnvironment(port.normalizeSettings({ volume: 0 }), '/my/disc.iso', '/port').SMS_VOLUME, '0');
 });
 
+test('settings keep only changed, known key bindings', () => {
+  assert.deepEqual(port.normalizeSettings({}).keyBindings, {});
+  const settings = port.normalizeSettings({ keyBindings: { A: ['J'], B: ['LSHIFT', 'RSHIFT', 'C'], R: ['NOPE', 'K', 'K'], JUMP: ['A'] } });
+  assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

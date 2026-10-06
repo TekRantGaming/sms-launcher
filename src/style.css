@@ -214,6 +214,16 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .modal-close:hover { background: #e7f3f1; }
 .modal-back { margin: 0 0 7px; padding: 0; border: 0; background: transparent; color: #167183; font-size: 12px; }
 .modal-back:hover { text-decoration: underline; }
+.controls-panel { padding: 8px 18px 14px; }
+.binding-list { display: grid; }
+.binding-row { display: grid; grid-template-columns: minmax(130px, 1fr) 2fr 230px; align-items: center; gap: 12px; min-height: 46px; border-bottom: 1px solid #e6ebea; color: #405a60; font-size: 13px; }
+.binding-row.changed > span:first-child { color: #17343d; font-weight: 650; }
+.binding-keys { display: flex; flex-wrap: wrap; gap: 5px; }
+.binding-keys kbd { padding: 2px 7px; border: 1px solid #d3dedc; border-bottom-width: 2px; border-radius: 5px; background: #fff; color: #223940; font: 600 11px/1.5 ui-monospace, Consolas, monospace; }
+.binding-row.capturing .binding-keys { color: #17818a; font-weight: 650; }
+.binding-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.binding-actions button { padding: 4px 10px; font-size: 12px; }
+.controls-panel .actions { margin-top: 12px; }
 .modal-body { min-height: 0; overflow: auto; padding: 18px 24px 24px; }
 .settings-entry { display: flex; align-items: center; gap: 13px; width: 100%; margin-top: 10px; padding: 10px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; color: #17343d; text-align: left; }
 .settings-entry:hover { border-color: #b7d7d6; background: #f0f9f8; }

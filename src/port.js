@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeChannel } = require('./update-channel');
+const bindings = require('./bindings');
 
 const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
@@ -70,6 +71,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
     autoUpdate: input.autoUpdate !== false,
+    // Keys the player changed in Settings → Controls; the rest stay the game's defaults.
+    keyBindings: bindings.normalize(input.keyBindings),
     updateChannel: normalizeChannel(input.updateChannel)
   };
 }

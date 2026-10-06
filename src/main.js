@@ -10,6 +10,7 @@ const gciSave = require('./gci-save');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
+const bindings = require('./bindings');
 const gameSource = require('./game-source');
 const { cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('./progress');
 
@@ -388,9 +389,9 @@ async function setupGame() {
 
 async function play(installation = null) {
   const root = installation?.repo || requireRepo();
-  // Camera controls and volume are the player's, not the build's: an earlier install plays with them too.
+  // Camera and key controls and volume are the player's, not the build's: an earlier install plays with them too.
   const settings = installation ? { ...installation.settings, volume: config.settings.volume, invertCameraX: config.settings.invertCameraX,
-    invertCameraY: config.settings.invertCameraY } : config.settings;
+    invertCameraY: config.settings.invertCameraY, keyBindings: config.settings.keyBindings } : config.settings;
   const rom = port.validateRom(installation?.rom || config.rom);
   if (!binaryReady(root, settings)) throw new Error('Set up this version of the game before playing.');
   if (!port.hdVisualsInstalled(root, settings))
@@ -402,6 +403,12 @@ async function play(installation = null) {
   const env = recordedTools
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
     : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir });
+  // Changed keys go to a file of the launcher's own, so a bindings.txt kept by hand in the game folder is left alone.
+  if (Object.keys(settings.keyBindings || {}).length) {
+    const file = path.join(app.getPath('userData'), 'bindings.txt');
+    fs.writeFileSync(file, bindings.fileText(settings.keyBindings));
+    env.SMS_BINDINGS = file;
+  }
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
