@@ -66,6 +66,8 @@ Turn on **Settings → Visuals → Full screen** to have the game fill your disp
 
 **Settings → Sound → Volume** sets the game's master volume, from 0 to 100% (full by default). It takes effect on the next launch.
 
+**Free camera** keeps the camera where you point it instead of swinging back behind Mario (L recentres it). **Camera speed** scales how fast the camera turns. **Mouse look** turns the camera with the mouse (F10 releases the mouse, a click takes it back), at the chosen **Mouse sensitivity**. All of them take effect on the next launch.
+
 - **Game files** lets you change the setup folder or choose a different disc file.
 - **Manage game** has updates, rebuilding, save backups, and space cleanup.
 - **Controls** sets the keyboard keys for each button: **Change** uses one key, **Add** adds another, **Reset** goes back to the default. Controllers need no setup.

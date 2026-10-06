@@ -82,6 +82,28 @@ test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
 });
 
+test('camera options default to the original camera and reach the game as environment variables', () => {
+  const defaults = port.normalizeSettings({});
+  assert.equal(defaults.freeCamera, false);
+  assert.equal(defaults.cameraSpeed, 100);
+  assert.equal(defaults.mouseCamera, false);
+  assert.equal(defaults.mouseSensitivity, 100);
+  const env = port.buildEnvironment(defaults, '/my/disc.iso', '/port');
+  assert.equal(env.SMS_FREE_CAMERA, '0');
+  assert.equal(env.SMS_CAMERA_SPEED, '100');
+  assert.equal(env.SMS_MOUSE_CAMERA, '0');
+  assert.equal(env.SMS_MOUSE_SENSITIVITY, '100');
+  const chosen = port.normalizeSettings({ freeCamera: true, cameraSpeed: '150', mouseCamera: true, mouseSensitivity: 250 });
+  const chosenEnv = port.buildEnvironment(chosen, '/my/disc.iso', '/port');
+  assert.equal(chosenEnv.SMS_FREE_CAMERA, '1');
+  assert.equal(chosenEnv.SMS_CAMERA_SPEED, '150');
+  assert.equal(chosenEnv.SMS_MOUSE_CAMERA, '1');
+  assert.equal(chosenEnv.SMS_MOUSE_SENSITIVITY, '250');
+  assert.equal(port.normalizeSettings({ cameraSpeed: 9000 }).cameraSpeed, 400);
+  assert.equal(port.normalizeSettings({ cameraSpeed: 1 }).cameraSpeed, 10);
+  assert.equal(port.normalizeSettings({ mouseSensitivity: 'fast' }).mouseSensitivity, 100);
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

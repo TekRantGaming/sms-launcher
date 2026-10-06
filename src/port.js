@@ -50,6 +50,12 @@ function validateRom(file) {
   } finally { fs.closeSync(fd); }
 }
 
+// A percentage setting: a whole number within lo..hi, or the fallback when unset or unreadable.
+function percentSetting(value, fallback, lo, hi) {
+  const number = value === null || value === '' || value === undefined ? NaN : Number(value);
+  return Number.isFinite(number) ? Math.min(hi, Math.max(lo, Math.round(number))) : fallback;
+}
+
 function normalizeSettings(input = {}, platform = process.platform) {
   const info = platformInfo(platform);
   const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
@@ -66,6 +72,11 @@ function normalizeSettings(input = {}, platform = process.platform) {
     invertCameraY: Boolean(input.invertCameraY),
     // Master volume in percent; 100 leaves the game's sound as it is.
     volume,
+    // The camera stays where it is put instead of swinging back behind Mario.
+    freeCamera: Boolean(input.freeCamera),
+    cameraSpeed: percentSetting(input.cameraSpeed, 100, 10, 400),
+    mouseCamera: Boolean(input.mouseCamera),
+    mouseSensitivity: percentSetting(input.mouseSensitivity, 100, 5, 1000),
     textures: input.textures !== false,
     // HD cutscenes are a separate 5 GB download, off unless chosen.
     cutscenes: Boolean(input.cutscenes),
@@ -166,6 +177,10 @@ function buildEnvironment(settings, disc, root) {
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
     SMS_VOLUME: String(settings.volume ?? 100),
+    SMS_FREE_CAMERA: settings.freeCamera ? '1' : '0',
+    SMS_CAMERA_SPEED: String(settings.cameraSpeed ?? 100),
+    SMS_MOUSE_CAMERA: settings.mouseCamera ? '1' : '0',
+    SMS_MOUSE_SENSITIVITY: String(settings.mouseSensitivity ?? 100),
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',

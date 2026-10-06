@@ -71,6 +71,10 @@
           <div class="quick-grid camera-grid">
             <label class="switch compact"><span><strong>Invert camera X</strong><small>Flip C-stick left and right</small></span><input id="invertCameraX" type="checkbox"><i></i></label>
             <label class="switch compact"><span><strong>Invert camera Y</strong><small>Flip C-stick up and down</small></span><input id="invertCameraY" type="checkbox"><i></i></label>
+            <label class="switch compact"><span><strong>Free camera</strong><small>Stays where you point it; L recentres</small></span><input id="freeCamera" type="checkbox"><i></i></label>
+            <label class="quick-control range-control"><span>Camera speed <output id="cameraSpeed-value" for="cameraSpeed">100%</output></span><input id="cameraSpeed" type="range" min="25" max="300" step="5" aria-label="Camera speed"></label>
+            <label class="switch compact"><span><strong>Mouse look</strong><small>Turn the camera with the mouse; F10 frees it</small></span><input id="mouseCamera" type="checkbox"><i></i></label>
+            <label class="quick-control range-control"><span>Mouse sensitivity <output id="mouseSensitivity-value" for="mouseSensitivity">100%</output></span><input id="mouseSensitivity" type="range" min="25" max="400" step="5" aria-label="Mouse sensitivity"></label>
           </div>
           <div class="quick-note" id="eclipse-note"><span id="eclipse-platform-note"></span><button id="install-eclipse" class="text-button">Install Eclipse mod ↗</button></div>
         </section>
