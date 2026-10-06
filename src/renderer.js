@@ -14,7 +14,8 @@ function closeModal() {
 function showSettingsView(name) {
   $('settings-view').hidden = name !== 'settings';
   $('maintenance-view').hidden = name !== 'maintenance';
-  $('page-settings').setAttribute('aria-label', name === 'settings' ? 'Game settings' : 'Manage game');
+  $('controls-view').hidden = name !== 'controls';
+  $('page-settings').setAttribute('aria-label', { settings: 'Game settings', maintenance: 'Manage game', controls: 'Controls' }[name]);
 }
 
 $('settings-cog').addEventListener('click', () => {
@@ -29,6 +30,77 @@ $('back-to-settings').addEventListener('click', () => {
   showSettingsView('settings');
   $('open-maintenance').focus();
 });
+$('open-controls').addEventListener('click', () => {
+  showSettingsView('controls');
+  renderBindings();
+  $('controls-back').focus();
+});
+$('controls-back').addEventListener('click', () => {
+  stopCapture();
+  showSettingsView('settings');
+  $('open-controls').focus();
+});
+
+// --- Controls: key bindings (src/bindings.js). keyBindings holds only the controls the player changed.
+let keyBindings = {};
+let capture = null;  // { id, add } while waiting for a key
+
+function stopCapture() {
+  if (!capture) return;
+  capture = null;
+  window.removeEventListener('keydown', captureKey, true);
+  renderBindings();
+}
+
+function captureKey(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.repeat) return;
+  const { id, add } = capture;
+  if (event.code === 'Escape' && !event.shiftKey) { stopCapture(); return; }
+  const key = SmsBindings.keyFromCode(event.code);
+  if (!key) { $('binding-note').textContent = 'The game cannot read that key. Try another, or Esc to cancel.'; return; }
+  const keys = add ? [...SmsBindings.keysFor(keyBindings, id).filter(item => item !== key), key] : [key];
+  keyBindings = SmsBindings.normalize({ ...keyBindings, [id]: keys });
+  $('binding-note').textContent = 'Choose Change, then press a key. Esc cancels.';
+  stopCapture();
+  saveSettings();
+}
+
+function startCapture(id, add) {
+  stopCapture();
+  capture = { id, add };
+  window.addEventListener('keydown', captureKey, true);
+  renderBindings();
+}
+
+function renderBindings() {
+  if (!globalThis.SmsBindings || $('controls-view').hidden) return;
+  $('binding-list').replaceChildren(...SmsBindings.CONTROLS.map(({ id, label }) => {
+    const row = document.createElement('div');
+    row.className = `binding-row${keyBindings[id] ? ' changed' : ''}${capture?.id === id ? ' capturing' : ''}`;
+    const name = document.createElement('span'); name.textContent = label;
+    const keys = document.createElement('span'); keys.className = 'binding-keys';
+    if (capture?.id === id) keys.textContent = capture.add ? 'Press a key to add…' : 'Press a key…';
+    else keys.replaceChildren(...SmsBindings.keysFor(keyBindings, id).map(key => {
+      const item = document.createElement('kbd'); item.textContent = key.replace('_', ' '); return item;
+    }));
+    const actions = document.createElement('span'); actions.className = 'binding-actions';
+    const button = (text, onClick, title) => {
+      const item = document.createElement('button'); item.className = 'subtle'; item.textContent = text; item.title = title;
+      item.disabled = Boolean(current?.active); item.addEventListener('click', onClick); return item;
+    };
+    actions.append(button('Change', () => startCapture(id, false), 'Use one key instead'),
+      button('Add', () => startCapture(id, true), 'Add another key'));
+    if (keyBindings[id]) actions.append(button('Reset', () => {
+      const { [id]: _removed, ...rest } = keyBindings; keyBindings = rest; renderBindings(); saveSettings();
+    }, 'Back to the default keys'));
+    row.append(name, keys, actions);
+    return row;
+  }));
+}
+
+$('reset-bindings').addEventListener('click', () => { stopCapture(); keyBindings = {}; renderBindings(); saveSettings(); });
 for (const button of document.querySelectorAll('[data-close-modal]'))
   button.addEventListener('click', () => button.closest('dialog').close());
 
@@ -280,6 +352,9 @@ function refresh(data) {
   for (const key of ['arch', 'widescreen', 'resolution', 'volume']) $(key).value = String(config.settings[key]);
   renderVolume();
   for (const key of ['fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  keyBindings = config.settings.keyBindings || {};
+  if (!capture) renderBindings();
+  $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
   for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'fps60', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
@@ -423,7 +498,8 @@ function settingsValue() {
     arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value), volume: Number($('volume').value),
     fps60: $('fps60').checked, fullscreen: $('fullscreen').checked,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
-    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value
+    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
+    keyBindings
   };
 }
 

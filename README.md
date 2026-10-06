@@ -68,6 +68,7 @@ Turn on **Settings → Visuals → Full screen** to have the game fill your disp
 
 - **Game files** lets you change the setup folder or choose a different disc file.
 - **Manage game** has updates, rebuilding, save backups, and space cleanup.
+- **Controls** sets the keyboard keys for each button: **Change** uses one key, **Add** adds another, **Reset** goes back to the default. Controllers need no setup.
 - **Versions** shows your launcher, game, and setup tool versions for support.
 
 Windows and Linux offer both 64-bit and 32-bit game builds. Keep the default **64-bit** choice unless you need 32-bit. Mac game builds are 64-bit.
