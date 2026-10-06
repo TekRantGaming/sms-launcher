@@ -94,11 +94,18 @@ The launcher keeps your save location when you update or rebuild the game. It ma
 
 In **Settings → Manage game → Saved games**, you can:
 
+- **Import a Dolphin save:** drop a `.gci` file into the Saved games panel, or choose **Choose .gci file**. Confirm the import, then start the game.
 - **Back up saves** whenever you want an extra copy.
 - **Open backup folder** to find your backups.
 - Choose an earlier backup and select **Restore backup**. Your current saves are backed up before restoring.
 
 Backups are stored in **SMS Launcher Backups** in your home folder, separate from the launcher installation and game build folders. Copy that folder to another drive or cloud storage for extra protection.
+
+Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
+
+The launcher asks before importing, warns if save block checksums fail, and makes a verified backup of your existing card before writing. A failed import restores the files it replaced. Import is disabled while the game or another launcher task is running. The source `.gci` is never changed or uploaded. Restore a **Before Dolphin import** backup to recover previous progress.
+
+The conversion follows the GCI header/payload approach demonstrated by the community [GCI-to-DAT converter](https://github.com/user-attachments/files/33072655/gci-to-dat.3.html), with metadata and index creation for the port's card backend. Header fields follow [Dolphin's GCI directory entry format](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/HW/GCMemcard/GCMemcard.h).
 
 ### Optional: Super Mario Eclipse
 

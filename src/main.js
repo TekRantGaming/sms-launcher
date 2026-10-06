@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const port = require('./port');
 const saves = require('./saves');
+const gciSave = require('./gci-save');
 const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
@@ -640,6 +641,29 @@ function registerHandlers() {
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
+  ipcMain.handle('import-dolphin-save', (_event, file) => exclusive('Import Dolphin save', async () => {
+    if (file == null) {
+      const chosen = await dialog.showOpenDialog(window, { title: 'Import Dolphin save',
+        properties: ['openFile'], filters: [{ name: 'Dolphin save', extensions: ['gci'] }] });
+      if (chosen.canceled || !chosen.filePaths.length) return { cancelled: true };
+      file = chosen.filePaths[0];
+    }
+    const converted = gciSave.readGci(file);
+    const directory = currentSaveDirectory();
+    const existing = fs.existsSync(path.join(directory, `${converted.name}.dat`));
+    const warning = converted.badBlocks.length
+      ? `\n\nSave checksums failed in block(s) ${converted.badBlocks.join(', ')}. Some blocks may be unused or damaged; the game may be unable to load this save.` : '';
+    const answer = await dialog.showMessageBox(window, {
+      type: existing || warning ? 'warning' : 'question',
+      buttons: ['Cancel', 'Import save'], defaultId: 0, cancelId: 0,
+      message: existing ? 'Replace your Sunshine save with this Dolphin save?' : 'Import this Dolphin save?',
+      detail: `${path.basename(file)}\n\nDestination: ${directory}\n\nThis imports the whole Sunshine save, including all three save slots. Your current memory card will be backed up first. The original .gci file is kept.${warning}`
+    });
+    if (answer.response !== 1) return { cancelled: true };
+    const result = gciSave.importGci(converted, directory);
+    log(`Imported Dolphin save into ${directory}.${result.previous ? ` Previous saves: ${result.previous}` : ''}`);
+    return result;
+  }));
   ipcMain.handle('restore-saves', async (_event, id) => {
     if (operation || active) throw new Error('Stop the running game or task before restoring saves.');
     if (!saves.listBackups().some(item => item.id === id && item.source === currentSaveDirectory()))

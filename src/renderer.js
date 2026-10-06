@@ -75,6 +75,7 @@ function taskName(label) {
 function backupReason(reason) {
   return ({ manual: 'Manual backup', 'before-play': 'Before playing', 'after-play': 'After playing',
     'before-restore': 'Before restoring', 'before-cleanup': 'Before cleanup',
+    'before-dolphin-import': 'Before Dolphin import',
     'before-port-update': 'Before update', 'before-tools-change': 'Before changing build tools' })[reason] || 'Backup';
 }
 
@@ -257,6 +258,8 @@ function refresh(data) {
   $('play-previous').disabled = Boolean(data.active);
   $('save-path').textContent = `Saved games: ${data.saveDirectory}\nBackups: ${data.backupDirectory}`;
   $('backup-saves').disabled = Boolean(data.active);
+  $('import-dolphin-save').disabled = Boolean(data.active);
+  $('dolphin-save-drop').setAttribute('aria-disabled', String(Boolean(data.active)));
   $('restore-saves').disabled = Boolean(data.active) || !data.backups.length;
   const selectedBackup = $('backup-list').value;
   $('backup-list').replaceChildren(...data.backups.map(backup => {
@@ -461,6 +464,37 @@ $('play').addEventListener('click', () => {
 for (const button of document.querySelectorAll('[data-setup-back]')) button.addEventListener('click', () => {
   if (wizardStep > 1) { wizardStep -= 1; refresh(current); }
 });
+async function importDolphinSave(file) {
+  if (current?.active) return;
+  const resultText = $('dolphin-import-result');
+  resultText.textContent = '';
+  try {
+    const result = await window.sms.importDolphinSave(file);
+    resultText.textContent = result.cancelled ? 'Import cancelled.' : 'Dolphin save imported. Start the game to play.';
+    await sync();
+  } catch (error) { resultText.textContent = error.message || String(error); await sync(); }
+}
+$('import-dolphin-save').addEventListener('click', () => importDolphinSave());
+const dolphinDrop = $('dolphin-save-drop');
+for (const type of ['dragenter', 'dragover']) dolphinDrop.addEventListener(type, event => {
+  event.preventDefault();
+  if (!current?.active) dolphinDrop.classList.add('drag-over');
+});
+for (const type of ['dragleave', 'drop']) dolphinDrop.addEventListener(type, event => {
+  event.preventDefault();
+  dolphinDrop.classList.remove('drag-over');
+});
+dolphinDrop.addEventListener('drop', event => {
+  if (current?.active) return;
+  if (event.dataTransfer.files.length !== 1) {
+    $('dolphin-import-result').textContent = 'Drop one Dolphin .gci save file at a time.';
+    return;
+  }
+  importDolphinSave(event.dataTransfer.files[0]);
+});
+// Prevent dropped files from navigating away from the launcher.
+for (const type of ['dragover', 'drop']) window.addEventListener(type, event => event.preventDefault());
+
 $('restore-saves').addEventListener('click', async () => {
   setMessage('');
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }

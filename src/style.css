@@ -293,3 +293,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .source-grid input { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font: inherit; font-size: 12px; }
 .source-grid input:focus-visible { outline: 2px solid #17818a; outline-offset: 2px; }
 .quick-grid.camera-grid { grid-template-columns: 1fr 1fr; margin-top: 12px; }
+
+.dolphin-save-drop { margin: 14px 0; padding: 16px; border: 2px dashed #6eafba; border-radius: 14px; background: #f1fafb; }
+.dolphin-save-drop.drag-over { border-color: #08798b; background: #d8f5f4; }
+.dolphin-save-drop[aria-disabled="true"] { opacity: .55; }
