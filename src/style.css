@@ -160,6 +160,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .intro .eyebrow { color: #dcf3f7; }
 .intro p:last-child { color: #f0fcff; font-size: 14px; }
 .hero-spacer { flex: 1 1 auto; min-height: 10px; }
+.discord-banner { flex: none; display: flex; align-items: center; gap: 12px; margin-left: 20px; padding: 10px 15px 10px 10px; border-color: #a5e0e47d; border-radius: 12px; background: linear-gradient(135deg, #123e59e6, #087e91e0); color: #fff; text-align: left; text-shadow: none; box-shadow: 0 10px 26px #061f3566; backdrop-filter: blur(14px); }
+.discord-banner:hover { border-color: #d3f2f5; background: linear-gradient(135deg, #17496be8, #0a91a6e6); }
+.discord-logo { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #5865f2; }
+.discord-logo svg { width: 23px; height: 23px; fill: #fff; }
+.discord-copy { display: grid; gap: 2px; }
+.discord-copy strong { font-size: 14px; font-weight: 750; letter-spacing: -.01em; }
+.discord-copy small { color: #d2eaf0; font-size: 11px; font-weight: 500; }
+.discord-arrow { margin-left: 4px; color: #ffda91; font-size: 15px; font-weight: 800; }
 .launch-panel { flex: none; align-self: center; width: min(100%, 620px); padding: 16px 19px 14px; border-color: #a5e0e47d; background: linear-gradient(135deg, #123e59f2, #087e91f0); box-shadow: 0 16px 36px #061f3590; text-align: center; backdrop-filter: blur(14px); }
 .launch-primary { display: flex; align-items: stretch; gap: 9px; margin-top: 14px; }
 .play { display: block; width: 100%; min-width: 0 !important; min-height: 72px; margin-top: 14px; padding: 10px 20px; border-radius: 11px; background: #ffc75a; color: #143749; font-size: 26px; font-weight: 850; letter-spacing: -.035em; box-shadow: 0 4px 0 #b98127, 0 10px 20px #08273b40; }

@@ -14,6 +14,8 @@ const bindings = require('./bindings');
 const gameSource = require('./game-source');
 const { cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('./progress');
 
+const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
+
 let window;
 let config;
 let active = null;
@@ -704,6 +706,8 @@ function registerHandlers() {
     return true;
   });
   ipcMain.handle('open-docs', () => shell.openPath(path.join(requireRepo(), 'BUILD.md')));
+  // Only this fixed invite opens: the page never chooses a URL.
+  ipcMain.handle('open-discord', () => shell.openExternal(DISCORD_INVITE));
 }
 
 function createWindow() {

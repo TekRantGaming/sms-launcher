@@ -526,6 +526,8 @@ for (const [id, method] of Object.entries({
   'clean-preview': 'cleanPreview', clean: 'clean', 'backup-saves': 'backupSaves',
   'open-backups': 'openBackups', stop: 'stop', docs: 'openDocs'
 })) $(id).addEventListener('click', () => action(method));
+// The invite opens in the browser, even while the game builds or runs.
+$('discord').addEventListener('click', () => window.sms.openDiscord().catch(error => setMessage(error.message)));
 $('play').addEventListener('click', () => {
   if (wizardStep === 0) runWizardAction('launchGame');
   else if (wizardStep === 1) {

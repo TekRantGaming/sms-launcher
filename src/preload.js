@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('sms', {
   openBackups: () => ipcRenderer.invoke('open-backups'),
   stop: () => ipcRenderer.invoke('stop'),
   openDocs: () => ipcRenderer.invoke('open-docs'),
+  openDiscord: () => ipcRenderer.invoke('open-discord'),
   checkAppUpdate: () => ipcRenderer.invoke('check-app-update'),
   installAppUpdate: () => ipcRenderer.invoke('install-app-update'),
   updateChannels: () => ipcRenderer.invoke('update-channels'),
