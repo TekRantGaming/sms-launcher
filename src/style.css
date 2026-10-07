@@ -111,7 +111,8 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .detail-hint { margin-top: 15px; color: #849196; font-size: 12px; }
 .maintenance-panel .actions { margin: 11px 0; }
 .maintenance-panel .helper { display: block; margin: 8px 0; }
-.maintenance-panel .switch { border-top: 1px solid #e6ebea; }
+.maintenance-panel .switch + .field { border-top: 0; }
+.maintenance-grid .source-panel { grid-column: 1 / -1; order: 1; }
 .small-path { min-height: 34px; margin: 5px 0 9px; color: #718087; font-size: 11px; white-space: pre-line; overflow-wrap: anywhere; }
 .backup-picker { display: grid; gap: 6px; margin: 10px 0; color: #405a60; font-size: 12px; }
 .danger { color: #a04d49; }
