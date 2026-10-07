@@ -495,6 +495,7 @@ function refresh(data) {
   $('choose-repo-settings').disabled = Boolean(data.active);
   renderActivity(data.active);
   renderAppUpdate(data.appUpdate);
+  renderOnline(data.online);
   const installedVersion = data.binaryReady ? data.game.installedVersion : null;
   const gameVersion = installedVersion || (data.binaryReady ? 'Version unavailable' : 'Not installed');
   $('version-summary').textContent = `Launcher v${data.game.launcherVersion} · Game ${installedVersion || (data.binaryReady ? 'version unavailable' : 'not installed')}`;
@@ -541,7 +542,7 @@ function refresh(data) {
     $(key).value = String(config.settings[key]);
   renderVolume();
   renderRanges();
-  for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'heatHaze', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'heatHaze', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
   padBindings = config.settings.padBindings || {};
   $('buttonPrompts').value = config.settings.buttonPrompts || 'gamecube';
@@ -561,7 +562,7 @@ function refresh(data) {
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset', 'fsrMode'])
     $(key).disabled = Boolean(data.active);
   renderDependents(Boolean(data.active));
   renderHdr(Boolean(data.active));
@@ -790,7 +791,7 @@ function settingsValue() {
     sharpen: Number($('sharpen').value), brightness: Number($('brightness').value), aspect: $('aspect').value,
     presentFilter: $('presentFilter').value, fsrMode: $('fsrMode').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
-    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
+    eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, shareUsage: $('shareUsage').checked, updateChannel: $('updateChannel').value,
     keyBindings, padBindings, softTrigger: Number($('softTrigger').value), buttonPrompts: $('buttonPrompts').value,
     promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value,
     hdr: $('hdr').checked, hdrCalibration: $('hdrCalibration').checked, hdrPaperWhite: Number($('hdrPaperWhite').value),
@@ -907,7 +908,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'fsrMode'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'shareUsage', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'fsrMode'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
@@ -948,6 +949,15 @@ async function checkForUpdates() {
   }
 }
 window.sms.onAppUpdate(renderAppUpdate);
+// Hidden until the usage API answers, so offline launchers look as before.
+function renderOnline(value) {
+  if (!value) return;
+  const players = count => `${count} ${count === 1 ? 'player' : 'players'}`;
+  $('online-number').textContent = `${value.online.toLocaleString()} online`;
+  $('online-count').title = `${players(value.online)} ${value.online === 1 ? 'has' : 'have'} the launcher open · ${value.playing.toLocaleString()} playing now`;
+  $('online-count').hidden = false;
+}
+window.sms.onOnline(renderOnline);
 $('install-app-update').addEventListener('click', () => window.sms.installAppUpdate().catch(showError));
 $('check-updates').addEventListener('click', checkForUpdates);
 function renderWindowState(value) {

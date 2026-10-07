@@ -133,6 +133,18 @@ Super Mario Eclipse is a fan-made expansion available in Settings. Enable it and
 
 Eclipse needs a full, unmodified North American ISO; compressed CISO files won't work for its patch. Eclipse has been verified on Linux and is experimental on Windows and Mac.
 
+### Privacy
+
+The top bar shows how many players have the launcher open. To count you, the launcher sends an anonymous check-in every 5 minutes while it is open. It contains only:
+
+- the launcher version, installed game version and the game version this release offers
+- your OS and processor type (for example `win32`, `x64`)
+- your launcher update channel
+- whether the game is running
+- a random install ID made on first run
+
+Nothing else is sent: no name, account, disc file, saves, settings or file paths, and no IP address is stored. Installs that stop checking in are deleted after 90 days. Turn off **Share anonymous usage** in **Settings → Manage game** to stop sending check-ins; you will still see the online count, but you won't be counted in it.
+
 ## Need help?
 
 The **Activity log** panel is always available along the bottom of the launcher. It opens when a task starts or reports a failure; click its heading to collapse it or use the expand button for more reading space. Launcher messages, stdout and stderr have separate labels and colors. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Scroll up to pause following output, and click **Follow output** to catch up again. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
@@ -227,6 +239,10 @@ Source or tool changes require a game rebuild. Visual preferences and launcher-o
 Release packages embed their GitHub update feed, check on startup and every 30 minutes, and install downloaded updates on quit. The Mac ZIP is required by the automatic updater; the DMG is the recommended user installation.
 
 macOS automatic updates require signed builds. Mac releases are signed with a self-signed certificate: run `scripts/make-mac-cert.sh` once, store its output as the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` secrets, and back it up. Installs only accept updates signed with that same certificate, or a later Developer ID build of the same app, so never generate a replacement. Without the secrets, builds are unsigned and can only be installed by hand. Windows signing uses `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD`. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic feed. Local packages without a feed cannot fetch new launcher releases automatically.
+
+### Usage API
+
+Check-ins and the online count come from `sms-server-api`, a Cloudflare Worker kept in a separate private repository. `TELEMETRY_URL` in `src/telemetry.js` points packaged launchers at it; while it is empty, nothing is sent. Development runs never report unless `SMS_TELEMETRY_URL` points at a test API, for example `SMS_TELEMETRY_URL=http://localhost:8787 npm start` with the API's `npm run dev`.
 
 ### Save storage and recovery
 
