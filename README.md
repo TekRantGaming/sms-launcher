@@ -216,7 +216,7 @@ Source or tool changes require a game rebuild. Visual preferences and launcher-o
 
 Release packages embed their GitHub update feed, check on startup and every 30 minutes, and install downloaded updates on quit. The Mac ZIP is required by the automatic updater; the DMG is the recommended user installation.
 
-macOS automatic updates require signed builds using the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` secrets. Unsigned builds remain available for manual installation. Windows signing uses `WINDOWS_CSC_LINK` and `WINDOWS_CSC_KEY_PASSWORD`. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic feed. Local packages without a feed cannot fetch new launcher releases automatically.
+macOS automatic updates require signed builds. Mac releases are signed with a self-signed certificate: run `scripts/make-mac-cert.sh` once, store its output as the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` secrets, and back it up. Installs only accept updates signed with that same certificate, or a later Developer ID build of the same app, so never generate a replacement. Without the secrets, builds are unsigned and can only be installed by hand. Windows signing uses `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD`. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic feed. Local packages without a feed cannot fetch new launcher releases automatically.
 
 ### Save storage and recovery
 

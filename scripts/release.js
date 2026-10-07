@@ -17,7 +17,10 @@ if (requestedTag && requestedTag !== expectedTag) {
 }
 const target = process.platform === 'win32' ? ['--win', '--x64']
   : process.platform === 'darwin' ? ['--mac', '--universal'] : ['--linux', '--x64'];
-const result = spawnSync(process.execPath, [require.resolve('electron-builder/cli.js'), ...target,
+// A Mac certificate is self-signed, which electron-builder will not pick as an identity.
+const macSigning = process.platform === 'darwin' && process.env.CSC_LINK
+  ? ['--config.mac.identity=-', '--config.mac.sign=scripts/mac-sign.js'] : [];
+const result = spawnSync(process.execPath, [require.resolve('electron-builder/cli.js'), ...target, ...macSigning,
   '--publish', 'always', '--config.publish.provider=github',
   `--config.publish.owner=${owner}`, `--config.publish.repo=${repo}`], { stdio: 'inherit' });
 if (result.error) { console.error(result.error); process.exit(1); }
