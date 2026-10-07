@@ -17,6 +17,23 @@ function header() {
   return bytes;
 }
 
+test('frame rate defaults to 60, migrates the old toggle, and passes all three rates to the game', () => {
+  for (const platform of ['linux', 'darwin', 'win32']) {
+    assert.equal(port.normalizeSettings({}, platform).frameRate, 60);
+    assert.equal(port.normalizeSettings({ fps60: true }, platform).frameRate, 60);
+    assert.equal(port.normalizeSettings({ fps60: false }, platform).frameRate, 30);
+    for (const frameRate of [30, 60, 120]) {
+      const settings = port.normalizeSettings({ frameRate: String(frameRate), fps60: false }, platform);
+      assert.equal(settings.frameRate, frameRate);
+      assert.equal(port.buildEnvironment(settings, '/my/disc.iso', '/port').SMS_FRAME_RATE, String(frameRate));
+      assert.equal(port.normalizeSettings(JSON.parse(JSON.stringify(settings)), platform).frameRate, frameRate);
+    }
+    for (const frameRate of [0, 90, 144, '120fps', null])
+      assert.equal(port.normalizeSettings({ frameRate }, platform).frameRate, 60);
+  }
+  assert.equal(port.buildEnvironment({ fps60: false }, '/my/disc.iso', '/port').SMS_FRAME_RATE, '30');
+});
+
 test('requires an owned GMSE01 Rev 0 image and supports plain and CISO headers', () => {
   const dir = temporary();
   try {

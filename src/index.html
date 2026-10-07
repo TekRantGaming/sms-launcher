@@ -65,7 +65,7 @@
           <div class="quick-head"><h2>Gameplay</h2></div>
           <div class="quick-grid">
             <label class="quick-control"><span>Screen format</span><select id="widescreen"><option value="off">Original 4:3</option><option value="16:9">Widescreen 16:9</option><option value="16:10">Widescreen 16:10</option><option value="21:9">Ultrawide 21:9</option></select></label>
-            <label class="switch compact"><span><strong>60 fps</strong><small>Smoother motion</small></span><input id="fps60" type="checkbox"><i></i></label>
+            <label class="quick-control"><span>Frame rate</span><select id="frameRate" aria-describedby="frame-rate-note"><option value="30">30 fps (GameCube native)</option><option value="60">60 fps (default)</option><option value="120">120 fps (optional)</option></select><small id="frame-rate-note">120 fps needs more GPU performance; a 120 Hz display shows its full benefit.</small></label>
             <label class="switch compact eclipse-switch"><span><strong>Super Mario Eclipse <span id="eclipse-badge" class="badge">Optional</span></strong><small>Fan-made expansion</small></span><input id="eclipse" type="checkbox"><i></i></label>
           </div>
           <div class="quick-grid camera-grid">
