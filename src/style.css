@@ -68,12 +68,12 @@ h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
 .quick-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 12px; }
 .quick-control, .switch.compact { min-width: 0; min-height: 62px; padding: 10px 13px; border: 1px solid #e5ebea; border-radius: 9px; background: #fafbfa; }
-.quick-control { display: grid; gap: 5px; color: #435b60; font-size: 12px; font-weight: 650; }
+.quick-control { display: grid; align-content: start; gap: 6px; color: #435b60; font-size: 12px; font-weight: 650; }
 select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font-size: 12px; }
 /* Keep checkbox focus inside its switch so it cannot scroll the dialog header away. */
 .switch { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e6ebea; cursor: pointer; }
 .switch span { display: grid; gap: 4px; }
-.switch strong { display: flex; align-items: center; gap: 7px; color: #334b51; font-size: 13px; font-weight: 650; }
+.switch strong { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; color: #334b51; font-size: 13px; font-weight: 650; }
 .switch small { color: #7a8b8f; font-size: 11px; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .switch i { flex: none; position: relative; width: 36px; height: 21px; border-radius: 20px; background: #c9d2d1; transition: background .15s; }
@@ -111,7 +111,8 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .detail-hint { margin-top: 15px; color: #849196; font-size: 12px; }
 .maintenance-panel .actions { margin: 11px 0; }
 .maintenance-panel .helper { display: block; margin: 8px 0; }
-.maintenance-panel .switch { border-top: 1px solid #e6ebea; }
+.maintenance-panel .switch + .field { border-top: 0; }
+.maintenance-grid .source-panel { grid-column: 1 / -1; order: 1; }
 .small-path { min-height: 34px; margin: 5px 0 9px; color: #718087; font-size: 11px; white-space: pre-line; overflow-wrap: anywhere; }
 .backup-picker { display: grid; gap: 6px; margin: 10px 0; color: #405a60; font-size: 12px; }
 .danger { color: #a04d49; }
@@ -160,6 +161,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .intro .eyebrow { color: #dcf3f7; }
 .intro p:last-child { color: #f0fcff; font-size: 14px; }
 .hero-spacer { flex: 1 1 auto; min-height: 10px; }
+.discord-banner { flex: none; display: flex; align-items: center; gap: 12px; margin-left: 20px; padding: 10px 15px 10px 10px; border-color: #a5e0e47d; border-radius: 12px; background: linear-gradient(135deg, #123e59e6, #087e91e0); color: #fff; text-align: left; text-shadow: none; box-shadow: 0 10px 26px #061f3566; backdrop-filter: blur(14px); }
+.discord-banner:hover { border-color: #d3f2f5; background: linear-gradient(135deg, #17496be8, #0a91a6e6); }
+.discord-logo { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #5865f2; }
+.discord-logo svg { width: 23px; height: 23px; fill: #fff; }
+.discord-copy { display: grid; gap: 2px; }
+.discord-copy strong { font-size: 14px; font-weight: 750; letter-spacing: -.01em; }
+.discord-copy small { color: #d2eaf0; font-size: 11px; font-weight: 500; }
+.discord-arrow { margin-left: 4px; color: #ffda91; font-size: 15px; font-weight: 800; }
 .launch-panel { flex: none; align-self: center; width: min(100%, 620px); padding: 16px 19px 14px; border-color: #a5e0e47d; background: linear-gradient(135deg, #123e59f2, #087e91f0); box-shadow: 0 16px 36px #061f3590; text-align: center; backdrop-filter: blur(14px); }
 .launch-primary { display: flex; align-items: stretch; gap: 9px; margin-top: 14px; }
 .play { display: block; width: 100%; min-width: 0 !important; min-height: 72px; margin-top: 14px; padding: 10px 20px; border-radius: 11px; background: #ffc75a; color: #143749; font-size: 26px; font-weight: 850; letter-spacing: -.035em; box-shadow: 0 4px 0 #b98127, 0 10px 20px #08273b40; }
@@ -230,7 +239,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-entry svg { flex: none; width: 22px; height: 22px; fill: none; stroke: #147488; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .settings-entry > span:nth-child(2) { display: grid; gap: 3px; }
 .settings-entry strong { font-size: 13px; }
-.settings-entry small { color: #72868b; font-size: 11px; }
+.settings-entry small { color: #72868b; font-size: 11px; font-weight: 500; }
 .settings-entry-arrow { margin-left: auto; color: #198092; font-size: 20px; }
 .modal-view .modal-body { padding-bottom: 12px; }
 .activity-log-entry { margin-top: 14px; }
@@ -244,7 +253,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal .texture-summary { padding-top: 10px; }
 .launcher-modal .detail-panel, .launcher-modal .maintenance-panel { min-width: 0; }
 .launcher-modal .detail-grid, .launcher-modal .maintenance-grid { gap: 14px; }
-.launcher-modal .detail-grid { margin-top: 12px; }
+.launcher-modal .detail-grid { margin-top: 12px; grid-template-rows: auto 1fr; align-items: start; }
+.launcher-modal .visuals-panel { grid-column: 2; grid-row: 1 / span 2; }
+.launcher-modal .detail-panel h2 { margin-bottom: 4px; }
+.launcher-modal .detail-panel h2 + .field, .launcher-modal .detail-panel h2 + .switch { border-top: 0; }
+.launcher-modal .detail-panel .switch { border-top: 1px solid #e6ebea; border-bottom: 0; }
+.launcher-modal .detail-panel .texture-setup { margin-top: -6px; padding: 0 0 14px; }
 .versions-panel { margin-top: 14px; padding: 14px 18px; }
 .versions-panel h2 { font-size: 14px; }
 .version-list { margin: 7px 0 0; font-size: 12px; }
