@@ -92,9 +92,9 @@
       </section>
 
       <section id="controls-view" class="modal-view" aria-label="Controls" hidden>
-      <div class="modal-head"><div><button id="controls-back" class="modal-back">← Settings</button><h1>Controls</h1><p>Keyboard keys for each button. Controllers work without setup.</p></div><button class="modal-close" data-close-modal aria-label="Close controls">×</button></div>
+      <div class="modal-head"><div><button id="controls-back" class="modal-back">← Settings</button><h1>Controls</h1><p>Keyboard keys and controller buttons for each GameCube button.</p></div><button class="modal-close" data-close-modal aria-label="Close controls">×</button></div>
       <div class="modal-body">
-        <section class="panel controls-panel" aria-label="Key bindings"><div id="binding-list" class="binding-list"></div><div class="actions"><button class="subtle" id="reset-bindings">Reset all to defaults</button><span id="binding-note" class="helper" role="status">Choose Change, then press a key. Esc cancels.</span></div></section>
+        <section class="panel controls-panel" aria-label="Key and controller bindings"><div class="binding-modes" role="group" aria-label="Show bindings for"><button class="subtle" data-binding-mode="keyboard" aria-pressed="true">Keyboard</button><button class="subtle" data-binding-mode="controller" aria-pressed="false">Controller</button></div><div id="binding-list" class="binding-list"></div><div class="actions"><button class="subtle" id="reset-bindings">Reset all to defaults</button><span id="binding-note" class="helper" role="status">Choose Change, then press a key. Esc cancels.</span></div></section>
       </div>
       </section>
 

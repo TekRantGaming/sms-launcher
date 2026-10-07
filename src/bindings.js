@@ -1,8 +1,9 @@
 'use strict';
-// Keyboard bindings for the game (platform/pad/pad.cpp reads them from the
-// file named by SMS_BINDINGS: one `CONTROL = KEY [KEY ...]` line per control,
-// each line replacing that control's defaults). The launcher keeps only the
-// controls a player changed; everything else stays the game's default.
+// Keyboard and controller bindings for the game (platform/pad/pad.cpp reads
+// them from the file named by SMS_BINDINGS: one `CONTROL = KEY ... PAD_...`
+// line per control; its keys replace the control's keys and its PAD_ buttons
+// replace its controller buttons). The launcher keeps only the controls a
+// player changed; everything else stays the game's default.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SmsBindings = factory();
@@ -43,6 +44,28 @@
   const KEYS = new Set(Object.values(CODES));
   const MAX_KEYS = 8;  // kMaxKeys in pad.cpp
 
+  // Controller buttons the game reads (kPadButtons in pad.cpp), named for an Xbox pad, in the order of the
+  // browser Gamepad API's standard mapping (navigator.getGamepads(): button 0 is A ... 16 is Guide).
+  const PAD_BUTTONS = [
+    { id: 'PAD_A', label: 'A' }, { id: 'PAD_B', label: 'B' }, { id: 'PAD_X', label: 'X' }, { id: 'PAD_Y', label: 'Y' },
+    { id: 'PAD_LB', label: 'LB' }, { id: 'PAD_RB', label: 'RB' }, { id: 'PAD_LT', label: 'LT' }, { id: 'PAD_RT', label: 'RT' },
+    { id: 'PAD_BACK', label: 'Back' }, { id: 'PAD_START', label: 'Start' }, { id: 'PAD_LSTICK', label: 'Left stick press' },
+    { id: 'PAD_RSTICK', label: 'Right stick press' }, { id: 'PAD_DPUP', label: 'D-pad up' }, { id: 'PAD_DPDOWN', label: 'D-pad down' },
+    { id: 'PAD_DPLEFT', label: 'D-pad left' }, { id: 'PAD_DPRIGHT', label: 'D-pad right' }, { id: 'PAD_GUIDE', label: 'Guide' }
+  ];
+  const PADS = new Set(PAD_BUTTONS.map(button => button.id));
+  const MAX_PADS = 4;  // kMaxPad in pad.cpp
+  // The game's built-in controller layout (kDefaultPad in pad.cpp); other controls have no button.
+  const PAD_DEFAULTS = {
+    A: ['PAD_A'], B: ['PAD_B'], X: ['PAD_X'], Y: ['PAD_Y'], Z: ['PAD_RB'], L: ['PAD_LT'], R: ['PAD_RT'],
+    START: ['PAD_START'], DPAD_UP: ['PAD_DPUP'], DPAD_DOWN: ['PAD_DPDOWN'], DPAD_LEFT: ['PAD_DPLEFT'],
+    DPAD_RIGHT: ['PAD_DPRIGHT']
+  };
+
+  // The controller button for a standard-mapping Gamepad API button index, or null.
+  function padFromIndex(index) { return PAD_BUTTONS[index]?.id || null; }
+  function padLabel(id) { return PAD_BUTTONS.find(button => button.id === id)?.label || id; }
+
   // The key name for a KeyboardEvent.code, or null for a key the game cannot read.
   function keyFromCode(code) { return CODES[code] || null; }
 
@@ -60,11 +83,30 @@
 
   function keysFor(bindings, id) { return (bindings && bindings[id]) || DEFAULTS[id]; }
 
-  function fileText(bindings) {
+  // Only the controls whose controller buttons differ from the defaults, each a non-empty list of known buttons.
+  function normalizePads(input) {
+    const result = {};
+    if (!input || typeof input !== 'object') return result;
+    for (const { id } of CONTROLS) {
+      if (!Array.isArray(input[id])) continue;
+      const pads = [...new Set(input[id].map(String).filter(pad => PADS.has(pad)))].slice(0, MAX_PADS);
+      if (pads.length && pads.join(' ') !== (PAD_DEFAULTS[id] || []).join(' ')) result[id] = pads;
+    }
+    return result;
+  }
+
+  function padsFor(padBindings, id) { return (padBindings && padBindings[id]) || PAD_DEFAULTS[id] || []; }
+
+  // Every control's keys; controller buttons only for the controls changed (the rest keep the game's layout).
+  function fileText(bindings, padBindings = {}) {
     const lines = ['# Written by SMS Launcher from Settings → Controls. Changes here are replaced on the next launch.'];
-    for (const { id } of CONTROLS) lines.push(`${id} =${keysFor(bindings, id).map(key => ` ${key}`).join('')}`);
+    for (const { id } of CONTROLS) {
+      const pads = padBindings && padBindings[id] ? padBindings[id] : [];
+      lines.push(`${id} =${[...keysFor(bindings, id), ...pads].map(item => ` ${item}`).join('')}`);
+    }
     return `${lines.join('\n')}\n`;
   }
 
-  return { CONTROLS, DEFAULTS, keyFromCode, normalize, keysFor, fileText };
+  return { CONTROLS, DEFAULTS, PAD_BUTTONS, PAD_DEFAULTS, keyFromCode, normalize, keysFor, fileText,
+    padFromIndex, padLabel, normalizePads, padsFor };
 });

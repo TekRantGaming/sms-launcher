@@ -41,15 +41,54 @@ $('controls-back').addEventListener('click', () => {
   $('open-controls').focus();
 });
 
-// --- Controls: key bindings (src/bindings.js). keyBindings holds only the controls the player changed.
+// --- Controls: key and controller bindings (src/bindings.js). keyBindings and padBindings hold only the
+// controls the player changed.
 let keyBindings = {};
-let capture = null;  // { id, add } while waiting for a key
+let padBindings = {};
+let bindingMode = 'keyboard';  // which kind the Controls page shows: 'keyboard' or 'controller'
+let capture = null;  // { id, add } while waiting for a key or a controller button
+let padPoll = 0;
+
+function bindingNote() {
+  return bindingMode === 'controller'
+    ? 'Choose Change, then press a button on your controller. Esc cancels. The sticks always move the sticks.'
+    : 'Choose Change, then press a key. Esc cancels.';
+}
 
 function stopCapture() {
   if (!capture) return;
   capture = null;
   window.removeEventListener('keydown', captureKey, true);
+  cancelAnimationFrame(padPoll);
+  $('binding-note').textContent = bindingNote();
   renderBindings();
+}
+
+// The buttons held right now on every connected controller (standard mapping), as "pad:index".
+function heldPadButtons() {
+  const held = new Set();
+  for (const pad of (navigator.getGamepads ? navigator.getGamepads() : []))
+    if (pad) pad.buttons.forEach((button, index) => { if (button.pressed || button.value > 0.6) held.add(`${pad.index}:${index}`); });
+  return held;
+}
+
+// Waits for a newly pressed controller button (ones already held when capture began do not count).
+function watchPad(baseline) {
+  if (!capture) return;
+  const held = heldPadButtons();
+  for (const entry of held) {
+    if (baseline.has(entry)) continue;
+    const pad = SmsBindings.padFromIndex(Number(entry.split(':')[1]));
+    if (!pad) continue;
+    const { id, add } = capture;
+    const pads = add ? [...SmsBindings.padsFor(padBindings, id).filter(item => item !== pad), pad] : [pad];
+    padBindings = SmsBindings.normalizePads({ ...padBindings, [id]: pads });
+    stopCapture();
+    saveSettings();
+    return;
+  }
+  for (const entry of [...baseline]) if (!held.has(entry)) baseline.delete(entry);  // released: may count when pressed again
+  padPoll = requestAnimationFrame(() => watchPad(baseline));
 }
 
 function captureKey(event) {
@@ -58,11 +97,11 @@ function captureKey(event) {
   if (event.repeat) return;
   const { id, add } = capture;
   if (event.code === 'Escape' && !event.shiftKey) { stopCapture(); return; }
+  if (bindingMode === 'controller') return;  // waiting for a controller button
   const key = SmsBindings.keyFromCode(event.code);
   if (!key) { $('binding-note').textContent = 'The game cannot read that key. Try another, or Esc to cancel.'; return; }
   const keys = add ? [...SmsBindings.keysFor(keyBindings, id).filter(item => item !== key), key] : [key];
   keyBindings = SmsBindings.normalize({ ...keyBindings, [id]: keys });
-  $('binding-note').textContent = 'Choose Change, then press a key. Esc cancels.';
   stopCapture();
   saveSettings();
 }
@@ -71,36 +110,62 @@ function startCapture(id, add) {
   stopCapture();
   capture = { id, add };
   window.addEventListener('keydown', captureKey, true);
+  if (bindingMode === 'controller') {
+    if (![...(navigator.getGamepads ? navigator.getGamepads() : [])].some(Boolean))
+      $('binding-note').textContent = 'No controller found yet. Connect one and press any button on it, or press Esc to cancel.';
+    watchPad(heldPadButtons());
+  }
   renderBindings();
 }
 
 function renderBindings() {
   if (!globalThis.SmsBindings || $('controls-view').hidden) return;
+  const controller = bindingMode === 'controller';
+  for (const button of document.querySelectorAll('[data-binding-mode]'))
+    button.setAttribute('aria-pressed', String(button.dataset.bindingMode === bindingMode));
+  const changed = controller ? padBindings : keyBindings;
   $('binding-list').replaceChildren(...SmsBindings.CONTROLS.map(({ id, label }) => {
     const row = document.createElement('div');
-    row.className = `binding-row${keyBindings[id] ? ' changed' : ''}${capture?.id === id ? ' capturing' : ''}`;
+    row.className = `binding-row${changed[id] ? ' changed' : ''}${capture?.id === id ? ' capturing' : ''}`;
     const name = document.createElement('span'); name.textContent = label;
     const keys = document.createElement('span'); keys.className = 'binding-keys';
-    if (capture?.id === id) keys.textContent = capture.add ? 'Press a key to add…' : 'Press a key…';
-    else keys.replaceChildren(...SmsBindings.keysFor(keyBindings, id).map(key => {
-      const item = document.createElement('kbd'); item.textContent = key.replace('_', ' '); return item;
+    const what = controller ? 'button' : 'key';
+    const items = controller ? SmsBindings.padsFor(padBindings, id).map(SmsBindings.padLabel)
+      : SmsBindings.keysFor(keyBindings, id).map(key => key.replace('_', ' '));
+    if (capture?.id === id) keys.textContent = capture.add ? `Press a ${what} to add…` : `Press a ${what}…`;
+    else if (!items.length) { keys.textContent = 'None'; keys.classList.add('binding-none'); }
+    else keys.replaceChildren(...items.map(text => {
+      const item = document.createElement('kbd'); item.textContent = text; return item;
     }));
     const actions = document.createElement('span'); actions.className = 'binding-actions';
     const button = (text, onClick, title) => {
       const item = document.createElement('button'); item.className = 'subtle'; item.textContent = text; item.title = title;
       item.disabled = Boolean(current?.active); item.addEventListener('click', onClick); return item;
     };
-    actions.append(button('Change', () => startCapture(id, false), 'Use one key instead'),
-      button('Add', () => startCapture(id, true), 'Add another key'));
-    if (keyBindings[id]) actions.append(button('Reset', () => {
-      const { [id]: _removed, ...rest } = keyBindings; keyBindings = rest; renderBindings(); saveSettings();
-    }, 'Back to the default keys'));
+    actions.append(button('Change', () => startCapture(id, false), `Use one ${what} instead`),
+      button('Add', () => startCapture(id, true), `Add another ${what}`));
+    if (changed[id]) actions.append(button('Reset', () => {
+      if (controller) { const { [id]: _removed, ...rest } = padBindings; padBindings = rest; }
+      else { const { [id]: _removed, ...rest } = keyBindings; keyBindings = rest; }
+      renderBindings(); saveSettings();
+    }, `Back to the default ${what}s`));
     row.append(name, keys, actions);
     return row;
   }));
 }
 
-$('reset-bindings').addEventListener('click', () => { stopCapture(); keyBindings = {}; renderBindings(); saveSettings(); });
+$('reset-bindings').addEventListener('click', () => {
+  stopCapture();
+  if (bindingMode === 'controller') padBindings = {}; else keyBindings = {};
+  renderBindings(); saveSettings();
+});
+for (const button of document.querySelectorAll('[data-binding-mode]'))
+  button.addEventListener('click', () => {
+    stopCapture();
+    bindingMode = button.dataset.bindingMode;
+    $('binding-note').textContent = bindingNote();
+    renderBindings();
+  });
 for (const button of document.querySelectorAll('[data-close-modal]'))
   button.addEventListener('click', () => button.closest('dialog').close());
 
@@ -358,6 +423,7 @@ function refresh(data) {
   renderRanges();
   for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
+  padBindings = config.settings.padBindings || {};
   if (!capture) renderBindings();
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
@@ -536,7 +602,7 @@ function settingsValue() {
     presentFilter: $('presentFilter').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
-    keyBindings
+    keyBindings, padBindings
   };
 }
 

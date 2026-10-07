@@ -390,7 +390,7 @@ async function setupGame() {
 }
 
 const PLAYER_SETTINGS = [
-  'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'freeCamera', 'cameraSpeed', 'mouseCamera',
+  'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'freeCamera', 'cameraSpeed', 'mouseCamera',
   'mouseSensitivity', 'skipMovies', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
   'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter'
 ];
@@ -412,9 +412,9 @@ async function play(installation = null) {
     ? buildTools.environmentAtRoot(recordedTools, { ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir })
     : toolEnv({ ...port.buildEnvironment(settings, disc, root), SMS_SAVE_DIR: saveDir });
   // Changed keys go to a file of the launcher's own, so a bindings.txt kept by hand in the game folder is left alone.
-  if (Object.keys(settings.keyBindings || {}).length) {
+  if (Object.keys(settings.keyBindings || {}).length || Object.keys(settings.padBindings || {}).length) {
     const file = path.join(app.getPath('userData'), 'bindings.txt');
-    fs.writeFileSync(file, bindings.fileText(settings.keyBindings));
+    fs.writeFileSync(file, bindings.fileText(settings.keyBindings, settings.padBindings));
     env.SMS_BINDINGS = file;
   }
   const cmd = settings.eclipse

@@ -232,6 +232,10 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .binding-row.capturing .binding-keys { color: #17818a; font-weight: 650; }
 .binding-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .binding-actions button { padding: 4px 10px; font-size: 12px; }
+.binding-modes { display: inline-flex; gap: 4px; margin: 10px 0 6px; padding: 3px; border: 1px solid #dfe9e8; border-radius: 9px; background: #f4f8f7; }
+.binding-modes button { padding: 5px 16px; border: 0; border-radius: 7px; background: transparent; font-size: 12px; }
+.binding-modes button[aria-pressed="true"] { background: #fff; color: #17343d; font-weight: 650; box-shadow: 0 1px 3px #17343d1f; }
+.binding-keys.binding-none { color: #9aa8ab; }
 .controls-panel .actions { margin-top: 12px; }
 .modal-body { min-height: 0; overflow: auto; padding: 18px 24px 24px; }
 .settings-entry { display: flex; align-items: center; gap: 13px; width: 100%; margin-top: 10px; padding: 10px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; color: #17343d; text-align: left; }

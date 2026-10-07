@@ -105,6 +105,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     autoUpdate: input.autoUpdate !== false,
     // Keys the player changed in Settings → Controls; the rest stay the game's defaults.
     keyBindings: bindings.normalize(input.keyBindings),
+    // Controller buttons the player changed in Settings → Controls.
+    padBindings: bindings.normalizePads(input.padBindings),
     updateChannel: normalizeChannel(input.updateChannel)
   };
 }

@@ -310,3 +310,9 @@ test('older installed games remain playable with HD cutscenes on until updated',
   assert.equal(port.hdVisualsInstalled(root, settings), false);
   assert.equal(port.hdVisualsInstalled(root, { ...settings, eclipse: true }), true);
 });
+
+test('settings keep only changed, known controller buttons', () => {
+  assert.deepEqual(port.normalizeSettings({}).padBindings, {});
+  assert.deepEqual(port.normalizeSettings({ padBindings: { A: ['PAD_Y'], B: ['PAD_B'], JUMP: ['PAD_A'], X: ['NOPE'] } }).padBindings,
+    { A: ['PAD_Y'] });
+});
