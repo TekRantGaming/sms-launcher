@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.07.3",
+  "version": "2026.10.07.4",
   "repository": "https://github.com/chasem-dev/sms-pc-port.git",
   "branch": "main",
-  "commit": "4ba42a3bdef2ffc80c3cd38e5cfaa88a0f467bee",
+  "commit": "e39936208a0a91e08a81b5d62f14691cfdce9ece",
   "decomp": "967436b8c623834d38a57d34923775f45eca8861"
 }
