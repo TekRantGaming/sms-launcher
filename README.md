@@ -83,7 +83,7 @@ Turn on **Settings → Visuals → Full screen** to have the game fill your disp
 
 - **Game files** lets you change the setup folder or choose a different disc file.
 - **Manage game** has updates, rebuilding, save backups, and space cleanup.
-- **Controls** sets the keyboard keys and controller buttons for each GameCube button. Switch between **Keyboard** and **Controller** at the top; **Change** uses one key or button (press it), **Add** adds another, **Reset** goes back to the default. Controllers work without any setup.
+- **Controls** sets the keyboard keys and controller buttons for each GameCube button. Switch between **Keyboard** and **Controller** at the top; **Change** uses one key or button (press it), **Add** adds another, **Reset** goes back to the default. Controllers work without any setup. **Soft L press** and **Soft R press** have no keys by default: bind them for a light trigger press without the click (for example, spraying FLUDD on the move), and set how far with **Soft press depth**. On SteamOS or a Steam Deck, if buttons do two things or your controller buttons don't apply, turn off Steam Input for SMS Launcher (Steam → Properties → Controller → Disable Steam Input); the Controls page explains this on Linux.
 - **Versions** shows your launcher, game, and setup tool versions for support.
 
 Windows and Linux offer both 64-bit and 32-bit game builds. Keep the default **64-bit** choice unless you need 32-bit. Mac game builds are 64-bit.

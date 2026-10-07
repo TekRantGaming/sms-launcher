@@ -19,7 +19,8 @@
     { id: 'CSTICK_LEFT', label: 'Camera left' }, { id: 'CSTICK_RIGHT', label: 'Camera right' },
     { id: 'DPAD_UP', label: 'D-pad up' }, { id: 'DPAD_DOWN', label: 'D-pad down' },
     { id: 'DPAD_LEFT', label: 'D-pad left' }, { id: 'DPAD_RIGHT', label: 'D-pad right' },
-    { id: 'QUIT', label: 'Quit the game' }
+    { id: 'QUIT', label: 'Quit the game' },
+    { id: 'L_SOFT', label: 'Soft L press' }, { id: 'R_SOFT', label: 'Soft R press' }
   ];
   // The game's built-in defaults (kDefaultBindings in platform/pad/pad.cpp).
   const DEFAULTS = {
@@ -27,7 +28,9 @@
     START: ['ENTER'], DPAD_UP: ['1', 'KP_8'], DPAD_DOWN: ['2', 'KP_2'], DPAD_LEFT: ['3', 'KP_4'],
     DPAD_RIGHT: ['4', 'KP_6'], STICK_UP: ['UP', 'W'], STICK_DOWN: ['DOWN', 'S'], STICK_LEFT: ['LEFT', 'A'],
     STICK_RIGHT: ['RIGHT', 'D'], CSTICK_UP: ['I'], CSTICK_DOWN: ['K'], CSTICK_LEFT: ['J'], CSTICK_RIGHT: ['L'],
-    HALF_TILT: ['LCTRL'], QUIT: ['ESCAPE']
+    HALF_TILT: ['LCTRL'], QUIT: ['ESCAPE'],
+    // a light L or R press without the click (L_SOFT / R_SOFT in pad.cpp); unbound by default
+    L_SOFT: [], R_SOFT: []
   };
   // KeyboardEvent.code to the key names the game knows (kKeys in pad.cpp).
   const CODES = {

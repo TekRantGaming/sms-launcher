@@ -390,7 +390,7 @@ async function setupGame() {
 }
 
 const PLAYER_SETTINGS = [
-  'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'freeCamera', 'cameraSpeed', 'mouseCamera',
+  'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'softTrigger', 'freeCamera', 'cameraSpeed', 'mouseCamera',
   'mouseSensitivity', 'skipMovies', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
   'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter'
 ];

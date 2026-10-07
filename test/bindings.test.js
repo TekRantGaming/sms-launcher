@@ -7,7 +7,9 @@ test('every control has game defaults and a label', () => {
   assert.equal(bindings.CONTROLS.length, Object.keys(bindings.DEFAULTS).length);
   for (const { id, label } of bindings.CONTROLS) {
     assert.ok(label, id);
-    assert.ok(bindings.DEFAULTS[id].length, id);
+    assert.ok(Array.isArray(bindings.DEFAULTS[id]), id);
+    // only the soft L / R presses start unbound
+    if (!['L_SOFT', 'R_SOFT'].includes(id)) assert.ok(bindings.DEFAULTS[id].length, id);
   }
 });
 

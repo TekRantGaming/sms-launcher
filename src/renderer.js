@@ -49,6 +49,10 @@ let bindingMode = 'keyboard';  // which kind the Controls page shows: 'keyboard'
 let capture = null;  // { id, add } while waiting for a key or a controller button
 let padPoll = 0;
 
+function renderSoftTrigger() { $('softTrigger-value').textContent = `${$('softTrigger').value}%`; }
+$('softTrigger').addEventListener('input', renderSoftTrigger);
+$('softTrigger').addEventListener('change', () => saveSettings());
+
 function bindingNote() {
   return bindingMode === 'controller'
     ? 'Choose Change, then press a button on your controller. Esc cancels. The sticks always move the sticks.'
@@ -424,6 +428,11 @@ function refresh(data) {
   for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
   padBindings = config.settings.padBindings || {};
+  $('softTrigger').value = String(config.settings.softTrigger ?? 40);
+  renderSoftTrigger();
+  $('softTrigger').disabled = Boolean(data.active);
+  // Steam Input can sit between the controller and the game on SteamOS / Steam Deck (Linux).
+  $('steamos-note').hidden = data.platform.id !== 'linux';
   if (!capture) renderBindings();
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
@@ -602,7 +611,7 @@ function settingsValue() {
     presentFilter: $('presentFilter').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
-    keyBindings, padBindings
+    keyBindings, padBindings, softTrigger: Number($('softTrigger').value)
   };
 }
 
