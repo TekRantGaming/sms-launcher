@@ -99,6 +99,47 @@ test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(settings.keyBindings, { A: ['J'], R: ['K'] });
 });
 
+test('new settings default to the game as it was, so updating changes nothing until chosen', () => {
+  const s = port.normalizeSettings({});
+  assert.deepEqual([s.freeCamera, s.cameraSpeed, s.mouseCamera, s.mouseSensitivity], [false, 100, false, 100]);
+  assert.deepEqual([s.fullscreenMode, s.exclusiveResolution, s.display, s.vsync, s.skipMovies, s.overlay],
+    ['desktop', 'desktop', 'launcher', 'off', false, false]);
+  assert.deepEqual([s.msaa, s.fxaa, s.anisotropic, s.sharpen, s.brightness, s.aspect, s.presentFilter],
+    [0, false, 0, 0, 100, 'keep', 'bilinear']);
+  const env = port.buildEnvironment(s, '/my/disc.iso', '/port');
+  assert.deepEqual([env.SMS_FREE_CAMERA, env.SMS_CAMERA_SPEED, env.SMS_MOUSE_CAMERA, env.SMS_MOUSE_SENSITIVITY], ['0', '100', '0', '100']);
+  assert.deepEqual([env.SMS_FULLSCREEN, env.SMS_VSYNC, env.SMS_SKIP_MOVIES, env.SMS_OVERLAY], ['0', '0', '0', '0']);
+  assert.deepEqual([env.SMS_MSAA, env.SMS_FXAA, env.SMS_ANISO, env.SMS_SHARPEN, env.SMS_GAMMA, env.SMS_ASPECT, env.SMS_PRESENT_FILTER],
+    ['0', '0', '0', '0', '1.00', 'keep', 'bilinear']);
+  for (const key of ['SMS_FULLSCREEN_MODE', 'SMS_DISPLAY']) assert.equal(env[key], undefined, key);
+});
+
+test('chosen settings reach the game as its environment variables', () => {
+  const env = port.buildEnvironment(port.normalizeSettings({
+    freeCamera: true, cameraSpeed: '150', mouseCamera: true, mouseSensitivity: 250,
+    fullscreen: true, fullscreenMode: 'exclusive', exclusiveResolution: '1920x1080', display: 'primary', vsync: 'adaptive',
+    skipMovies: true, overlay: true, msaa: 4, fxaa: true, anisotropic: '16', sharpen: 40, brightness: 115,
+    aspect: 'integer', presentFilter: 'sharp'
+  }), '/my/disc.iso', '/port');
+  assert.deepEqual([env.SMS_FREE_CAMERA, env.SMS_CAMERA_SPEED, env.SMS_MOUSE_CAMERA, env.SMS_MOUSE_SENSITIVITY], ['1', '150', '1', '250']);
+  assert.deepEqual([env.SMS_FULLSCREEN, env.SMS_FULLSCREEN_MODE, env.SMS_DISPLAY, env.SMS_VSYNC], ['exclusive', '1920x1080', '0', 'adaptive']);
+  assert.deepEqual([env.SMS_SKIP_MOVIES, env.SMS_OVERLAY], ['1', '1']);
+  assert.deepEqual([env.SMS_MSAA, env.SMS_FXAA, env.SMS_ANISO, env.SMS_SHARPEN, env.SMS_GAMMA, env.SMS_ASPECT, env.SMS_PRESENT_FILTER],
+    ['4', '1', '16', '40', '1.15', 'integer', 'sharp']);
+  // borderless keeps today's value, and windowed never sends a display mode
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ fullscreen: true }), '/d', '/port').SMS_FULLSCREEN, '1');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ fullscreenMode: 'exclusive', exclusiveResolution: '1920x1080' }), '/d', '/port').SMS_FULLSCREEN_MODE, undefined);
+});
+
+test('saved values outside what the game accepts fall back or are clamped', () => {
+  const s = port.normalizeSettings({ cameraSpeed: 9000, mouseSensitivity: 'fast', msaa: 3, anisotropic: 5, sharpen: -4,
+    brightness: 900, aspect: 'wide', presentFilter: 'cubic', vsync: 'sometimes', fullscreenMode: 'window',
+    exclusiveResolution: '1920x1080; rm', display: 2 });
+  assert.deepEqual([s.cameraSpeed, s.mouseSensitivity, s.msaa, s.anisotropic, s.sharpen, s.brightness], [400, 100, 0, 0, 0, 200]);
+  assert.deepEqual([s.aspect, s.presentFilter, s.vsync, s.fullscreenMode, s.exclusiveResolution, s.display],
+    ['keep', 'bilinear', 'off', 'desktop', 'desktop', 'launcher']);
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

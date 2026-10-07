@@ -71,9 +71,13 @@ The previous 60 fps switch migrates to 30 or 60 without changing your saved pref
 120 fps stays available on every display; it needs more CPU/GPU performance, and a display running at 120 Hz or faster shows its full benefit.
 Logos, menus, and movies stay at 30 fps.
 
-Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch.
+Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs (for example 1920×1080 on a 4K screen). **Monitor** opens the game on the same monitor as the launcher or on the primary one. F11 or Alt+Enter switches full screen while playing.
 
-**Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not.
+**Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip intro movies**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
+
+**Settings → Picture** has **Anti-aliasing** (MSAA 2×, 4× or 8×), **FXAA**, **Texture filtering** (anisotropic, 2× to 16×), **Sharpening**, **Brightness**, **Picture fit** (keep its shape, stretch, or whole multiples of the original size) and **Scaling** (smooth, sharp pixels or nearest). All of them are off or unchanged by default.
+
+**Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not. **Free camera** keeps the camera where you point it instead of swinging back behind Mario (L recentres it). **Camera speed** scales how fast it turns. **Mouse look** turns it with the mouse (F10 releases the mouse, a click takes it back) at the chosen **Mouse sensitivity**.
 
 **Settings → Sound → Volume** sets the game's master volume, from 0 to 100% (full by default). It takes effect on the next launch.
 

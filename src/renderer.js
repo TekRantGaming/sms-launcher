@@ -350,16 +350,21 @@ function refresh(data) {
     option.textContent = arch === '64' && platform.arches.length > 1 ? '64-bit (recommended)' : `${arch}-bit`;
     return option;
   }));
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate']) $(key).value = String(config.settings[key]);
+  renderExclusiveResolutions(config.settings.exclusiveResolution);
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'fullscreenMode', 'exclusiveResolution',
+    'display', 'cameraSpeed', 'mouseSensitivity', 'msaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter'])
+    $(key).value = String(config.settings[key]);
   renderVolume();
-  for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
+  renderRanges();
+  for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
   if (!capture) renderBindings();
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
     $(key).disabled = Boolean(data.active);
+  renderDependents(Boolean(data.active));
   changing = false;
 }
 
@@ -494,10 +499,41 @@ function runWizardAction(method) {
 
 function renderVolume() { $('volume-value').textContent = `${$('volume').value}%`; }
 
+function renderRanges() {
+  for (const key of ['cameraSpeed', 'mouseSensitivity', 'brightness']) $(`${key}-value`).textContent = `${$(key).value}%`;
+  $('sharpen-value').textContent = Number($('sharpen').value) ? `${$('sharpen').value}%` : 'Off';
+}
+
+// Exclusive fullscreen sizes up to this screen's own (the game picks the closest mode the display has).
+function renderExclusiveResolutions(chosen) {
+  const display = globalThis.screen || { width: 1920, height: 1080 }, scale = globalThis.devicePixelRatio || 1;
+  const nativeWidth = Math.round(display.width * scale), nativeHeight = Math.round(display.height * scale);
+  const sizes = ['1280x720', '1600x900', '1920x1080', '2560x1080', '2560x1440', '3440x1440', '3840x2160']
+    .filter(size => { const [w, h] = size.split('x').map(Number); return w <= nativeWidth && h <= nativeHeight; });
+  if (chosen && chosen !== 'desktop' && !sizes.includes(chosen)) sizes.push(chosen);
+  const option = (value, label) => { const item = document.createElement('option'); item.value = value; item.textContent = label; return item; };
+  $('exclusiveResolution').replaceChildren(option('desktop', `Desktop resolution (${nativeWidth}×${nativeHeight})`),
+    ...sizes.map(size => option(size, size.replace('x', '×'))));
+}
+
+// Choices that only matter with another one on are dimmed until then.
+function renderDependents(busy = false) {
+  $('fullscreenMode').disabled = busy || !$('fullscreen').checked;
+  $('exclusiveResolution').disabled = busy || !$('fullscreen').checked || $('fullscreenMode').value !== 'exclusive';
+  $('mouseSensitivity').disabled = busy || !$('mouseCamera').checked;
+}
+
 function settingsValue() {
   return {
     arch: $('arch').value, widescreen: $('widescreen').value, resolution: Number($('resolution').value), volume: Number($('volume').value),
-    frameRate: Number($('frameRate').value), fullscreen: $('fullscreen').checked,
+    frameRate: Number($('frameRate').value), fullscreen: $('fullscreen').checked, fullscreenMode: $('fullscreenMode').value,
+    exclusiveResolution: $('exclusiveResolution').value, display: $('display').value, vsync: $('vsync').value,
+    skipMovies: $('skipMovies').checked, overlay: $('overlay').checked,
+    freeCamera: $('freeCamera').checked, cameraSpeed: Number($('cameraSpeed').value),
+    mouseCamera: $('mouseCamera').checked, mouseSensitivity: Number($('mouseSensitivity').value),
+    msaa: Number($('msaa').value), fxaa: $('fxaa').checked, anisotropic: Number($('anisotropic').value),
+    sharpen: Number($('sharpen').value), brightness: Number($('brightness').value), aspect: $('aspect').value,
+    presentFilter: $('presentFilter').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
     keyBindings
@@ -579,9 +615,11 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'fullscreen', 'invertCameraX', 'invertCameraY', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
+for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
+for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera']) $(key).addEventListener('input', () => renderDependents());
 $('open-maintenance').addEventListener('click', loadUpdateChannels);
 window.sms.onLog(appendLog);
 window.sms.onActivity(value => {

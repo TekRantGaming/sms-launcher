@@ -50,6 +50,13 @@ function validateRom(file) {
   } finally { fs.closeSync(fd); }
 }
 
+// A whole-number setting within lo..hi, or the fallback when unset or unreadable.
+function numberSetting(value, fallback, lo, hi) {
+  const number = value === null || value === '' || value === undefined ? NaN : Number(value);
+  return Number.isFinite(number) ? Math.min(hi, Math.max(lo, Math.round(number))) : fallback;
+}
+function choiceSetting(value, choices, fallback) { return choices.includes(value) ? value : fallback; }
+
 function normalizeSettings(input = {}, platform = process.platform) {
   const info = platformInfo(platform);
   const arch = info.arches.includes(String(input.arch)) ? String(input.arch) : info.defaultArch;
@@ -65,8 +72,30 @@ function normalizeSettings(input = {}, platform = process.platform) {
     frameRate,
     hudEdges: input.hudEdges !== false,
     fullscreen: Boolean(input.fullscreen),
+    // Borderless (desktop) fullscreen, or exclusive, which switches the display to exclusiveResolution.
+    fullscreenMode: choiceSetting(input.fullscreenMode, ['desktop', 'exclusive'], 'desktop'),
+    exclusiveResolution: /^\d{3,5}x\d{3,5}$/.test(String(input.exclusiveResolution)) ? String(input.exclusiveResolution) : 'desktop',
+    // The monitor under the mouse (usually the launcher's), or the primary one.
+    display: choiceSetting(input.display, ['launcher', 'primary'], 'launcher'),
+    vsync: choiceSetting(input.vsync, ['off', 'on', 'adaptive'], 'off'),
+    // Straight to the title screen, and the game's frame-time overlay at start.
+    skipMovies: Boolean(input.skipMovies),
+    overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
+    // The camera stays where it is put instead of swinging back behind Mario; manual turning speed; mouse look.
+    freeCamera: Boolean(input.freeCamera),
+    cameraSpeed: numberSetting(input.cameraSpeed, 100, 10, 400),
+    mouseCamera: Boolean(input.mouseCamera),
+    mouseSensitivity: numberSetting(input.mouseSensitivity, 100, 5, 1000),
+    // Picture: anti-aliasing, texture filtering, sharpening, brightness (percent; 100 unchanged), fit and scaler.
+    msaa: [0, 2, 4, 8].includes(Number(input.msaa)) ? Number(input.msaa) : 0,
+    fxaa: Boolean(input.fxaa),
+    anisotropic: [0, 2, 4, 8, 16].includes(Number(input.anisotropic)) ? Number(input.anisotropic) : 0,
+    sharpen: numberSetting(input.sharpen, 0, 0, 100),
+    brightness: numberSetting(input.brightness, 100, 50, 200),
+    aspect: choiceSetting(input.aspect, ['keep', 'stretch', 'integer'], 'keep'),
+    presentFilter: choiceSetting(input.presentFilter, ['bilinear', 'sharp', 'nearest'], 'bilinear'),
     // Master volume in percent; 100 leaves the game's sound as it is.
     volume,
     textures: input.textures !== false,
@@ -165,15 +194,32 @@ function buildEnvironment(settings, disc, root) {
     SMS_WIDESCREEN: settings.widescreen,
     SMS_WIDESCREEN_HUD: settings.hudEdges ? 'edges' : 'centre',
     SMS_FRAME_RATE: String(normalizeSettings(settings).frameRate),
-    SMS_FULLSCREEN: settings.fullscreen ? '1' : '0',
+    SMS_FULLSCREEN: settings.fullscreen ? (settings.fullscreenMode === 'exclusive' ? 'exclusive' : '1') : '0',
+    SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
+    SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
+    SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
+    SMS_FREE_CAMERA: settings.freeCamera ? '1' : '0',
+    SMS_CAMERA_SPEED: String(settings.cameraSpeed ?? 100),
+    SMS_MOUSE_CAMERA: settings.mouseCamera ? '1' : '0',
+    SMS_MOUSE_SENSITIVITY: String(settings.mouseSensitivity ?? 100),
+    SMS_MSAA: String(settings.msaa ?? 0),
+    SMS_FXAA: settings.fxaa ? '1' : '0',
+    SMS_ANISO: String(settings.anisotropic ?? 0),
+    SMS_SHARPEN: String(settings.sharpen ?? 0),
+    SMS_GAMMA: ((settings.brightness ?? 100) / 100).toFixed(2),
+    SMS_ASPECT: settings.aspect || 'keep',
+    SMS_PRESENT_FILTER: settings.presentFilter || 'bilinear',
     SMS_VOLUME: String(settings.volume ?? 100),
     SMS_GX_SCALE: String(settings.resolution),
     SMS_TEXTURE_PACKS: settings.textures ? texturePackDirectory(root) : '0',
     SMS_MOD: 'none',
     SMS_HD_CUTSCENES: wantsCutscenes(settings) ? cutscenePackDirectory(root) : '0'
   };
+  if (settings.fullscreen && settings.fullscreenMode === 'exclusive' && /^\d+x\d+$/.test(settings.exclusiveResolution || ''))
+    env.SMS_FULLSCREEN_MODE = settings.exclusiveResolution;
+  if (settings.display === 'primary') env.SMS_DISPLAY = '0';
   return env;
 }
 
