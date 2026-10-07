@@ -68,12 +68,12 @@ h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
 .quick-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 12px; }
 .quick-control, .switch.compact { min-width: 0; min-height: 62px; padding: 10px 13px; border: 1px solid #e5ebea; border-radius: 9px; background: #fafbfa; }
-.quick-control { display: grid; gap: 5px; color: #435b60; font-size: 12px; font-weight: 650; }
+.quick-control { display: grid; align-content: start; gap: 6px; color: #435b60; font-size: 12px; font-weight: 650; }
 select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radius: 7px; background: #fff; color: #223940; font-size: 12px; }
 /* Keep checkbox focus inside its switch so it cannot scroll the dialog header away. */
 .switch { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #e6ebea; cursor: pointer; }
 .switch span { display: grid; gap: 4px; }
-.switch strong { display: flex; align-items: center; gap: 7px; color: #334b51; font-size: 13px; font-weight: 650; }
+.switch strong { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; color: #334b51; font-size: 13px; font-weight: 650; }
 .switch small { color: #7a8b8f; font-size: 11px; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .switch i { flex: none; position: relative; width: 36px; height: 21px; border-radius: 20px; background: #c9d2d1; transition: background .15s; }
@@ -238,7 +238,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .settings-entry svg { flex: none; width: 22px; height: 22px; fill: none; stroke: #147488; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .settings-entry > span:nth-child(2) { display: grid; gap: 3px; }
 .settings-entry strong { font-size: 13px; }
-.settings-entry small { color: #72868b; font-size: 11px; }
+.settings-entry small { color: #72868b; font-size: 11px; font-weight: 500; }
 .settings-entry-arrow { margin-left: auto; color: #198092; font-size: 20px; }
 .modal-view .modal-body { padding-bottom: 12px; }
 .activity-log-entry { margin-top: 14px; }
@@ -252,7 +252,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .launcher-modal .texture-summary { padding-top: 10px; }
 .launcher-modal .detail-panel, .launcher-modal .maintenance-panel { min-width: 0; }
 .launcher-modal .detail-grid, .launcher-modal .maintenance-grid { gap: 14px; }
-.launcher-modal .detail-grid { margin-top: 12px; }
+.launcher-modal .detail-grid { margin-top: 12px; grid-template-rows: auto 1fr; align-items: start; }
+.launcher-modal .visuals-panel { grid-column: 2; grid-row: 1 / span 2; }
+.launcher-modal .detail-panel h2 { margin-bottom: 4px; }
+.launcher-modal .detail-panel h2 + .field, .launcher-modal .detail-panel h2 + .switch { border-top: 0; }
+.launcher-modal .detail-panel .switch { border-top: 1px solid #e6ebea; border-bottom: 0; }
+.launcher-modal .detail-panel .texture-setup { margin-top: -6px; padding: 0 0 14px; }
 .versions-panel { margin-top: 14px; padding: 14px 18px; }
 .versions-panel h2 { font-size: 14px; }
 .version-list { margin: 7px 0 0; font-size: 12px; }

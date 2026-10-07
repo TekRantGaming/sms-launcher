@@ -299,7 +299,8 @@ function refresh(data) {
           : `${finish || 'HD cutscenes will be made from your disc during setup.'}${movies ? ` Allow ${gb(movies.freeBytes)} GB of free space for setup.` : ''}`;
   $('cutscene-info').hidden = !$('cutscene-info').textContent;
   badge('eclipse-badge', data.eclipseInstalled ? 'Installed' : platform.id === 'linux' ? 'Optional' : 'Experimental', data.eclipseInstalled, platform.id !== 'linux');
-  $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse has been tested on Linux. It may not work yet on this computer.';
+  $('eclipse-platform-note').textContent = platform.id === 'linux' ? '' : 'Eclipse is still experimental on this computer.';
+  $('install-eclipse').textContent = data.eclipseInstalled ? 'Reinstall Eclipse' : 'Install Eclipse';
   $('eclipse-note').hidden = !config.settings.eclipse;
   $('install-eclipse').disabled = !data.repoReady || !data.romReady || Boolean(data.active);
   $('clean').disabled = !data.repoReady || Boolean(data.active);
