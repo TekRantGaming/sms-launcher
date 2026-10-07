@@ -140,6 +140,13 @@ test('saved values outside what the game accepts fall back or are clamped', () =
     ['keep', 'bilinear', 'off', 'desktop', 'desktop', 'launcher']);
 });
 
+test('the heat-wave effect stays on unless turned off, and reaches the game as SMS_HEAT_HAZE', () => {
+  assert.equal(port.normalizeSettings({}).heatHaze, true);
+  assert.equal(port.normalizeSettings({ heatHaze: false }).heatHaze, false);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/my/disc.iso', '/port').SMS_HEAT_HAZE, '1');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ heatHaze: false }), '/my/disc.iso', '/port').SMS_HEAT_HAZE, '0');
+});
+
 test('Windows upgrade keeps the existing 32-bit game available with its original settings and tools', t => {
   const root = temporary();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
