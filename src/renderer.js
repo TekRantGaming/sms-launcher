@@ -5,6 +5,8 @@ let current;
 let changing = false;
 let wizardStep = null;
 let setupPending = false;
+const activityLog = window.smsActivityLog.createActivityLog();
+let logRenderPending = false;
 
 function closeModal() {
   for (const dialog of document.querySelectorAll('.launcher-modal'))
@@ -181,6 +183,7 @@ function showActivityLog() {
 }
 for (const id of ['view-build-log', 'view-activity-log', 'message-view-log'])
   $(id).addEventListener('click', showActivityLog);
+$('save-activity-log').addEventListener('click', () => window.sms.saveActivityLog().catch(showError));
 
 function setMessage(text, error = false) {
   const box = $('message');
@@ -622,13 +625,17 @@ async function saveSettings() {
   catch (error) { if (current) refresh(current); showError(error); }
 }
 
-function appendLog(line) {
-  const log = $('log');
-  const following = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
-  if (log.textContent === 'Ready.') log.textContent = '';
-  log.textContent += `${line}\n`;
-  if (log.textContent.length > 50000) log.textContent = log.textContent.slice(-40000);
-  if (following) log.scrollTop = log.scrollHeight;
+function appendLog(entry) {
+  activityLog.merge(entry);
+  if (logRenderPending) return;
+  logRenderPending = true;
+  requestAnimationFrame(() => {
+    logRenderPending = false;
+    const log = $('log');
+    const following = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
+    log.textContent = activityLog.snapshot().map(window.smsActivityLog.formatEntry).join('\n') + '\n';
+    if (following) log.scrollTop = log.scrollHeight;
+  });
 }
 
 for (const [id, method] of Object.entries({

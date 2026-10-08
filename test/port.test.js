@@ -164,7 +164,7 @@ test('Windows upgrade keeps the existing 32-bit game available with its original
   fs.mkdirSync(path.join(msys, 'usr', 'bin'), { recursive: true });
   fs.writeFileSync(path.join(msys, 'usr', 'bin', 'bash.exe'), '');
   const cmd = port.commandFor(root, 'run', [saved.rom], 'win32', { SMS_ARCH: previous.settings.arch, MSYS2_ROOT: msys });
-  assert.equal(cmd.env.MSYSTEM, 'MINGW32');
+  assert.equal(cmd.command, binary);
   assert.ok(cmd.env.PATH.startsWith(path.join(msys, 'mingw32', 'bin')));
   assert.equal(port.playableInstall({ ...saved, settings: { arch: '64' } }, 'win32'), null);
   assert.equal(port.normalizeSettings({ arch: '32' }, 'darwin').arch, '64');
@@ -259,6 +259,25 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
   }
 });
 
+
+test('Windows games start directly with the target DLL paths and literal disc arguments', () => {
+  const root = 'C:\\Games\\Sunshine', disc = 'C:\\Discs\\My Sunshine & own.iso';
+  for (const arch of ['32', '64']) for (const eclipse of [false, true]) {
+    const settings = { arch, eclipse };
+    const env = { MSYS2_ROOT: 'C:\\Private tools\\msys64', SMS_ARCH: arch,
+      SMS_WINDOWS_32_CROSS: arch === '32' ? '1' : undefined, PATH: 'C:\\Windows' };
+    const command = eclipse ? port.eclipseRunCommand(root, settings, disc, 'win32', env)
+      : port.commandFor(root, 'run', [disc], 'win32', env);
+    assert.equal(command.command, port.binaryPath(root, settings, 'win32'));
+    assert.deepEqual(command.args, [disc]);
+    assert.equal(command.cwd, root);
+    const bins = command.env.PATH.split(';');
+    assert.ok(bins.includes(path.join(env.MSYS2_ROOT, arch === '32' ? 'mingw32' : 'mingw64', 'bin')));
+    if (arch === '32') assert.equal(bins[0], path.join(env.MSYS2_ROOT, 'opt', 'i686-w64-mingw32', 'bin'));
+    assert.equal(bins.at(-1), env.PATH);
+    assert.equal(env.PATH, 'C:\\Windows');
+  }
+});
 
 test('HD movies have their own setting and only complete packs are recognized', t => {
   const root = temporary();t.after(() => fs.rmSync(root, { recursive: true, force: true }));

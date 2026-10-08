@@ -112,9 +112,9 @@
       </section>
     </dialog>
 
-    <dialog id="activity-log" class="launcher-modal activity-modal" aria-label="Setup activity">
-      <div class="modal-head"><div><h1>Setup activity</h1><p id="activity-label">Nothing running</p></div><button class="modal-close" data-close-modal aria-label="Close activity log">×</button></div>
-      <div class="modal-body"><pre id="log" tabindex="0" aria-label="Setup output">Ready.</pre><div class="activity-log-actions"><span class="helper">Closing this view keeps your task running.</span><button class="subtle danger" id="stop" hidden>Stop task</button></div></div>
+    <dialog id="activity-log" class="launcher-modal activity-modal" aria-label="Activity log">
+      <div class="modal-head"><div><h1>Activity log</h1><p id="activity-label">Nothing running</p></div><button class="modal-close" data-close-modal aria-label="Close activity log">×</button></div>
+      <div class="modal-body"><pre id="log" tabindex="0" aria-label="Activity output">Ready.</pre><div class="activity-log-actions"><span class="helper">Latest 700 entries. Save log includes the full session.</span><button class="subtle" id="save-activity-log">Save log</button><button class="subtle danger" id="stop" hidden>Stop task</button></div></div>
     </dialog>
 
     <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">
@@ -133,6 +133,7 @@
     <footer class="statusbar"><span class="status-dot" aria-hidden="true"></span><span id="task-status">Loading…</span><span class="status-separator">·</span><span id="app-update">Checking for updates…</span><button id="install-app-update" class="status-link" hidden>Install now</button><span class="byo">Bring your own ROM · No game data included</span></footer>
   </div>
   <script src="bindings.js"></script>
+  <script src="activity-log.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

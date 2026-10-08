@@ -19,6 +19,7 @@ function state() {
 
 async function renderer(data = state()) {
   const calls = [], elements = new Map(), droppedFiles = [];
+  let logCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
     return { hidden: false, disabled: false, textContent: '', value: '', style: {}, open: false,
@@ -37,10 +38,12 @@ async function renderer(data = state()) {
   const sms = {
     state: async () => data, windowState: async () => ({}),
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
-    onLog() {}, onActivity() {}, onAppUpdate() {}, onWindowState() {},
+    onLog(callback) { logCallback = callback; }, onActivity() {}, onAppUpdate() {}, onWindowState() {},
+    saveActivityLog: async () => { calls.push('saveActivityLog'); },
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
-  const context = vm.createContext({ console, setInterval() {}, window: { sms, addEventListener() {} }, document: {
+  const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
+    window: { sms, smsActivityLog: require('../src/activity-log'), addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
       return selector === '.launcher-modal' ? ['page-settings', 'activity-log', 'mac-tools-help'].map(id => elements.get(id)) : [];
@@ -48,7 +51,9 @@ async function renderer(data = state()) {
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
   await new Promise(setImmediate);
-  return { elements, calls, droppedFiles, async refresh() { vm.runInContext('refresh(current)', context); },
+  return { elements, calls, droppedFiles,
+    async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
+    async refresh() { vm.runInContext('refresh(current)', context); },
     async click(id) { elements.get(id).click(); await new Promise(setImmediate); } };
 }
 
@@ -112,4 +117,16 @@ test('pending HD setup offers installed play, while current complete installs sh
   assert.match(ui.elements.get('installed-play-note').textContent, /your installed game/);
   await ui.click('skip-update-play');
   assert.deepEqual(ui.calls, ['play']);
+});
+
+test('activity log renders stream labels, updates partial lines once and saves the full session', async () => {
+  const data = state();
+  data.logs = [{ id: 1, sequence: 1, stream: 'launcher', text: 'Started' },
+    { id: 2, sequence: 2, stream: 'stderr', text: 'partial' }];
+  const ui = await renderer(data);
+  await ui.emitLog({ id: 2, sequence: 3, stream: 'stderr', text: 'complete diagnostic' });
+  await ui.emitLog(data.logs[1]);
+  assert.equal(ui.elements.get('log').textContent, '[launcher] Started\n[stderr] complete diagnostic\n');
+  await ui.click('save-activity-log');
+  assert.deepEqual(ui.calls, ['saveActivityLog']);
 });

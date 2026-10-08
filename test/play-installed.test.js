@@ -79,7 +79,7 @@ test('skip update launches the older installed game, keeps preferences and saves
   await f.play();
   assert.equal(f.starts.length, 1);
   const { command, options } = f.starts[0];
-  assert.ok(command.endsWith(process.platform === 'win32' ? 'bash.exe' : 'run.sh'));
+  assert.ok(process.platform === 'win32' ? command === f.binary : command.endsWith('run.sh'));
   assert.equal(options.cwd, f.root);
   assert.equal(options.env.SMS_TEXTURE_PACKS, '0');
   assert.equal(options.env.SMS_HD_CUTSCENES, '0');

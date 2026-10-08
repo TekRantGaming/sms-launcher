@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('sms', {
   state: () => ipcRenderer.invoke('state'),
+  saveActivityLog: () => ipcRenderer.invoke('save-activity-log'),
   checkTools: () => ipcRenderer.invoke('check-tools'),
   copyMacCommand: index => ipcRenderer.invoke('copy-mac-command', index),
   saveSettings: value => ipcRenderer.invoke('save-settings', value),
