@@ -809,12 +809,31 @@ window.sms.onActivity(value => {
   if (changed && current) refresh(current);
   if (changed) sync().catch(showError);
 });
+let checkingUpdates = false;
 function renderAppUpdate(value) {
   $('app-update').textContent = value.message;
   $('install-app-update').hidden = value.state !== 'ready';
+  $('check-updates').disabled = checkingUpdates || value.state === 'checking' || value.state === 'downloading';
+}
+// Check the launcher's update channel now, then reread the game's versions and the channel list.
+async function checkForUpdates() {
+  if (checkingUpdates) return;
+  checkingUpdates = true;
+  $('check-updates').disabled = true;
+  $('check-updates').classList.add('checking');
+  try {
+    await window.sms.checkAppUpdate();
+    await Promise.all([sync(), loadUpdateChannels()]);
+  } catch (error) { showError(error); }
+  finally {
+    checkingUpdates = false;
+    $('check-updates').classList.remove('checking');
+    $('check-updates').disabled = false;
+  }
 }
 window.sms.onAppUpdate(renderAppUpdate);
 $('install-app-update').addEventListener('click', () => window.sms.installAppUpdate().catch(showError));
+$('check-updates').addEventListener('click', checkForUpdates);
 function renderWindowState(value) {
   const fullscreen = Boolean(value.fullscreen);
   $('window-fullscreen').setAttribute('aria-pressed', String(fullscreen));

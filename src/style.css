@@ -93,6 +93,12 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 #install-app-update { text-decoration: underline; cursor: pointer; }
 #install-app-update[hidden] { display: none; }
 .status-link:hover { text-decoration: underline; }
+.status-icon { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: -5px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+.status-icon svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.status-icon:hover:not(:disabled) { background: #1c737a18; color: #1c737a; }
+.status-icon:focus-visible { outline: 2px solid #1c737a; outline-offset: 1px; }
+.status-icon:disabled { cursor: default; opacity: .75; }
+.status-icon.checking svg { animation: spin .9s linear infinite; }
 .byo { margin-left: auto; }
 .message { position: fixed; z-index: 10; top: 70px; right: 26px; max-width: 430px; padding: 11px 14px; border: 1px solid #bcd8d4; border-radius: 9px; background: #e9f5f2; color: #255a5c; box-shadow: 0 8px 24px #20353618; font-size: 12px; }
 .message.error { border-color: #e8b7b0; background: #fff0ee; color: #9b433c; }
@@ -136,7 +142,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 }
 @media (max-height: 720px) { .intro .eyebrow { display: none; } .intro { min-height: 46px; } }
 @media (max-width: 920px) { .topbar { gap: 14px; padding: 0 18px; } .viewport, .statusbar { padding-left: 18px; padding-right: 18px; } .brand { min-width: 160px; } .tab { padding: 0 9px; } .quick-grid { grid-template-columns: 1fr 1fr 1.2fr; } .setup-panel { padding-left: 14px; padding-right: 14px; } }
-@media (prefers-reduced-motion: reduce) { .spinner, .progress-track.indeterminate #progress-fill { animation-duration: 3s; } }
+@media (prefers-reduced-motion: reduce) { .spinner, .progress-track.indeterminate #progress-fill, .status-icon.checking svg { animation-duration: 3s; } }
 
 /* The supplied seaside artwork is the launch screen's full-window backdrop. */
 :root { background: #0a3045; }
@@ -207,6 +213,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .ready-mode .launch-panel { width: min(100%, 580px); padding: 15px; }
 .statusbar { flex-basis: 36px; padding: 0 28px; border-top: 1px solid #ffffff30; background: #082d45c7; color: #d2eaf0; backdrop-filter: blur(16px); }
 .status-link { color: #fff0bf; }
+.status-icon:hover:not(:disabled) { background: #ffffff1f; color: #fff0bf; }
+.status-icon:focus-visible { outline-color: #fff0bf; }
 .byo { color: #d2eaf0; }
 
 .launcher-modal { position: fixed; inset: 0; width: min(830px, calc(100% - 36px)); max-width: none; max-height: min(640px, calc(100% - 56px)); margin: auto; padding: 0; overflow: hidden; border: 1px solid #d8e6e6; border-radius: 16px; background: #f8faf9; color: #17343d; box-shadow: 0 24px 80px #061f35a6; }
