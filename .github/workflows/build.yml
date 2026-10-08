@@ -117,17 +117,21 @@ jobs:
         env:
           RUN: ${{ github.run_number }}
           REPO: ${{ github.repository }}
-      - name: Configure optional macOS signing
+      - name: Configure macOS signing
         if: env.PREVIEW == 'true' && runner.os == 'macOS'
         shell: bash
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+        # Installed Mac launchers only accept updates signed with the release
+        # certificate, so a preview must be signed exactly as release.js signs.
         run: |
-          if [[ -n "$MAC_CSC_LINK" && -n "$MAC_CSC_KEY_PASSWORD" ]]; then
-            printf 'CSC_LINK=%s\n' "$MAC_CSC_LINK" >> "$GITHUB_ENV"
-            printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          if [[ -z "$MAC_CSC_LINK" || -z "$MAC_CSC_KEY_PASSWORD" ]]; then
+            echo "::error::Mac previews need MAC_CSC_LINK and MAC_CSC_KEY_PASSWORD, or installed launchers reject the update."; exit 1
           fi
+          printf 'CSC_LINK=%s\n' "$MAC_CSC_LINK" >> "$GITHUB_ENV"
+          printf 'CSC_KEY_PASSWORD=%s\n' "$MAC_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          printf 'MAC_SIGN_ARGS=%s\n' '--config.mac.identity=- --config.mac.sign=scripts/mac-sign.js' >> "$GITHUB_ENV"
       - name: Configure optional Windows signing
         if: env.PREVIEW == 'true' && runner.os == 'Windows'
         shell: bash
@@ -139,9 +143,18 @@ jobs:
             printf 'WIN_CSC_LINK=%s\n' "$WINDOWS_CSC_LINK" >> "$GITHUB_ENV"
             printf 'WIN_CSC_KEY_PASSWORD=%s\n' "$WINDOWS_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
           fi
-      - run: npm run dist -- ${{ matrix.args }} --publish never
+      - run: npm run dist -- ${{ matrix.args }} $MAC_SIGN_ARGS --publish never
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Check the Mac preview is signed with a certificate
+        if: env.PREVIEW == 'true' && runner.os == 'macOS'
+        shell: bash
+        run: |
+          app=$(ls -d dist/mac*/*.app | head -1)
+          codesign --verify --deep --strict "$app"
+          codesign -dvv "$app" 2>&1 | grep -q '^Authority=' \
+            || { codesign -dvv "$app"; echo "::error::$app is only ad-hoc signed; installed launchers would reject it."; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: launcher-${{ matrix.target }}${{ env.PREVIEW == 'true' && format('-{0}', env.SUFFIX) || '' }}
