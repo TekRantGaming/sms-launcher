@@ -13,12 +13,15 @@ const release = require('./game-release.json');
 const SHA = /^[a-f0-9]{40}$/;
 const REF = /^[A-Za-z0-9_][A-Za-z0-9._/-]{0,199}$/;
 const REPOSITORY = /^(?:https:\/\/|ssh:\/\/|file:\/\/|git@[A-Za-z0-9.-]+:)[^\s]{1,400}$/;
+// A row with only a branch, tag or commit means it is on our fork (the fields' placeholders).
+const DEFAULT_REPOSITORY = { game: release.repository, decomp: 'https://github.com/chasem-dev/sms-english.git' };
 
 function normalizePart(part, what) {
   if (!part) return null;
   const repository = String(part.repository || '').trim();
   const ref = String(part.ref || '').trim();
   if (!repository && !ref) return null;
+  if (!repository) return normalizePart({ repository: DEFAULT_REPOSITORY[what], ref }, what);
   if (!REPOSITORY.test(repository) && !(path.isAbsolute(repository) && !repository.startsWith('-')))
     throw new Error(`Enter the ${what} repository as an https:// or git@ address, or a local folder.`);
   if (!REF.test(ref) || ref.includes('..') || ref.endsWith('/') || ref.endsWith('.lock'))

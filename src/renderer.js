@@ -126,6 +126,51 @@ function startCapture(id, add) {
   renderBindings();
 }
 
+// --- Button prompts (src/prompts.js): the icons the game shows for the GameCube buttons in its text, drawn from
+// the bindings above. The strips go to the launcher's prompts folder whenever what they show changes.
+function promptOptions(styles) {
+  return styles.map(({ id, label }) => {
+    const option = document.createElement('option'); option.value = id; option.textContent = label; return option;
+  });
+}
+if (globalThis.SmsPrompts) {
+  $('buttonPrompts').replaceChildren(...promptOptions(SmsPrompts.STYLES));
+  $('promptPad').replaceChildren(...promptOptions(SmsPrompts.PAD_STYLES));
+}
+let sentPrompts = '';
+function renderPrompts() {
+  if (!globalThis.SmsPrompts) return;
+  const style = $('buttonPrompts').value;
+  const options = { mouseCamera: $('mouseCamera').checked };
+  const strips = Object.fromEntries(SmsPrompts.DRAWN.map(id => [id, SmsPrompts.drawStrip(document, id, keyBindings, padBindings, options)]));
+  const pad = $('promptPad').value;
+  $('promptPad-field').hidden = style !== 'auto';
+  // Automatic shows the keyboard and every controller style it can switch to.
+  const label = id => SmsPrompts.STYLES.find(item => item.id === id).label;
+  const padRows = pad === 'match' ? ['xbox', 'playstation', 'steamdeck'] : [pad];
+  const shown = style === 'auto'
+    ? [['keyboard', 'Keyboard and mouse'], ...padRows.map(id => [id, pad === 'match' ? `${label(id)} controller` : 'Any controller'])]
+    : [[style, label(style)]];
+  $('prompt-preview').replaceChildren(...shown.map(([id, text]) => {
+    const row = document.createElement('div'); row.className = 'prompt-row';
+    const name = document.createElement('span'); name.textContent = text;
+    if (strips[id]) {
+      const image = document.createElement('img'); image.src = strips[id].toDataURL('image/png'); image.alt = '';
+      row.append(name, image);
+    } else {
+      const note = document.createElement('em'); note.textContent = 'The game\'s own GameCube buttons';
+      row.append(name, note);
+    }
+    return row;
+  }));
+  if (style === 'gamecube') return;
+  const images = Object.fromEntries(Object.entries(strips).map(([id, canvas]) => [id, canvas.toDataURL('image/png')]));
+  const signature = JSON.stringify(images);
+  if (signature === sentPrompts) return;
+  sentPrompts = signature;
+  window.sms.savePrompts(images).catch(error => { sentPrompts = ''; showError(error); });
+}
+
 function renderBindings() {
   if (!globalThis.SmsBindings || $('controls-view').hidden) return;
   const controller = bindingMode === 'controller';
@@ -498,6 +543,9 @@ function refresh(data) {
   for (const key of ['fullscreen', 'invertCameraX', 'invertCameraY', 'freeCamera', 'mouseCamera', 'skipMovies', 'heatHaze', 'overlay', 'fxaa', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate']) $(key).checked = config.settings[key];
   keyBindings = config.settings.keyBindings || {};
   padBindings = config.settings.padBindings || {};
+  $('buttonPrompts').value = config.settings.buttonPrompts || 'gamecube';
+  $('promptPad').value = config.settings.promptPad || 'match';
+  renderPrompts();
   $('softTrigger').value = String(config.settings.softTrigger ?? 40);
   renderSoftTrigger();
   $('softTrigger').disabled = Boolean(data.active);
@@ -507,7 +555,7 @@ function refresh(data) {
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'fsrMode'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'fsrMode'])
     $(key).disabled = Boolean(data.active);
   renderDependents(Boolean(data.active));
   changing = false;
@@ -686,7 +734,8 @@ function settingsValue() {
     presentFilter: $('presentFilter').value, fsrMode: $('fsrMode').value,
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
-    keyBindings, padBindings, softTrigger: Number($('softTrigger').value)
+    keyBindings, padBindings, softTrigger: Number($('softTrigger').value), buttonPrompts: $('buttonPrompts').value,
+    promptPad: $('promptPad').value
   };
 }
 
@@ -798,7 +847,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'fsrMode'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'fsrMode'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);

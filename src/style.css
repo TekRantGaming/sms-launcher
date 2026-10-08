@@ -245,6 +245,14 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .binding-modes button[aria-pressed="true"] { background: #fff; color: #17343d; font-weight: 650; box-shadow: 0 1px 3px #17343d1f; }
 .binding-keys.binding-none { color: #9aa8ab; }
 .soft-trigger-field { margin-top: 12px; }
+.prompt-field { margin-top: 14px; }
+.prompt-field > small { display: block; max-width: 420px; color: #72868b; font-size: 11px; }
+.prompt-preview { display: grid; gap: 6px; margin-top: 8px; padding: 10px; border-radius: 9px; background: #17343d; }
+.prompt-row { display: flex; align-items: center; gap: 10px; color: #dce9ea; font-size: 11px; }
+.prompt-row span { width: 132px; flex: none; }
+.prompt-row img { height: 32px; width: 256px; }
+.prompt-row em { color: #a9c2c5; font-style: normal; }
+#promptPad-field { margin-top: 8px; }
 .soft-trigger-field small { display: block; max-width: 420px; color: #72868b; font-size: 11px; }
 .controls-note { margin-top: 14px; padding: 16px 18px; border-color: #f0d9a6; background: #fffaf0; }
 .controls-note h2 { margin-bottom: 6px; font-size: 15px; }

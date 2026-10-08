@@ -11,6 +11,7 @@ const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const bindings = require('./bindings');
+const prompts = require('./prompts');
 const gameSource = require('./game-source');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
@@ -435,9 +436,11 @@ async function setupGame() {
 
 const PLAYER_SETTINGS = [
   'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'softTrigger', 'freeCamera', 'cameraSpeed', 'mouseCamera',
-  'mouseSensitivity', 'skipMovies', 'heatHaze', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
+  'mouseSensitivity', 'skipMovies', 'heatHaze', 'buttonPrompts', 'promptPad', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
   'msaa', 'fxaa', 'anisotropic', 'sharpen', 'fsrMode', 'brightness', 'aspect', 'presentFilter'
 ];
+function promptDirectory() { return path.join(app.getPath('userData'), 'prompts'); }
+
 function playerSettings(settings) { return Object.fromEntries(PLAYER_SETTINGS.map(key => [key, settings[key]])); }
 
 async function play(installation = null) {
@@ -461,6 +464,8 @@ async function play(installation = null) {
     fs.writeFileSync(file, bindings.fileText(settings.keyBindings, settings.padBindings));
     env.SMS_BINDINGS = file;
   }
+  // The prompt images the Controls page drew from these bindings (save-prompts).
+  if (settings.buttonPrompts && settings.buttonPrompts !== 'gamecube') env.SMS_BUTTON_PROMPT_DIR = promptDirectory();
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
@@ -646,6 +651,15 @@ function registerHandlers() {
     const commands = toolsStatus().commands.split('\n').filter(Boolean);
     if (!Number.isInteger(index) || !commands[index]) throw new Error('Check your Mac tools again.');
     clipboard.writeText(commands[index]);
+  });
+  // The button prompt strips the renderer drew (src/prompts.js), one PNG per style.
+  ipcMain.handle('save-prompts', (_event, images) => {
+    const dir = promptDirectory();
+    fs.mkdirSync(dir, { recursive: true });
+    for (const style of prompts.DRAWN) {
+      const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(images?.[style] || '');
+      if (match) fs.writeFileSync(path.join(dir, `${style}.png`), Buffer.from(match[1], 'base64'));
+    }
   });
   ipcMain.handle('save-settings', (_event, input) => {
     if (operation || active) throw new Error('Finish the current task before changing settings.');

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeChannel } = require('./update-channel');
 const bindings = require('./bindings');
+const prompts = require('./prompts');
 
 const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
@@ -82,6 +83,9 @@ function normalizeSettings(input = {}, platform = process.platform) {
     skipMovies: Boolean(input.skipMovies),
     // The heat-wave shimmer in sunny areas; on unless turned off.
     heatHaze: input.heatHaze !== false,
+    // Which buttons the game's text shows (src/prompts.js): the GameCube's own, or another controller's or the keys.
+    buttonPrompts: prompts.normalizeStyle(input.buttonPrompts),
+    promptPad: prompts.normalizePad(input.promptPad),
     overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
@@ -208,6 +212,8 @@ function buildEnvironment(settings, disc, root) {
     SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
     SMS_SOFT_TRIGGER: String(settings.softTrigger ?? 40),
     SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',
+    SMS_BUTTON_PROMPTS: prompts.normalizeStyle(settings.buttonPrompts),
+    SMS_BUTTON_PROMPT_PAD: prompts.normalizePad(settings.promptPad),
     SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',

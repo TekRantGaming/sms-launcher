@@ -155,6 +155,12 @@ test('FSR 1 is a scaling choice and reaches the game as SMS_PRESENT_FILTER=fsr',
 
 test('the heat-wave effect stays on unless turned off, and reaches the game as SMS_HEAT_HAZE', () => {
   assert.equal(port.normalizeSettings({}).heatHaze, true);
+  assert.equal(port.normalizeSettings({}).buttonPrompts, 'gamecube');
+  assert.equal(port.normalizeSettings({}).promptPad, 'match');
+  assert.equal(port.normalizeSettings({ promptPad: 'snes' }).promptPad, 'match');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ buttonPrompts: 'auto', promptPad: 'playstation' }), '/my/disc.iso', '/port').SMS_BUTTON_PROMPT_PAD, 'playstation');
+  assert.equal(port.normalizeSettings({ buttonPrompts: 'playstation' }).buttonPrompts, 'playstation');
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ buttonPrompts: 'auto' }), '/my/disc.iso', '/port').SMS_BUTTON_PROMPTS, 'auto');
   assert.equal(port.normalizeSettings({ heatHaze: false }).heatHaze, false);
   assert.equal(port.buildEnvironment(port.normalizeSettings({}), '/my/disc.iso', '/port').SMS_HEAT_HAZE, '1');
   assert.equal(port.buildEnvironment(port.normalizeSettings({ heatHaze: false }), '/my/disc.iso', '/port').SMS_HEAT_HAZE, '0');
