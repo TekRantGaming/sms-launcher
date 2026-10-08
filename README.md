@@ -182,6 +182,8 @@ Packages contain the launcher. Game source, disc images, optional mods, compiled
 
 The separate **Smoke test build tools** workflow downloads checksum-verified tool archives and compiles the exact source in `src/game-release.json` without a ROM. It checks both 32-bit and 64-bit games on Windows and Linux, and 64-bit games on Intel and Apple Silicon Mac hosts. These checks are a required release gate; they do not publish game binaries.
 
+The **Refresh Beta** workflow keeps the Beta update channel current: every push to `main` rebuilds it, and every hour it is rebuilt if the game's branch has new commits. Beta uses the newest commit of the game's branch, not the commit `src/game-release.json` pins for the next Stable release. To rebuild it right away, run **Refresh Beta** in GitHub Actions (or `gh workflow run refresh-beta.yml`).
+
 ### Build tools
 
 The launcher checks available tools and downloads prepared archives when needed. Downloads are checksum-verified and stay in its private data folder. Users do not need to install Git, Homebrew, or MSYS2 themselves.
