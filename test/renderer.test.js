@@ -19,7 +19,7 @@ function state() {
 
 async function renderer(data = state(), copyError = null) {
   const calls = [], elements = new Map(), droppedFiles = [];
-  let logCallback, resetCallback;
+  let logCallback, resetCallback, activityCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
     return { hidden: false, disabled: false, textContent: '', value: '', style: {}, open: false,
@@ -29,16 +29,20 @@ async function renderer(data = state(), copyError = null) {
       addEventListener: (event, callback) => { if (!listeners.has(event)) listeners.set(event, []); listeners.get(event).push(callback); },
       click() { if (!this.disabled) for (const callback of listeners.get('click') || []) callback(); },
       dispatch(event, value) { for (const callback of listeners.get(event) || []) callback(value); },
-      setAttribute() {}, removeAttribute() {}, replaceChildren() {}, append() {}, focus() {},
+      setAttribute(name, value) { this[name] = value; }, removeAttribute(name) { delete this[name]; },
+      replaceChildren(...children) { this.textContent = children.map(child => child.textContent).join(''); }, append() {}, focus() {},
       close() { this.open = false; }, showModal() { this.open = true; } };
   }
   const html = fs.readFileSync(path.resolve(__dirname, '../src/index.html'), 'utf8');
-  for (const match of html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g))
-    elements.set(match[1], element(match[0].match(/class="([^"]+)"/)?.[1]));
+  for (const match of html.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)) {
+    const node = element(match[0].match(/class="([^"]+)"/)?.[1]);
+    node.hidden = /\bhidden\b/.test(match[0]);
+    elements.set(match[1], node);
+  }
   const sms = {
     state: async () => data, windowState: async () => ({}),
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
-    onLog(callback) { logCallback = callback; }, onActivity() {}, onAppUpdate() {}, onWindowState() {},
+    onLog(callback) { logCallback = callback; }, onActivity(callback) { activityCallback = callback; }, onAppUpdate() {}, onWindowState() {},
     onLogReset(callback) { resetCallback = callback; },
     saveActivityLog: async () => { calls.push('saveActivityLog'); },
     copyActivityLog: async () => { calls.push('copyActivityLog'); if (copyError) throw copyError; },
@@ -48,7 +52,7 @@ async function renderer(data = state(), copyError = null) {
     window: { sms, smsActivityLog: require('../src/activity-log'), addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
-      return selector === '.launcher-modal' ? ['page-settings', 'activity-log', 'mac-tools-help'].map(id => elements.get(id)) : [];
+      return selector === '.launcher-modal' ? ['page-settings', 'mac-tools-help'].map(id => elements.get(id)) : [];
     }, createElement: () => element()
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
@@ -56,6 +60,7 @@ async function renderer(data = state(), copyError = null) {
   return { elements, calls, droppedFiles,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
+    async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
     async refresh() { vm.runInContext('refresh(current)', context); },
     async click(id) { elements.get(id).click(); await new Promise(setImmediate); } };
 }
@@ -138,11 +143,48 @@ test('activity log renders stream labels, updates partial lines once and saves t
   assert.equal(ui.elements.get('copy-activity-log').disabled, false);
 });
 
-test('Copy log reports failures in the activity dialog and allows retry', async () => {
+test('Copy log reports failures in the activity panel and allows retry', async () => {
   const ui = await renderer(state(), new Error('clipboard unavailable'));
   await ui.click('copy-activity-log');
   assert.equal(ui.elements.get('copy-log-result').textContent, 'Could not copy log: clipboard unavailable');
   assert.equal(ui.elements.get('copy-activity-log').disabled, false);
+});
+
+test('the dock is always accessible, opens for tasks, and respects collapse until the next task', async () => {
+  const ui = await renderer();
+  assert.equal(ui.elements.get('console-body').hidden, true);
+  await ui.click('toggle-activity-log');
+  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(ui.elements.get('toggle-activity-log')['aria-expanded'], 'true');
+  await ui.click('toggle-activity-log');
+  const task = { label: 'Build Sunshine port', startedAt: Date.now(), canStop: true };
+  await ui.emitActivity(task);
+  assert.equal(ui.elements.get('console-body').hidden, false);
+  assert.equal(ui.elements.get('console-state').textContent, 'Live');
+  assert.equal(ui.elements.get('stop').hidden, false);
+  await ui.click('toggle-activity-log');
+  await ui.emitActivity({ ...task, detail: 'Compiling…' });
+  assert.equal(ui.elements.get('console-body').hidden, true);
+  await ui.emitActivity(null);
+  await ui.emitActivity(task);
+  assert.equal(ui.elements.get('console-body').hidden, false);
+});
+
+test('the dock opens for reported failures and expands without treating stderr as a crash', async () => {
+  const ui = await renderer();
+  await ui.emitLog({ id: 1, sequence: 1, stream: 'stderr', text: 'Could not find customStages.bin' });
+  assert.equal(ui.elements.get('console-state').textContent, 'Idle');
+  assert.equal(ui.elements.get('console-body').hidden, true);
+  await ui.emitLog({ id: 2, sequence: 2, stream: 'launcher', text: '✕ Game exited with code 7.' });
+  assert.equal(ui.elements.get('console-state').textContent, 'Error');
+  assert.equal(ui.elements.get('console-body').hidden, false);
+  await ui.click('expand-activity-log');
+  assert.equal(ui.elements.get('activity-log').classList.contains('is-expanded'), true);
+  assert.equal(ui.elements.get('expand-activity-log')['aria-label'], 'Restore activity log');
+  await ui.click('toggle-activity-log');
+  assert.equal(ui.elements.get('activity-log').classList.contains('is-expanded'), false);
+  await ui.resetLog(3);
+  assert.equal(ui.elements.get('console-state').textContent, 'Idle');
 });
 
 test('a fresh Play clears rendered history and ignores delayed output from the previous run', async () => {

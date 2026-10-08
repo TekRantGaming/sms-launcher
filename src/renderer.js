@@ -7,6 +7,8 @@ let wizardStep = null;
 let setupPending = false;
 const activityLog = window.smsActivityLog.createActivityLog();
 let logRenderPending = false;
+let consoleOpen = false, consoleExpanded = false, consoleFollowing = true;
+let consoleWasActive = false, consoleFailed = false;
 
 function closeModal() {
   for (const dialog of document.querySelectorAll('.launcher-modal'))
@@ -176,22 +178,55 @@ for (const button of document.querySelectorAll('[data-close-modal]'))
   button.addEventListener('click', () => button.closest('dialog').close());
 
 function showActivityLog() {
-  if (!$('activity-log').open) $('activity-log').showModal();
+  closeModal();
+  setConsoleOpen(true);
   const log = $('log');
   log.scrollTop = log.scrollHeight;
   log.focus();
 }
+function setConsoleOpen(open) {
+  consoleOpen = open;
+  if (!open) consoleExpanded = false;
+  $('console-body').hidden = !open;
+  $('activity-log').classList.toggle('is-open', open);
+  $('activity-log').classList.toggle('is-expanded', consoleExpanded);
+  $('toggle-activity-log').setAttribute('aria-expanded', String(open));
+  $('toggle-activity-log').title = open ? 'Hide activity log' : 'Show activity log';
+  $('expand-activity-log').setAttribute('aria-pressed', String(consoleExpanded));
+  $('expand-activity-log').setAttribute('aria-label', consoleExpanded ? 'Restore activity log' : 'Expand activity log');
+  $('expand-activity-log').title = consoleExpanded ? 'Restore activity log' : 'Expand activity log';
+  if (open && consoleFollowing) $('log').scrollTop = $('log').scrollHeight;
+}
+function setConsoleFollowing(follow) {
+  consoleFollowing = follow;
+  $('follow-activity-log').setAttribute('aria-pressed', String(follow));
+  $('follow-activity-log').textContent = follow ? 'Following output' : 'Follow output';
+  if (follow) $('log').scrollTop = $('log').scrollHeight;
+}
+$('toggle-activity-log').addEventListener('click', () => setConsoleOpen(!consoleOpen));
+$('expand-activity-log').addEventListener('click', () => {
+  consoleExpanded = !consoleExpanded;
+  setConsoleOpen(true);
+});
+$('follow-activity-log').addEventListener('click', () => setConsoleFollowing(!consoleFollowing));
+$('log').addEventListener('scroll', () => {
+  if (consoleOpen && consoleFollowing && $('log').scrollHeight - $('log').scrollTop - $('log').clientHeight > 24)
+    setConsoleFollowing(false);
+});
 for (const id of ['view-build-log', 'view-activity-log', 'message-view-log'])
   $(id).addEventListener('click', showActivityLog);
 $('save-activity-log').addEventListener('click', () => window.sms.saveActivityLog().catch(showError));
 $('copy-activity-log').addEventListener('click', async () => {
   const button = $('copy-activity-log'), result = $('copy-log-result');
   button.disabled = true;
+  button.textContent = 'Copy log';
   result.textContent = '';
   try {
     await window.sms.copyActivityLog();
     result.textContent = 'Full session copied.';
+    button.textContent = 'Copied';
   } catch (error) {
+    setConsoleOpen(true);
     result.textContent = `Could not copy log: ${error.message || String(error)}`;
   } finally {
     button.disabled = false;
@@ -204,6 +239,11 @@ function setMessage(text, error = false) {
   $('message-view-log').hidden = !error || !text;
   box.hidden = !text;
   box.classList.toggle('error', error);
+  if (text && error) {
+    consoleFailed = true;
+    renderConsoleState(current?.active);
+    setConsoleOpen(true);
+  }
 }
 
 function badge(id, label, good = false, warn = false) {
@@ -311,6 +351,12 @@ function showWizardStep(data) {
 }
 
 function renderActivity(active) {
+  if (active && !consoleWasActive) {
+    consoleFailed = false;
+    setConsoleOpen(true);
+  }
+  consoleWasActive = Boolean(active);
+  renderConsoleState(active);
   const working = Boolean(active) && active.label !== 'Play Super Mario Sunshine';
   $('task-progress').hidden = !working;
   $('activity-label').textContent = taskName(active?.label);
@@ -333,6 +379,13 @@ function renderActivity(active) {
   $('progress-fill').style.width = known ? `${active.percent}%` : '';
   if (known) $('progress-track').setAttribute('aria-valuenow', String(active.percent));
   else $('progress-track').removeAttribute('aria-valuenow');
+}
+
+function renderConsoleState(active) {
+  const badge = $('console-state');
+  badge.textContent = consoleFailed ? 'Error' : active ? 'Live' : 'Idle';
+  badge.classList.toggle('is-live', Boolean(active) && !consoleFailed);
+  badge.classList.toggle('is-error', consoleFailed);
 }
 
 function refresh(data) {
@@ -640,7 +693,13 @@ async function saveSettings() {
 }
 
 function appendLog(entry) {
+  if (entry.sequence <= activityLog.resetSequence()) return;
   activityLog.merge(entry);
+  if (entry.stream === 'launcher' && /^(✕|Uncaught launcher error:)/.test(entry.text)) {
+    consoleFailed = true;
+    renderConsoleState(current?.active);
+    setConsoleOpen(true);
+  }
   scheduleLogRender();
 }
 
@@ -650,10 +709,16 @@ function scheduleLogRender() {
   requestAnimationFrame(() => {
     logRenderPending = false;
     const log = $('log');
-    const following = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
     const entries = activityLog.snapshot();
-    log.textContent = entries.length ? entries.map(window.smsActivityLog.formatEntry).join('\n') + '\n' : '';
-    if (following) log.scrollTop = log.scrollHeight;
+    log.replaceChildren(...entries.map(entry => {
+      const line = document.createElement('span');
+      line.className = `log-line log-${entry.stream}${entry.stream === 'launcher' && entry.text.startsWith('✕') ? ' log-error' : ''}`;
+      line.textContent = window.smsActivityLog.formatEntry(entry) + '\n';
+      return line;
+    }));
+    $('console-empty').hidden = Boolean(entries.length);
+    $('console-entry-count').textContent = `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`;
+    if (consoleFollowing) log.scrollTop = log.scrollHeight;
   });
 }
 
@@ -662,6 +727,10 @@ function resetLog(sequence) {
   activityLog.reset(sequence);
   $('log').textContent = '';
   $('copy-log-result').textContent = '';
+  $('copy-activity-log').textContent = 'Copy log';
+  consoleFailed = false;
+  setConsoleFollowing(true);
+  renderConsoleState(current?.active);
   scheduleLogRender();
 }
 
