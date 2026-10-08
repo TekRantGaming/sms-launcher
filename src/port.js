@@ -5,6 +5,7 @@ const path = require('node:path');
 const { normalizeChannel } = require('./update-channel');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
+const presets = require('./presets');
 
 const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
@@ -68,7 +69,7 @@ function normalizeSettings(input = {}, platform = process.platform) {
     ? Number(input.frameRate) : input.fps60 === false ? 30 : 60;
   const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
     ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
-  return {
+  const settings = {
     arch, widescreen, resolution,
     frameRate,
     hudEdges: input.hudEdges !== false,
@@ -117,6 +118,9 @@ function normalizeSettings(input = {}, platform = process.platform) {
     softTrigger: numberSetting(input.softTrigger, 40, 5, 95),
     updateChannel: normalizeChannel(input.updateChannel)
   };
+  // The graphics preset chosen (src/presets.js), while the picture settings still match it; else Custom.
+  settings.graphicsPreset = presets.reconcile({ ...settings, graphicsPreset: input.graphicsPreset });
+  return settings;
 }
 
 function cutscenePackDirectory(root) { return path.join(root, 'mods', 'hd-cutscenes'); }

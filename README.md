@@ -75,6 +75,8 @@ Turn on **Settings → Visuals → Full screen** to have the game fill your disp
 
 **Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip intro movies**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
 
+**Graphics preset** sets them all at once, the way PC games do: **Low**, **Medium**, **High** or **Ultra** set Picture sharpness, anti-aliasing, FXAA, texture filtering, sharpening, scaling and the heat-wave effect, and **Steam Deck** suits the Deck's 1280×800 screen (2×, 16:10, full screen). Changing any of those yourself switches it to **Custom**. If the frame rate still drops, try a lower screen resolution: set **Full screen type** to Exclusive and choose a lower **Exclusive resolution**.
+
 **Settings → Picture** has **Anti-aliasing** (MSAA 2×, 4× or 8×), **FXAA**, **Texture filtering** (anisotropic, 2× to 16×), **Sharpening**, **Brightness**, **Picture fit** (keep its shape, stretch, or whole multiples of the original size), **Scaling** (smooth, sharp pixels or nearest) and **Heat-wave effect**, which turns off the wavy shimmer in hot, sunny areas. All of them are off or unchanged by default (the heat-wave effect stays on).
 
 **Settings → Gameplay → Invert camera X / Y** flip the C-stick camera left/right and up/down. X is inverted by default and Y is not. **Free camera** keeps the camera where you point it instead of swinging back behind Mario (L recentres it). **Camera speed** scales how fast it turns. **Mouse look** turns it with the mouse (F10 releases the mouse, a click takes it back) at the chosen **Mouse sensitivity**.
