@@ -25,6 +25,7 @@ function showSettingsView(name) {
 $('settings-cog').addEventListener('click', () => {
   showSettingsView('settings');
   $('page-settings').showModal();
+  loadDisplayInfo();
 });
 $('open-maintenance').addEventListener('click', () => {
   showSettingsView('maintenance');
@@ -548,6 +549,9 @@ function refresh(data) {
   renderPrompts();
   $('graphicsPreset').value = config.settings.graphicsPreset || 'custom';
   renderPreset();
+  $('hdr-panel').hidden = data.platform.id !== 'windows';
+  for (const key of ['hdr', 'hdrCalibration']) $(key).checked = config.settings[key];
+  for (const key of ['hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights']) $(key).value = String(config.settings[key]);
   $('softTrigger').value = String(config.settings.softTrigger ?? 40);
   renderSoftTrigger();
   $('softTrigger').disabled = Boolean(data.active);
@@ -560,6 +564,7 @@ function refresh(data) {
   for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset'])
     $(key).disabled = Boolean(data.active);
   renderDependents(Boolean(data.active));
+  renderHdr(Boolean(data.active));
   changing = false;
 }
 
@@ -713,6 +718,35 @@ $('graphicsPreset').addEventListener('change', () => {
   saveSettings();
 });
 
+// --- HDR (Windows): the panel shows what the game reads from Windows (`--display-info`) for the display.
+let displayReport = null;
+function renderHdr(busy = Boolean(current?.active)) {
+  const on = $('hdr').checked, calibrated = $('hdrCalibration').checked;
+  const display = displayReport?.displays?.find(item => item.hdr) || displayReport?.displays?.[0];
+  for (const key of ['hdrContrast', 'hdrSaturation', 'hdrHighlights']) $(key).disabled = busy || !on;
+  for (const key of ['hdrPaperWhite', 'hdrPeak']) $(key).disabled = busy || !on || calibrated;
+  $('hdrCalibration').disabled = busy || !on;
+  const nits = (key, fromWindows) => calibrated && fromWindows ? `Windows: ${Math.round(fromWindows)} nits` : `${$(key).value} nits`;
+  $('hdrPaperWhite-value').textContent = nits('hdrPaperWhite', display?.sdrWhiteNits);
+  $('hdrPeak-value').textContent = nits('hdrPeak', display?.peakNits);
+  for (const key of ['hdrContrast', 'hdrSaturation', 'hdrHighlights']) $(`${key}-value`).textContent = `${$(key).value}%`;
+  if (!displayReport) return;
+  if (!display) { $('hdr-display').textContent = displayReport.error || 'No display found.'; return; }
+  const parts = [`${display.monitor || display.device}: Windows HDR ${display.hdr ? 'on' : 'off'}`];
+  if (display.peakNits) parts.push(`peak ${Math.round(display.peakNits)} nits`);
+  if (display.sdrWhiteNits) parts.push(`SDR content brightness ${Math.round(display.sdrWhiteNits)} nits`);
+  $('hdr-display').textContent = `${parts.join(', ')}. ${display.calibrationProfile
+    ? `Calibration profile: ${display.calibrationProfile}.` : 'No HDR calibration profile yet: the calibration app makes one.'}`;
+}
+async function loadDisplayInfo() {
+  if (displayReport || $('hdr-panel').hidden || !window.sms.displayInfo) return;
+  displayReport = await window.sms.displayInfo().catch(error => ({ displays: [], error: error.message }));
+  renderHdr();
+}
+$('hdr-calibration-app').addEventListener('click', () => window.sms.openHdrCalibration().catch(error => setMessage(error.message)));
+for (const key of ['hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'hdr', 'hdrCalibration'])
+  $(key).addEventListener('input', () => renderHdr());
+
 function renderVolume() { $('volume-value').textContent = `${$('volume').value}%`; }
 
 function renderRanges() {
@@ -753,7 +787,10 @@ function settingsValue() {
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
     keyBindings, padBindings, softTrigger: Number($('softTrigger').value), buttonPrompts: $('buttonPrompts').value,
-    promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value
+    promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value,
+    hdr: $('hdr').checked, hdrCalibration: $('hdrCalibration').checked, hdrPaperWhite: Number($('hdrPaperWhite').value),
+    hdrPeak: Number($('hdrPeak').value), hdrContrast: Number($('hdrContrast').value),
+    hdrSaturation: Number($('hdrSaturation').value), hdrHighlights: Number($('hdrHighlights').value)
   };
 }
 
@@ -865,7 +902,7 @@ $('restore-saves').addEventListener('click', async () => {
   try { await window.sms.restoreSaves($('backup-list').value); await sync(); }
   catch (error) { showError(error); await sync(); }
 });
-for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad'])
+for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights'])
   $(key).addEventListener('change', saveSettings);
 $('volume').addEventListener('input', renderVolume);
 for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) $(key).addEventListener('input', renderRanges);
