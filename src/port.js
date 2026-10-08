@@ -87,6 +87,16 @@ function normalizeSettings(input = {}, platform = process.platform) {
     // Which buttons the game's text shows (src/prompts.js): the GameCube's own, or another controller's or the keys.
     buttonPrompts: prompts.normalizeStyle(input.buttonPrompts),
     promptPad: prompts.normalizePad(input.promptPad),
+    // HDR output (Windows): off unless chosen. With hdrCalibration the game takes peak brightness from the
+    // Windows HDR Calibration profile and paper white from Windows' SDR content brightness; otherwise these
+    // nits. Contrast and saturation are percent (100 unchanged); highlights is how far whites reach toward the peak.
+    hdr: Boolean(input.hdr),
+    hdrCalibration: input.hdrCalibration !== false,
+    hdrPaperWhite: numberSetting(input.hdrPaperWhite, 200, 80, 500),
+    hdrPeak: numberSetting(input.hdrPeak, 1000, 400, 4000),
+    hdrContrast: numberSetting(input.hdrContrast, 100, 50, 150),
+    hdrSaturation: numberSetting(input.hdrSaturation, 100, 0, 200),
+    hdrHighlights: numberSetting(input.hdrHighlights, 40, 0, 100),
     overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
@@ -215,6 +225,14 @@ function buildEnvironment(settings, disc, root) {
     SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',
     SMS_BUTTON_PROMPTS: prompts.normalizeStyle(settings.buttonPrompts),
     SMS_BUTTON_PROMPT_PAD: prompts.normalizePad(settings.promptPad),
+    SMS_HDR: settings.hdr ? '1' : '0',
+    ...(settings.hdr ? {
+      SMS_HDR_PAPER_WHITE: settings.hdrCalibration === false ? String(settings.hdrPaperWhite ?? 200) : 'auto',
+      SMS_HDR_PEAK: settings.hdrCalibration === false ? String(settings.hdrPeak ?? 1000) : 'auto',
+      SMS_HDR_CONTRAST: String(settings.hdrContrast ?? 100),
+      SMS_HDR_SATURATION: String(settings.hdrSaturation ?? 100),
+      SMS_HDR_HIGHLIGHTS: String(settings.hdrHighlights ?? 40)
+    } : {}),
     SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',

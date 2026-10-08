@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('sms', {
   copyMacCommand: index => ipcRenderer.invoke('copy-mac-command', index),
   saveSettings: value => ipcRenderer.invoke('save-settings', value),
   savePrompts: images => ipcRenderer.invoke('save-prompts', images),
+  displayInfo: () => ipcRenderer.invoke('display-info'),
+  openHdrCalibration: () => ipcRenderer.invoke('open-hdr-calibration'),
   chooseRom: () => ipcRenderer.invoke('choose-rom'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),
   chooseLocation: () => ipcRenderer.invoke('choose-location'),

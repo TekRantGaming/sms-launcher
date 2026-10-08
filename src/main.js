@@ -3,7 +3,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, net } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
 const port = require('./port');
 const saves = require('./saves');
 const gciSave = require('./gci-save');
@@ -19,6 +19,8 @@ const { observeProcess, exitDescription, failureMessage } = require('./process-o
 const { createSessionLog } = require('./session-log');
 
 const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
+// Microsoft's free Windows HDR Calibration app (Microsoft Store product 9N7F2SM5D1LR).
+const HDR_CALIBRATION_APP = 'https://apps.microsoft.com/detail/9n7f2sm5d1lr';
 
 let window;
 let config;
@@ -436,12 +438,30 @@ async function setupGame() {
 
 const PLAYER_SETTINGS = [
   'volume', 'invertCameraX', 'invertCameraY', 'keyBindings', 'padBindings', 'softTrigger', 'freeCamera', 'cameraSpeed', 'mouseCamera',
-  'mouseSensitivity', 'skipMovies', 'heatHaze', 'buttonPrompts', 'promptPad', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
+  'mouseSensitivity', 'skipMovies', 'heatHaze', 'buttonPrompts', 'promptPad', 'hdr', 'hdrCalibration', 'hdrPaperWhite', 'hdrPeak', 'hdrContrast', 'hdrSaturation', 'hdrHighlights', 'overlay', 'fullscreenMode', 'exclusiveResolution', 'display', 'vsync',
   'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter'
 ];
 function promptDirectory() { return path.join(app.getPath('userData'), 'prompts'); }
 
 function playerSettings(settings) { return Object.fromEntries(PLAYER_SETTINGS.map(key => [key, settings[key]])); }
+
+// What Windows reports about each display's HDR: the game's --display-info (its peak brightness as calibrated,
+// SDR content brightness and HDR calibration profile), for Settings → HDR.
+async function displayInfo() {
+  if (process.platform !== 'win32') return { displays: [], error: 'HDR settings are for Windows.' };
+  const root = config.repo, settings = config.settings;
+  if (!root || !binaryReady(root, settings)) return { displays: [], error: 'Set up the game first to read your display.' };
+  const recordedTools = game.installed(root, settings)?.toolRoot || game.compilerToolRoot(root, settings);
+  const base = { ...process.env, SMS_ARCH: settings.arch };
+  const env = recordedTools ? buildTools.environmentAtRoot(recordedTools, base) : toolEnv(base);
+  const cmd = port.commandFor(root, 'run', ['--display-info'], process.platform, env);
+  const stdout = await new Promise(resolve => execFile(cmd.command, cmd.args,
+    { cwd: cmd.cwd, env: cmd.env, timeout: 15000, windowsHide: true }, (_error, out) => resolve(String(out || ''))));
+  const line = stdout.split(/\r?\n/).find(text => text.startsWith('{"displays"'));
+  if (!line) return { displays: [], error: 'This game version cannot read your display yet. Update the game to see it.' };
+  try { return { displays: JSON.parse(line).displays || [] }; }
+  catch (_) { return { displays: [], error: 'The game reported your display in a way the launcher did not understand.' }; }
+}
 
 async function play(installation = null) {
   const root = installation?.repo || requireRepo();
@@ -788,6 +808,8 @@ function registerHandlers() {
   ipcMain.handle('open-docs', () => shell.openPath(path.join(requireRepo(), 'BUILD.md')));
   // Only this fixed invite opens: the page never chooses a URL.
   ipcMain.handle('open-discord', () => shell.openExternal(DISCORD_INVITE));
+  ipcMain.handle('open-hdr-calibration', () => shell.openExternal(HDR_CALIBRATION_APP));
+  ipcMain.handle('display-info', () => displayInfo());
 }
 
 function createWindow() {
