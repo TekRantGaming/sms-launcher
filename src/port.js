@@ -252,6 +252,8 @@ function playableInstall(saved, platform = process.platform) {
 }
 
 function commandFor(root, action, args = [], platform = process.platform, environment = process.env) {
+  if (platform === 'win32' && action === 'run')
+    return gameRunCommand(root, { arch: environment.SMS_ARCH || '64' }, args[0], platform, environment);
   const textureProgress = __dirname.includes('app.asar')
     ? path.join(process.resourcesPath, 'scripts', 'texture-progress.py')
     : path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
@@ -301,7 +303,9 @@ function eclipseBuildCommand(root, settings, platform = process.platform, enviro
   };
 }
 
-function eclipseRunCommand(root, settings, disc, platform = process.platform, environment = process.env) {
+// Spawn the Windows executable directly: MSYS bash translates many native
+// exception statuses to 127, which hides the cause of a game crash.
+function gameRunCommand(root, settings, disc, platform = process.platform, environment = process.env) {
   const binary = binaryPath(root, settings, platform);
   if (platform === 'linux' && settings.arch === '32' && environment.SMS_LINUX32_ROOT)
     return { command: path.join(environment.SMS_LINUX32_ROOT, 'i686-buildroot-linux-gnu', 'sysroot', 'lib', 'ld-linux.so.2'),
@@ -309,17 +313,17 @@ function eclipseRunCommand(root, settings, disc, platform = process.platform, en
       env: { ...environment, SMS_GAME_EXECUTABLE: binary } };
   if (platform !== 'win32') return { command: binary, args: [disc], cwd: root, env: environment };
   const msys = environment.MSYS2_ROOT || 'C:\\msys64';
-  const bash = path.join(msys, 'usr', 'bin', 'bash.exe');
-  if (!fs.existsSync(bash)) throw new Error(`The Windows build tools are missing. Install it at ${msys} or set MSYS2_ROOT.`);
+  const runtime = settings.arch === '32' ? 'mingw32' : 'mingw64';
+  const bins = settings.arch === '32' && environment.SMS_WINDOWS_32_CROSS
+    ? [path.join(msys, 'opt', 'i686-w64-mingw32', 'bin'), path.join(msys, runtime, 'bin')]
+    : [path.join(msys, runtime, 'bin')];
   return {
-    command: bash,
-    args: ['-c', 'cd "$(cygpath -u "$1")" && exec "$(cygpath -u "$2")" "$(cygpath -u "$3")"', 'sms-launcher', root, binary, disc],
-    cwd: root,
-    env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
-      PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
-        path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
+    command: binary, args: [disc], cwd: root,
+    env: { ...environment, PATH: [...bins, environment.PATH || environment.Path || ''].join(';') }
   };
 }
+
+function eclipseRunCommand(...args) { return gameRunCommand(...args); }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings,
   texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,

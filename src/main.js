@@ -12,7 +12,10 @@ const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const bindings = require('./bindings');
 const gameSource = require('./game-source');
-const { cleanOutputLine, crashReason, createActivityReader, createLineReader, failureReason } = require('./progress');
+const { cleanOutputLine, createActivityReader } = require('./progress');
+const { createActivityLog } = require('./activity-log');
+const { observeProcess, exitDescription, failureMessage } = require('./process-output');
+const { createSessionLog } = require('./session-log');
 
 const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
 
@@ -23,7 +26,10 @@ let preparingTools = false;
 let operation = null;
 let appUpdate = { state: 'idle', message: '' };
 let updater = null;
-const logLines = [];
+const activityLog = createActivityLog();
+const partialOutput = new Map();
+const sessionLog = createSessionLog(() => app.getPath('userData'), error =>
+  logOutput(`Could not save the session log: ${error.message}`, 'launcher'));
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 app.on('second-instance', () => {
@@ -47,12 +53,41 @@ function log(message) {
   const lines = String(message).replace(/\r/g, '').split('\n');
   for (const line of lines) {
     if (!line) continue;
-    const value = cleanOutputLine(line);
-    logLines.push(value);
-    if (logLines.length > 700) logLines.shift();
-    broadcast('log', value);
+    logOutput(cleanOutputLine(line), 'launcher');
+    sessionLog.write(cleanOutputLine(line), 'launcher');
   }
 }
+
+function logOutput(text, stream, previous) {
+  const entry = activityLog.write(text, stream, previous);
+  if (stream !== 'launcher') partialOutput.set(entry.id, entry);
+  broadcast('log', entry);
+  return entry;
+}
+
+function completeOutput(text, stream, entry) {
+  sessionLog.write(text, stream);
+  if (entry) partialOutput.delete(entry.id);
+}
+
+function flushPartialOutput() {
+  for (const entry of partialOutput.values()) sessionLog.write(entry.text, entry.stream);
+  partialOutput.clear();
+}
+
+// Monitoring preserves Node's normal fatal-error behavior while retaining the
+// diagnostic on disk, even when the launcher cannot keep its window alive.
+process.on('uncaughtExceptionMonitor', error => {
+  log(`Uncaught launcher error: ${error.stack || error.message}`);
+  flushPartialOutput();
+});
+process.on('warning', warning => log(`Launcher warning: ${warning.stack || warning.message}`));
+app.on('render-process-gone', (_event, _contents, details) => {
+  log(`Launcher renderer ${details.reason}: ${exitDescription('Renderer', details.exitCode, null)}`);
+});
+app.on('child-process-gone', (_event, details) => {
+  log(`Launcher ${details.type} process ${details.reason}: ${exitDescription(details.name || details.type, details.exitCode, null)}`);
+});
 
 // A game source chosen under Settings, with the commits it resolved to.
 function savedGameSource(saved) {
@@ -133,11 +168,24 @@ function loadConfig() {
   config.completedSetup ||= fs.existsSync(port.binaryPath(config.repo, config.settings));
 }
 
-async function exclusive(label, callback) {
+async function exclusive(label, callback, newLog = false) {
   if (operation || active || preparingTools) throw new Error('Wait for the current task to finish, or stop it first.');
+  if (newLog) {
+    activityLog.reset();
+    partialOutput.clear();
+    broadcast('log-reset', activityLog.resetSequence());
+    sessionLog.reset();
+  }
   operation = { label, detail: 'Starting…', percent: null, startedAt: Date.now() };
   broadcast('activity', operation);
   try { return await callback(); }
+  catch (error) {
+    if (!error.activityLogged) {
+      log(`✕ ${label}: ${error.message}`);
+      error.activityLogged = true;
+    }
+    throw error;
+  }
   finally { operation = null; broadcast('activity', null); }
 }
 
@@ -157,65 +205,56 @@ function makeSaveBackup(reason) {
   return result;
 }
 
-function launch(command, args, options = {}, label = 'Task') {
+async function launch(command, args, options = {}, label = 'Task', isGame = false) {
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
-  return new Promise((resolve, reject) => {
+  try {
     log(`▶ ${label}`);
     const child = spawn(command, args, { ...options, detached: process.platform !== 'win32',
+      env: { ...(options.env || process.env), PYTHONUNBUFFERED: '1' },
       windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
       percent: null, startedAt: Date.now() };
     broadcast('activity', activityState());
     const recent = [], readActivity = createActivityReader();
-    function line(value) {
+    function line(value, stream, entry) {
+      completeOutput(value, stream, entry);
       if (!value) return;
-      log(value);
       if (recent.push(value) > 80) recent.shift();
-      const progress = readActivity(value);
+      const progress = isGame ? null : readActivity(value);
       if (progress && active && active.child === child) {
         Object.assign(active, progress);
         broadcast('activity', activityState());
       }
     }
-    const stdout = createLineReader(line), stderr = createLineReader(line);
-    child.stdout.on('data', bytes => stdout.write(bytes));
-    child.stderr.on('data', bytes => stderr.write(bytes));
-    let settled = false;
-    function done(error, code, signal) {
-      if (settled) return;
-      settled = true;
-      active = null;
-      broadcast('activity', activityState());
-      if (error || code !== 0) {
-        const crash = error ? null : crashReason(code, signal);
-        const reason = error || crash ? '' : failureReason(recent);
-        const message = error ? error.message : crash ? `${label} ${crash}. See the activity log.`
-          : `${label} exited with code ${code}${reason ? `: ${reason}` : ''}. See the activity log.`;
-        log(`✕ ${message}`);
-        reject(new Error(message));
-      } else {
-        log(`✓ ${label} finished`);
-        resolve({ ok: true });
-      }
+    const { error, code, signal } = await observeProcess(child, { output: logOutput, line });
+    active = null;
+    broadcast('activity', activityState());
+    if (error) throw error;
+    if (code !== 0 || signal) {
+      throw new Error(failureMessage(label, { code, signal }, recent, { game: isGame }));
     }
-    child.on('error', error => done(error));
-    child.on('close', (code, signal) => {
-      stdout.end();
-      stderr.end();
-      done(null, code, signal);
-    });
-  });
+    log(`✓ ${label} finished`);
+    return { ok: true };
+  } catch (error) {
+    log(`✕ ${error.message}`);
+    error.activityLogged = true;
+    throw error;
+  }
 }
 
 async function capture(command, args, cwd, env = process.env) {
-  return new Promise((resolve, reject) => {
+  try {
+    log(`▶ ${command} ${args.join(' ')}`);
     const child = spawn(command, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '', stderr = '';
-    child.stdout.on('data', chunk => { stdout += chunk; });
-    child.stderr.on('data', chunk => { stderr += chunk; });
-    child.on('error', reject);
-    child.on('close', code => code === 0 ? resolve(stdout.trim()) : reject(new Error(stderr.trim() || `${command} exited with code ${code}`)));
-  });
+    const { error, code, signal, stdout, stderr } = await observeProcess(child, { output: logOutput, line: completeOutput, capture: true });
+    if (error) throw error;
+    if (code !== 0 || signal) throw new Error(`${exitDescription(command, code, signal)}${stderr.trim() ? `: ${stderr.trim()}` : ''}`);
+    return stdout.trim();
+  } catch (error) {
+    log(`✕ ${error.message}`);
+    error.activityLogged = true;
+    throw error;
+  }
 }
 
 function toolEnv(base = process.env) {
@@ -258,6 +297,7 @@ async function ensureBuildTools() {
       forcePrivate,
       progress(percent, detail) {
         if (!active || active.child) return;
+        if (detail && detail !== active.detail) log(detail);
         active.detail = detail || (percent === null ? 'Downloading tools…' : `Downloading tools: ${percent}%`);
         active.percent = percent;
         broadcast('activity', { label: active.label, detail: active.detail, percent, startedAt });
@@ -421,7 +461,7 @@ async function play(installation = null) {
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
   try {
-    return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine');
+    return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine', true);
   } finally {
     try { makeSaveBackup('after-play'); }
     catch (error) { log(`Save backup failed: ${error.message}`); }
@@ -484,7 +524,7 @@ function state() {
       installedToolVersion: installedBuild?.toolVersion || null,
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
-    active: activityState(), appUpdate, logs: logLines,
+    active: activityState(), appUpdate, logs: activityLog.snapshot(), logResetSequence: activityLog.resetSequence(),
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -511,6 +551,7 @@ async function checkAppUpdate() {
       ? `${updateChannel.channelLabel(config.settings.updateChannel)} is no longer available. Choose another update channel in Settings.`
       : `Launcher update check failed: ${error.message}` };
     broadcast('app-update', appUpdate);
+    log(appUpdate.message);
   }
   return appUpdate;
 }
@@ -541,7 +582,10 @@ function setupAppUpdater() {
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   applyUpdateChannel();
-  const set = (state, message) => { appUpdate = { state, message }; broadcast('app-update', appUpdate); };
+  const set = (state, message) => {
+    appUpdate = { state, message }; broadcast('app-update', appUpdate);
+    if (state !== 'downloading' || !message.startsWith('Downloading launcher update:')) log(message);
+  };
   updater.on('checking-for-update', () => set('checking', 'Checking launcher updates…'));
   updater.on('update-available', info => set('downloading', `Downloading launcher ${info.version}…`));
   updater.on('update-not-available', () => set('current', 'Launcher is up to date.'));
@@ -562,6 +606,18 @@ function setupAppUpdater() {
 }
 
 function registerHandlers() {
+  ipcMain.handle('copy-activity-log', () => {
+    clipboard.writeText(sessionLog.read([...partialOutput.values()].sort((a, b) => a.id - b.id)));
+    return { copied: true };
+  });
+  ipcMain.handle('save-activity-log', async () => {
+    const chosen = await dialog.showSaveDialog(window, { title: 'Save activity log',
+      defaultPath: path.join(app.getPath('downloads'), 'SMS-activity.log'),
+      filters: [{ name: 'Activity log', extensions: ['log'] }] });
+    if (chosen.canceled || !chosen.filePath) return { cancelled: true };
+    sessionLog.save(chosen.filePath, [...partialOutput.values()].sort((a, b) => a.id - b.id));
+    return { saved: true };
+  });
   const senderWindow = event => BrowserWindow.fromWebContents(event.sender);
   ipcMain.handle('window-state', event => {
     const target = senderWindow(event);
@@ -652,7 +708,7 @@ function registerHandlers() {
       return play(config.previousInstall);
     }] };
   for (const [channel, [label, callback]] of Object.entries(actions))
-    ipcMain.handle(channel, () => exclusive(label, callback));
+    ipcMain.handle(channel, () => exclusive(label, callback, ['play', 'launch-game', 'play-previous'].includes(channel)));
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));
@@ -728,6 +784,10 @@ function createWindow() {
   window.on('leave-full-screen', sendWindowState);
   window.loadFile(path.join(__dirname, 'index.html'));
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on('console-message', details => {
+    if (details.level === 'error' || details.level === 'warning')
+      log(`Renderer ${details.level}: ${details.message} (${details.sourceId}:${details.lineNumber})`);
+  });
 }
 
 if (ownsInstance) app.whenReady().then(() => {
@@ -743,6 +803,7 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
 app.on('before-quit', () => {
+  flushPartialOutput();
   // Stop an in-flight compiler before another launcher process can recover it.
   if (!active?.child || active.label === 'Play Super Mario Sunshine') return;
   if (process.platform === 'win32') spawn('taskkill', ['/PID', String(active.child.pid), '/T', '/F'], { windowsHide: true });

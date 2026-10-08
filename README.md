@@ -131,6 +131,10 @@ Eclipse needs a full, unmodified North American ISO; compressed CISO files won't
 
 ## Need help?
 
+The **Activity log** panel is always available along the bottom of the launcher. It opens when a task starts or reports a failure; click its heading to collapse it or use the expand button for more reading space. Launcher messages, stdout and stderr have separate labels and colors. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Scroll up to pause following output, and click **Follow output** to catch up again. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
+
+Game failures report the actual exit code or signal, without treating resource warnings or stage context as the crash cause. Windows games start directly so their native exception status is preserved. Setup failures can still quote a compiler or installer diagnostic.
+
 - **Setup or a download failed:** open **View activity** on the error message to see what happened, then try setup again. A failed HD download leaves **Finish HD setup** available to retry.
 - **A game update failed:** use **Play installed version** in Manage game. After a successful update, **Play previous version** is also available there.
 - **Mac says the launcher is on a read-only volume:** quit the launcher, move SMS Launcher.app into Applications, eject the DMG, and reopen it from Applications.
