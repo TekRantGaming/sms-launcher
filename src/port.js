@@ -80,6 +80,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     vsync: choiceSetting(input.vsync, ['off', 'on', 'adaptive'], 'off'),
     // Straight to the title screen, and the game's frame-time overlay at start.
     skipMovies: Boolean(input.skipMovies),
+    // The heat-wave shimmer in sunny areas; on unless turned off.
+    heatHaze: input.heatHaze !== false,
     overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
@@ -202,6 +204,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
     SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
     SMS_SOFT_TRIGGER: String(settings.softTrigger ?? 40),
+    SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',
     SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',
