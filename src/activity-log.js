@@ -4,9 +4,10 @@
 // same history, including updates to a line that has not ended yet.
 (function (root) {
   function createActivityLog(limit = 700) {
-    let nextId = 0, sequence = 0;
+    let nextId = 0, sequence = 0, resetSequence = -1;
     const entries = new Map();
     function merge(entry) {
+      if (entry.sequence <= resetSequence) return;
       const previous = entries.get(entry.id);
       if (!previous || entry.sequence > previous.sequence) entries.set(entry.id, entry);
       nextId = Math.max(nextId, entry.id);
@@ -21,6 +22,13 @@
         return entry;
       },
       merge,
+      reset(beforeSequence = sequence + 1) {
+        if (beforeSequence <= resetSequence) return;
+        for (const [id, entry] of entries) if (entry.sequence <= beforeSequence) entries.delete(id);
+        sequence = Math.max(sequence, beforeSequence);
+        resetSequence = beforeSequence;
+      },
+      resetSequence() { return resetSequence; },
       snapshot() { return [...entries.values()].sort((a, b) => a.id - b.id); }
     };
   }

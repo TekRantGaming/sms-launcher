@@ -29,3 +29,18 @@ test('backend and renderer retain the same complete entries when history is boun
   assert.deepEqual(renderer.snapshot(), backend.snapshot());
   assert.deepEqual(renderer.snapshot().map(entry => entry.text), ['2', '3', '4']);
 });
+
+test('reset rejects old snapshots without discarding newer live output or reusing IDs', () => {
+  const backend = createActivityLog(), renderer = createActivityLog();
+  const old = backend.write('old run');
+  renderer.merge(old);
+  backend.reset();
+  const checkpoint = backend.resetSequence();
+  const fresh = backend.write('new run');
+  renderer.merge(fresh);
+  renderer.reset(checkpoint);
+  renderer.merge(old);
+  renderer.reset(checkpoint);
+  assert.deepEqual(renderer.snapshot(), [fresh]);
+  assert.ok(fresh.id > old.id);
+});

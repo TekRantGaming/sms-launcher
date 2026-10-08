@@ -17,10 +17,20 @@ function createSessionLog(directory, onError) {
     return file;
   }
   return {
+    reset() {
+      failed = false;
+      try { fs.writeFileSync(ensureFile(), ''); }
+      catch (error) { failed = true; onError(error); }
+    },
     write(text, stream) {
       if (failed) return;
       try { fs.appendFileSync(ensureFile(), `${formatEntry({ text, stream })}\n`); }
       catch (error) { failed = true; onError(error); }
+    },
+    read(partial = []) {
+      if (failed) throw new Error('The session log could not be copied. See the activity log.');
+      return fs.readFileSync(ensureFile(), 'utf8') +
+        (partial.length ? partial.map(formatEntry).join('\n') + '\n' : '');
     },
     save(destination, partial = []) {
       if (failed) throw new Error('The session log could not be saved. See the activity log.');

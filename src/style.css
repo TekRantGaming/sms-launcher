@@ -255,7 +255,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .activity-log-entry { margin-top: 14px; }
 .activity-modal .modal-body { padding: 16px 24px; }
 .activity-modal pre { height: min(380px, calc(100vh - 220px)); background: #102d40; color: #e1eef3; font-size: 11px; }
-.activity-log-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
+.activity-log-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
+#copy-log-result:not(:empty) { margin-top: 8px; }
 .launcher-modal .panel { background: #fff; border-color: #dfe9e8; }
 .launcher-modal .quick-panel { margin-bottom: 14px; padding: 16px 18px 12px; }
 .launcher-modal .quick-head { margin-bottom: 11px; }

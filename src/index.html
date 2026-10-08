@@ -114,7 +114,7 @@
 
     <dialog id="activity-log" class="launcher-modal activity-modal" aria-label="Activity log">
       <div class="modal-head"><div><h1>Activity log</h1><p id="activity-label">Nothing running</p></div><button class="modal-close" data-close-modal aria-label="Close activity log">×</button></div>
-      <div class="modal-body"><pre id="log" tabindex="0" aria-label="Activity output">Ready.</pre><div class="activity-log-actions"><span class="helper">Latest 700 entries. Save log includes the full session.</span><button class="subtle" id="save-activity-log">Save log</button><button class="subtle danger" id="stop" hidden>Stop task</button></div></div>
+      <div class="modal-body"><pre id="log" tabindex="0" aria-label="Activity output">Ready.</pre><div class="activity-log-actions"><span class="helper">Latest 700 entries. Copy and Save include the full session.</span><button class="subtle" id="copy-activity-log">Copy log</button><button class="subtle" id="save-activity-log">Save log</button><button class="subtle danger" id="stop" hidden>Stop task</button></div><p id="copy-log-result" class="helper" role="status" aria-live="polite"></p></div>
     </dialog>
 
     <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">

@@ -184,6 +184,19 @@ function showActivityLog() {
 for (const id of ['view-build-log', 'view-activity-log', 'message-view-log'])
   $(id).addEventListener('click', showActivityLog);
 $('save-activity-log').addEventListener('click', () => window.sms.saveActivityLog().catch(showError));
+$('copy-activity-log').addEventListener('click', async () => {
+  const button = $('copy-activity-log'), result = $('copy-log-result');
+  button.disabled = true;
+  result.textContent = '';
+  try {
+    await window.sms.copyActivityLog();
+    result.textContent = 'Full session copied.';
+  } catch (error) {
+    result.textContent = `Could not copy log: ${error.message || String(error)}`;
+  } finally {
+    button.disabled = false;
+  }
+});
 
 function setMessage(text, error = false) {
   const box = $('message');
@@ -323,6 +336,7 @@ function renderActivity(active) {
 }
 
 function refresh(data) {
+  if (Number.isFinite(data.logResetSequence)) resetLog(data.logResetSequence);
   current = data;
   const { config, platform } = data;
   $('platform').textContent = platform.name;
@@ -627,15 +641,28 @@ async function saveSettings() {
 
 function appendLog(entry) {
   activityLog.merge(entry);
+  scheduleLogRender();
+}
+
+function scheduleLogRender() {
   if (logRenderPending) return;
   logRenderPending = true;
   requestAnimationFrame(() => {
     logRenderPending = false;
     const log = $('log');
     const following = log.scrollHeight - log.scrollTop - log.clientHeight < 24;
-    log.textContent = activityLog.snapshot().map(window.smsActivityLog.formatEntry).join('\n') + '\n';
+    const entries = activityLog.snapshot();
+    log.textContent = entries.length ? entries.map(window.smsActivityLog.formatEntry).join('\n') + '\n' : '';
     if (following) log.scrollTop = log.scrollHeight;
   });
+}
+
+function resetLog(sequence) {
+  if (sequence <= activityLog.resetSequence()) return;
+  activityLog.reset(sequence);
+  $('log').textContent = '';
+  $('copy-log-result').textContent = '';
+  scheduleLogRender();
 }
 
 for (const [id, method] of Object.entries({
@@ -704,6 +731,7 @@ for (const key of ['cameraSpeed', 'mouseSensitivity', 'sharpen', 'brightness']) 
 for (const key of ['fullscreen', 'fullscreenMode', 'mouseCamera']) $(key).addEventListener('input', () => renderDependents());
 $('open-maintenance').addEventListener('click', loadUpdateChannels);
 window.sms.onLog(appendLog);
+window.sms.onLogReset(resetLog);
 window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
   if (current) current.active = value;

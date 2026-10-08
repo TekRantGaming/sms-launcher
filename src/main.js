@@ -168,8 +168,14 @@ function loadConfig() {
   config.completedSetup ||= fs.existsSync(port.binaryPath(config.repo, config.settings));
 }
 
-async function exclusive(label, callback) {
+async function exclusive(label, callback, newLog = false) {
   if (operation || active || preparingTools) throw new Error('Wait for the current task to finish, or stop it first.');
+  if (newLog) {
+    activityLog.reset();
+    partialOutput.clear();
+    broadcast('log-reset', activityLog.resetSequence());
+    sessionLog.reset();
+  }
   operation = { label, detail: 'Starting…', percent: null, startedAt: Date.now() };
   broadcast('activity', operation);
   try { return await callback(); }
@@ -518,7 +524,7 @@ function state() {
       installedToolVersion: installedBuild?.toolVersion || null,
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
-    active: activityState(), appUpdate, logs: activityLog.snapshot(),
+    active: activityState(), appUpdate, logs: activityLog.snapshot(), logResetSequence: activityLog.resetSequence(),
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -600,6 +606,10 @@ function setupAppUpdater() {
 }
 
 function registerHandlers() {
+  ipcMain.handle('copy-activity-log', () => {
+    clipboard.writeText(sessionLog.read([...partialOutput.values()].sort((a, b) => a.id - b.id)));
+    return { copied: true };
+  });
   ipcMain.handle('save-activity-log', async () => {
     const chosen = await dialog.showSaveDialog(window, { title: 'Save activity log',
       defaultPath: path.join(app.getPath('downloads'), 'SMS-activity.log'),
@@ -698,7 +708,7 @@ function registerHandlers() {
       return play(config.previousInstall);
     }] };
   for (const [channel, [label, callback]] of Object.entries(actions))
-    ipcMain.handle(channel, () => exclusive(label, callback));
+    ipcMain.handle(channel, () => exclusive(label, callback, ['play', 'launch-game', 'play-previous'].includes(channel)));
   ipcMain.handle('set-game-source', (_event, input) => exclusive('Choose game source', () => chooseGameSource(input)));
   ipcMain.handle('clean-preview', () => exclusive('Preview cleanup', () => clean(true)));
   ipcMain.handle('backup-saves', () => exclusive('Back up saves', () => makeSaveBackup('manual')));

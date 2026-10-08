@@ -131,7 +131,7 @@ Eclipse needs a full, unmodified North American ISO; compressed CISO files won't
 
 ## Need help?
 
-**View activity log** shows launcher messages, stdout and stderr with separate labels, including live game output. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Use **Save log** to share the full session, including output older than the latest 700 visible entries. Session logs are also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
+**View activity log** shows launcher messages, stdout and stderr with separate labels, including live game output. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.
 
 Game failures report the actual exit code or signal, without treating resource warnings or stage context as the crash cause. Windows games start directly so their native exception status is preserved. Setup failures can still quote a compiler or installer diagnostic.
 

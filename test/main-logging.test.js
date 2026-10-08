@@ -12,8 +12,10 @@ function main(t) {
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const filename = path.resolve(__dirname, '../src/main.js');
   const localRequire = createRequire(filename);
-  const appEvents = {}, processEvents = {}, consoleEvents = {};
-  const electron = { app: { requestSingleInstanceLock: () => true, on: (name, handler) => { appEvents[name] = handler; },
+  const appEvents = {}, processEvents = {}, consoleEvents = {}, handlers = {}, copied = [];
+  const electron = { ipcMain: { handle: (name, handler) => { handlers[name] = handler; } },
+    clipboard: { writeText: text => copied.push(text) },
+    app: { requestSingleInstanceLock: () => true, on: (name, handler) => { appEvents[name] = handler; },
     whenReady: () => ({ then() {} }), getPath: () => root } };
   electron.BrowserWindow = class {
     webContents = { send() {}, setWindowOpenHandler() {}, on: (name, handler) => { consoleEvents[name] = handler; } };
@@ -29,9 +31,56 @@ function main(t) {
     } }),
     setTimeout, setInterval, module: { exports: {} } };
   vm.runInNewContext(fs.readFileSync(filename, 'utf8') +
-    '\nmodule.exports = { launch, capture, createWindow, activityLog, saveLog: file => sessionLog.save(file, [...partialOutput.values()]) };', context, { filename });
-  return { ...context.module.exports, root, appEvents, processEvents, consoleEvents };
+    '\nmodule.exports = { launch, capture, exclusive, createWindow, registerHandlers, log, logOutput, activityLog, saveLog: file => sessionLog.save(file, [...partialOutput.values()]) };', context, { filename });
+  return { ...context.module.exports, root, appEvents, processEvents, consoleEvents, handlers, copied };
 }
+
+test('Copy log IPC copies the full session with live partial output, beyond the view limit', t => {
+  const runtime = main(t);
+  runtime.registerHandlers();
+  runtime.log('early diagnostic');
+  for (let i = 0; i < 1000; ++i) runtime.log(`entry ${i}`);
+  runtime.logOutput('live stderr diagnostic', 'stderr');
+  runtime.logOutput('live stdout prompt', 'stdout');
+  assert.equal(runtime.activityLog.snapshot().length, 700);
+  runtime.handlers['copy-activity-log']();
+  assert.match(runtime.copied[0], /^\[launcher\] early diagnostic\n/);
+  assert.match(runtime.copied[0], /entry 999\n\[stderr\] live stderr diagnostic\n\[stdout\] live stdout prompt\n$/);
+  const destination = path.join(runtime.root, 'saved.log');
+  runtime.saveLog(destination);
+  assert.equal(runtime.copied[0], fs.readFileSync(destination, 'utf8'));
+  runtime.handlers['copy-activity-log']();
+  assert.equal(runtime.copied[1], runtime.copied[0]);
+});
+
+test('all Play actions reset stored history and partial output before reporting setup errors', async t => {
+  const runtime = main(t);
+  runtime.registerHandlers();
+  for (const channel of ['play', 'launch-game', 'play-previous']) {
+    runtime.log('previous run');
+    runtime.logOutput('previous partial', 'stderr');
+    // No installation is configured: even this setup failure starts a fresh log.
+    await assert.rejects(runtime.handlers[channel]());
+    runtime.handlers['copy-activity-log']();
+    const copied = runtime.copied.at(-1);
+    assert.doesNotMatch(copied, /previous run|previous partial/);
+    assert.match(copied, /\[launcher\] ✕/);
+    assert.ok(runtime.activityLog.snapshot().every(entry => !['previous run', 'previous partial'].includes(entry.text)));
+  }
+});
+
+test('a rejected Play while busy preserves the active session log', async t => {
+  const runtime = main(t);
+  runtime.registerHandlers();
+  let finish;
+  const running = runtime.exclusive('Running task', () => new Promise(resolve => { finish = resolve; }));
+  runtime.log('active run diagnostic');
+  await assert.rejects(runtime.handlers.play(), /Wait for the current task/);
+  runtime.handlers['copy-activity-log']();
+  assert.match(runtime.copied[0], /active run diagnostic/);
+  finish();
+  await running;
+});
 
 test('real launcher game failures preserve status without quoting warnings and can launch again', async t => {
   const runtime = main(t);

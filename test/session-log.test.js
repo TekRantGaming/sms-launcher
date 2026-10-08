@@ -19,6 +19,7 @@ test('saved logs retain early diagnostics beyond the activity limit and include 
   assert.match(text, /^\[stderr\] \[port\] fatal signal SIGSEGV/);
   assert.match(text, /stub 999\n\[stdout\] \n\[stdout\] live prompt\n$/);
   assert.equal(text.split('\n').length, 1004);
+  assert.equal(journal.read([{ stream: 'stdout', text: 'live prompt' }]), text);
 });
 
 test('a disk logging failure is reported once without interrupting process output', t => {
@@ -31,4 +32,18 @@ test('a disk logging failure is reported once without interrupting process outpu
   journal.write('error two', 'stderr');
   assert.equal(failures.length, 1);
   assert.throws(() => journal.save(path.join(root, 'saved.log')), /could not be saved/);
+  assert.throws(() => journal.read(), /could not be copied/);
+});
+
+test('starting a fresh log replaces the previous contents without adding another file', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-session-reset-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const journal = createSessionLog(() => root, error => { throw error; });
+  journal.write('old crash', 'stderr');
+  const files = fs.readdirSync(path.join(root, 'logs'));
+  journal.reset();
+  assert.equal(journal.read(), '');
+  journal.write('new run', 'stdout');
+  assert.equal(journal.read(), '[stdout] new run\n');
+  assert.deepEqual(fs.readdirSync(path.join(root, 'logs')), files);
 });

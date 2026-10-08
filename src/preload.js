@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('sms', {
   state: () => ipcRenderer.invoke('state'),
+  copyActivityLog: () => ipcRenderer.invoke('copy-activity-log'),
   saveActivityLog: () => ipcRenderer.invoke('save-activity-log'),
   checkTools: () => ipcRenderer.invoke('check-tools'),
   copyMacCommand: index => ipcRenderer.invoke('copy-mac-command', index),
@@ -42,6 +43,7 @@ contextBridge.exposeInMainWorld('sms', {
   closeWindow: () => ipcRenderer.invoke('window-close'),
   onWindowState: callback => ipcRenderer.on('window-state', (_event, value) => callback(value)),
   onLog: callback => ipcRenderer.on('log', (_event, line) => callback(line)),
+  onLogReset: callback => ipcRenderer.on('log-reset', (_event, sequence) => callback(sequence)),
   onActivity: callback => ipcRenderer.on('activity', (_event, value) => callback(value)),
   onAppUpdate: callback => ipcRenderer.on('app-update', (_event, value) => callback(value))
 });

@@ -17,9 +17,9 @@ function state() {
   };
 }
 
-async function renderer(data = state()) {
+async function renderer(data = state(), copyError = null) {
   const calls = [], elements = new Map(), droppedFiles = [];
-  let logCallback;
+  let logCallback, resetCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
     return { hidden: false, disabled: false, textContent: '', value: '', style: {}, open: false,
@@ -39,7 +39,9 @@ async function renderer(data = state()) {
     state: async () => data, windowState: async () => ({}),
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
     onLog(callback) { logCallback = callback; }, onActivity() {}, onAppUpdate() {}, onWindowState() {},
+    onLogReset(callback) { resetCallback = callback; },
     saveActivityLog: async () => { calls.push('saveActivityLog'); },
+    copyActivityLog: async () => { calls.push('copyActivityLog'); if (copyError) throw copyError; },
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
   const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
@@ -53,6 +55,7 @@ async function renderer(data = state()) {
   await new Promise(setImmediate);
   return { elements, calls, droppedFiles,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
+    async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async refresh() { vm.runInContext('refresh(current)', context); },
     async click(id) { elements.get(id).click(); await new Promise(setImmediate); } };
 }
@@ -129,4 +132,29 @@ test('activity log renders stream labels, updates partial lines once and saves t
   assert.equal(ui.elements.get('log').textContent, '[launcher] Started\n[stderr] complete diagnostic\n');
   await ui.click('save-activity-log');
   assert.deepEqual(ui.calls, ['saveActivityLog']);
+  await ui.click('copy-activity-log');
+  assert.deepEqual(ui.calls, ['saveActivityLog', 'copyActivityLog']);
+  assert.equal(ui.elements.get('copy-log-result').textContent, 'Full session copied.');
+  assert.equal(ui.elements.get('copy-activity-log').disabled, false);
+});
+
+test('Copy log reports failures in the activity dialog and allows retry', async () => {
+  const ui = await renderer(state(), new Error('clipboard unavailable'));
+  await ui.click('copy-activity-log');
+  assert.equal(ui.elements.get('copy-log-result').textContent, 'Could not copy log: clipboard unavailable');
+  assert.equal(ui.elements.get('copy-activity-log').disabled, false);
+});
+
+test('a fresh Play clears rendered history and ignores delayed output from the previous run', async () => {
+  const data = state();
+  const old = { id: 1, sequence: 1, stream: 'stderr', text: 'old error' };
+  data.logs = [old];
+  const ui = await renderer(data);
+  await ui.click('copy-activity-log');
+  await ui.resetLog(2);
+  assert.equal(ui.elements.get('log').textContent, '');
+  assert.equal(ui.elements.get('copy-log-result').textContent, '');
+  await ui.emitLog(old);
+  await ui.emitLog({ id: 2, sequence: 3, stream: 'stdout', text: 'new run' });
+  assert.equal(ui.elements.get('log').textContent, '[stdout] new run\n');
 });
