@@ -140,6 +140,19 @@ test('saved values outside what the game accepts fall back or are clamped', () =
     ['keep', 'bilinear', 'off', 'desktop', 'desktop', 'launcher']);
 });
 
+test('FSR 1 is a scaling choice and reaches the game as SMS_PRESENT_FILTER=fsr', () => {
+  const s = port.normalizeSettings({ presentFilter: 'fsr', resolution: 1, sharpen: 30 });
+  assert.equal(s.presentFilter, 'fsr');
+  const env = port.buildEnvironment(s, '/my/disc.iso', '/port');
+  assert.deepEqual([env.SMS_PRESENT_FILTER, env.SMS_GX_SCALE, env.SMS_SHARPEN], ['fsr', '1', '30']);
+  assert.equal(env.SMS_FSR_MODE, 'quality');
+  const performance = port.buildEnvironment(port.normalizeSettings({ presentFilter: 'fsr', fsrMode: 'performance' }), '/d', '/port');
+  assert.equal(performance.SMS_FSR_MODE, 'performance');
+  assert.equal(port.normalizeSettings({ fsrMode: 'turbo' }).fsrMode, 'quality');
+  // without FSR 1 the game keeps Picture sharpness
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ fsrMode: 'performance' }), '/d', '/port').SMS_FSR_MODE, undefined);
+});
+
 test('HDR is off unless chosen; on, it follows Windows calibration or the chosen nits', () => {
   const off = port.normalizeSettings({});
   assert.deepEqual([off.hdr, off.hdrCalibration, off.hdrPaperWhite, off.hdrPeak, off.hdrContrast, off.hdrSaturation, off.hdrHighlights],
