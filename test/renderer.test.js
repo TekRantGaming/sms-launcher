@@ -77,6 +77,18 @@ test('home screen offers update or installed play and skip calls the launch-only
   assert.deepEqual(ui.calls, ['play', 'launchGame']);
 });
 
+test('Update & play shows the newly built game version once the game starts', async () => {
+  const data = state(), ui = await renderer(data);
+  assert.match(ui.elements.get('version-summary').textContent, /Game older/);
+  const startedAt = Date.now();
+  await ui.emitActivity({ label: 'Prepare game', startedAt });
+  await ui.emitActivity({ label: 'Build Sunshine port', startedAt, canStop: true });
+  data.game = { ...data.game, installedVersion: 'newer', needsUpdate: false };
+  await ui.emitActivity({ label: 'Play Super Mario Sunshine', startedAt, canStop: true });
+  assert.match(ui.elements.get('version-summary').textContent, /Game newer/);
+  assert.equal(ui.elements.get('installed-game-version').textContent, 'newer');
+});
+
 test('Dolphin save import offers a chooser and drop, reports success and refuses busy or multiple drops', async () => {
   const data = state(), ui = await renderer(data);
   await ui.click('import-dolphin-save');
