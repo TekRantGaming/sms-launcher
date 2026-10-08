@@ -803,11 +803,13 @@ window.sms.onLog(appendLog);
 window.sms.onLogReset(resetLog);
 window.sms.onActivity(value => {
   const changed = Boolean(value) !== Boolean(current?.active);
+  // Update & play builds and then starts the game in one task: reread the versions once the new game boots.
+  const gameStarted = value?.label === 'Play Super Mario Sunshine' && current?.active?.label !== value.label;
   if (current) current.active = value;
   renderActivity(value);
   // Lock the settings now: the next state (sync) can take a while to arrive.
   if (changed && current) refresh(current);
-  if (changed) sync().catch(showError);
+  if (changed || gameStarted) sync().catch(showError);
 });
 let checkingUpdates = false;
 function renderAppUpdate(value) {
