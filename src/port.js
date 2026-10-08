@@ -105,6 +105,10 @@ function normalizeSettings(input = {}, platform = process.platform) {
     autoUpdate: input.autoUpdate !== false,
     // Keys the player changed in Settings → Controls; the rest stay the game's defaults.
     keyBindings: bindings.normalize(input.keyBindings),
+    // Controller buttons the player changed in Settings → Controls.
+    padBindings: bindings.normalizePads(input.padBindings),
+    // How far the soft L / R bindings press the trigger, in percent (the game caps it below the click).
+    softTrigger: numberSetting(input.softTrigger, 40, 5, 95),
     updateChannel: normalizeChannel(input.updateChannel)
   };
 }
@@ -197,6 +201,7 @@ function buildEnvironment(settings, disc, root) {
     SMS_FULLSCREEN: settings.fullscreen ? (settings.fullscreenMode === 'exclusive' ? 'exclusive' : '1') : '0',
     SMS_VSYNC: settings.vsync === 'adaptive' ? 'adaptive' : settings.vsync === 'on' ? '1' : '0',
     SMS_SKIP_MOVIES: settings.skipMovies ? '1' : '0',
+    SMS_SOFT_TRIGGER: String(settings.softTrigger ?? 40),
     SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',

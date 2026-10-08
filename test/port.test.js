@@ -310,3 +310,18 @@ test('older installed games remain playable with HD cutscenes on until updated',
   assert.equal(port.hdVisualsInstalled(root, settings), false);
   assert.equal(port.hdVisualsInstalled(root, { ...settings, eclipse: true }), true);
 });
+
+test('soft L / R bindings start unbound and their depth reaches the game as SMS_SOFT_TRIGGER', () => {
+  assert.equal(port.normalizeSettings({}).softTrigger, 40);
+  assert.equal(port.normalizeSettings({ softTrigger: 300 }).softTrigger, 95);
+  assert.equal(port.normalizeSettings({ softTrigger: 'deep' }).softTrigger, 40);
+  assert.equal(port.buildEnvironment(port.normalizeSettings({ softTrigger: 30 }), '/my/disc.iso', '/port').SMS_SOFT_TRIGGER, '30');
+  assert.deepEqual(port.normalizeSettings({ keyBindings: { R_SOFT: ['K'] } }).keyBindings, { R_SOFT: ['K'] });
+  assert.deepEqual(port.normalizeSettings({ keyBindings: { R_SOFT: [] } }).keyBindings, {});
+});
+
+test('settings keep only changed, known controller buttons', () => {
+  assert.deepEqual(port.normalizeSettings({}).padBindings, {});
+  assert.deepEqual(port.normalizeSettings({ padBindings: { A: ['PAD_Y'], B: ['PAD_B'], JUMP: ['PAD_A'], X: ['NOPE'] } }).padBindings,
+    { A: ['PAD_Y'] });
+});

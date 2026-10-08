@@ -232,6 +232,16 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .binding-row.capturing .binding-keys { color: #17818a; font-weight: 650; }
 .binding-actions { display: flex; justify-content: flex-end; gap: 6px; }
 .binding-actions button { padding: 4px 10px; font-size: 12px; }
+.binding-modes { display: inline-flex; gap: 4px; margin: 10px 0 6px; padding: 3px; border: 1px solid #dfe9e8; border-radius: 9px; background: #f4f8f7; }
+.binding-modes button { padding: 5px 16px; border: 0; border-radius: 7px; background: transparent; font-size: 12px; }
+.binding-modes button[aria-pressed="true"] { background: #fff; color: #17343d; font-weight: 650; box-shadow: 0 1px 3px #17343d1f; }
+.binding-keys.binding-none { color: #9aa8ab; }
+.soft-trigger-field { margin-top: 12px; }
+.soft-trigger-field small { display: block; max-width: 420px; color: #72868b; font-size: 11px; }
+.controls-note { margin-top: 14px; padding: 16px 18px; border-color: #f0d9a6; background: #fffaf0; }
+.controls-note h2 { margin-bottom: 6px; font-size: 15px; }
+.controls-note p { color: #405a60; font-size: 13px; line-height: 1.45; }
+.controls-note p + p { margin-top: 6px; }
 .controls-panel .actions { margin-top: 12px; }
 .modal-body { min-height: 0; overflow: auto; padding: 18px 24px 24px; }
 .settings-entry { display: flex; align-items: center; gap: 13px; width: 100%; margin-top: 10px; padding: 10px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; color: #17343d; text-align: left; }
