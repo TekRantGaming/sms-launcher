@@ -7,7 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
 
-function main(t) {
+function main(t, { platform = process.platform, childProcess } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-main-log-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const filename = path.resolve(__dirname, '../src/main.js');
@@ -24,9 +24,11 @@ function main(t) {
     setMenuBarVisibility() {}
     loadFile() {}
   };
-  const context = { require: id => id === 'electron' ? electron : localRequire(id),
+  const context = { require: id => id === 'electron' ? electron
+      : id === 'node:child_process' && childProcess ? childProcess : localRequire(id),
     __dirname: path.dirname(filename),
     process: new Proxy(process, { get(target, key) {
+      if (key === 'platform') return platform;
       return key === 'on' ? (name, handler) => { processEvents[name] = handler; } : target[key];
     } }),
     setTimeout, setInterval, module: { exports: {} } };
@@ -126,4 +128,23 @@ test('launcher exceptions, renderer errors and Electron process crashes are kept
   for (const expected of ['launcher failed', 'launcher warning', 'renderer failed (renderer.js:42)',
     'renderer crashed: Renderer exited with code 9', 'GPU process oom: GPU exited with code 1'])
     assert.ok(saved.includes(expected), expected);
+});
+
+test('Windows starts the game detached, not hidden, so its window shows', async t => {
+  const { EventEmitter } = require('node:events');
+  const { PassThrough } = require('node:stream');
+  const spawned = [];
+  const childProcess = { spawn(command, args, options) {
+    spawned.push({ command, options });
+    const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), pid: 1 });
+    setImmediate(() => { child.stdout.end(); child.stderr.end(); child.emit('close', 0, null); });
+    return child;
+  } };
+  const runtime = main(t, { platform: 'win32', childProcess });
+  await runtime.launch('sms.exe', [], {}, 'Play Super Mario Sunshine', true);
+  await runtime.launch('bash.exe', [], {}, 'Build game');
+  assert.equal(spawned[0].options.windowsHide, false);
+  assert.equal(spawned[0].options.detached, true);
+  assert.equal(spawned[1].options.windowsHide, true);
+  assert.equal(spawned[1].options.detached, false);
 });
