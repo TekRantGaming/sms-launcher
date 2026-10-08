@@ -209,9 +209,13 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
   if (active) throw new Error(`Wait for ${active.label} to finish, or stop it first.`);
   try {
     log(`▶ ${label}`);
-    const child = spawn(command, args, { ...options, detached: process.platform !== 'win32',
+    // Windows applies windowsHide's "start hidden" to a program's first window,
+    // so the game would run with an invisible window. Detached instead, the game
+    // (a console program) gets no console window and shows its own normally.
+    const windowsGame = isGame && process.platform === 'win32';
+    const child = spawn(command, args, { ...options, detached: process.platform !== 'win32' || windowsGame,
       env: { ...(options.env || process.env), PYTHONUNBUFFERED: '1' },
-      windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      windowsHide: !windowsGame, stdio: ['ignore', 'pipe', 'pipe'] });
     active = { label, child, detail: label.includes('build tools') ? 'Downloading and preparing tools…' : 'Starting…',
       percent: null, startedAt: Date.now() };
     broadcast('activity', activityState());
