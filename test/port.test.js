@@ -153,6 +153,13 @@ test('FSR 1 is a scaling choice and reaches the game as SMS_PRESENT_FILTER=fsr',
   assert.equal(port.buildEnvironment(port.normalizeSettings({ fsrMode: 'performance' }), '/d', '/port').SMS_FSR_MODE, undefined);
 });
 
+test('NIS is a scaling choice that takes the same upscaling quality', () => {
+  const s = port.normalizeSettings({ presentFilter: 'nis', fsrMode: 'balanced' });
+  assert.equal(s.presentFilter, 'nis');
+  const env = port.buildEnvironment(s, '/d', '/port');
+  assert.deepEqual([env.SMS_PRESENT_FILTER, env.SMS_FSR_MODE], ['nis', 'balanced']);
+});
+
 test('HDR is off unless chosen; on, it follows Windows calibration or the chosen nits', () => {
   const off = port.normalizeSettings({});
   assert.deepEqual([off.hdr, off.hdrCalibration, off.hdrPaperWhite, off.hdrPeak, off.hdrContrast, off.hdrSaturation, off.hdrHighlights],

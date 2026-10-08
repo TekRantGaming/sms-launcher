@@ -772,7 +772,7 @@ function renderDependents(busy = false) {
   $('exclusiveResolution').disabled = busy || !$('fullscreen').checked || $('fullscreenMode').value !== 'exclusive';
   $('mouseSensitivity').disabled = busy || !$('mouseCamera').checked;
   // FSR 1's quality sets the internal resolution, in place of Picture sharpness
-  const fsr = $('presentFilter').value === 'fsr';
+  const fsr = ['fsr', 'nis'].includes($('presentFilter').value);
   $('fsrMode-field').hidden = !fsr;
   $('fsr-hint').hidden = !fsr;
   $('resolution').disabled = busy || fsr;
