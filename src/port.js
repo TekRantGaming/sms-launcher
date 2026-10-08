@@ -5,6 +5,7 @@ const path = require('node:path');
 const { normalizeChannel } = require('./update-channel');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
+const presets = require('./presets');
 
 const PORT_URL = 'https://github.com/chasem-dev/sms-pc-port.git';
 const ECLIPSE_ISO = path.join('mods', 'eclipse', 'Super Mario Eclipse v1.1.0.iso');
@@ -68,7 +69,7 @@ function normalizeSettings(input = {}, platform = process.platform) {
     ? Number(input.frameRate) : input.fps60 === false ? 30 : 60;
   const volume = Number.isFinite(Number(input.volume)) && input.volume !== null && input.volume !== ''
     ? Math.min(100, Math.max(0, Math.round(Number(input.volume)))) : 100;
-  return {
+  const settings = {
     arch, widescreen, resolution,
     frameRate,
     hudEdges: input.hudEdges !== false,
@@ -86,6 +87,16 @@ function normalizeSettings(input = {}, platform = process.platform) {
     // Which buttons the game's text shows (src/prompts.js): the GameCube's own, or another controller's or the keys.
     buttonPrompts: prompts.normalizeStyle(input.buttonPrompts),
     promptPad: prompts.normalizePad(input.promptPad),
+    // HDR output (Windows): off unless chosen. With hdrCalibration the game takes peak brightness from the
+    // Windows HDR Calibration profile and paper white from Windows' SDR content brightness; otherwise these
+    // nits. Contrast and saturation are percent (100 unchanged); highlights is how far whites reach toward the peak.
+    hdr: Boolean(input.hdr),
+    hdrCalibration: input.hdrCalibration !== false,
+    hdrPaperWhite: numberSetting(input.hdrPaperWhite, 200, 80, 500),
+    hdrPeak: numberSetting(input.hdrPeak, 1000, 400, 4000),
+    hdrContrast: numberSetting(input.hdrContrast, 100, 50, 150),
+    hdrSaturation: numberSetting(input.hdrSaturation, 100, 0, 200),
+    hdrHighlights: numberSetting(input.hdrHighlights, 40, 0, 100),
     overlay: Boolean(input.overlay),
     invertCameraX: input.invertCameraX !== false,
     invertCameraY: Boolean(input.invertCameraY),
@@ -120,6 +131,9 @@ function normalizeSettings(input = {}, platform = process.platform) {
     softTrigger: numberSetting(input.softTrigger, 40, 5, 95),
     updateChannel: normalizeChannel(input.updateChannel)
   };
+  // The graphics preset chosen (src/presets.js), while the picture settings still match it; else Custom.
+  settings.graphicsPreset = presets.reconcile({ ...settings, graphicsPreset: input.graphicsPreset });
+  return settings;
 }
 
 function cutscenePackDirectory(root) { return path.join(root, 'mods', 'hd-cutscenes'); }
@@ -214,6 +228,14 @@ function buildEnvironment(settings, disc, root) {
     SMS_HEAT_HAZE: settings.heatHaze === false ? '0' : '1',
     SMS_BUTTON_PROMPTS: prompts.normalizeStyle(settings.buttonPrompts),
     SMS_BUTTON_PROMPT_PAD: prompts.normalizePad(settings.promptPad),
+    SMS_HDR: settings.hdr ? '1' : '0',
+    ...(settings.hdr ? {
+      SMS_HDR_PAPER_WHITE: settings.hdrCalibration === false ? String(settings.hdrPaperWhite ?? 200) : 'auto',
+      SMS_HDR_PEAK: settings.hdrCalibration === false ? String(settings.hdrPeak ?? 1000) : 'auto',
+      SMS_HDR_CONTRAST: String(settings.hdrContrast ?? 100),
+      SMS_HDR_SATURATION: String(settings.hdrSaturation ?? 100),
+      SMS_HDR_HIGHLIGHTS: String(settings.hdrHighlights ?? 40)
+    } : {}),
     SMS_OVERLAY: settings.overlay ? '1' : '0',
     SMS_CAMERA_INVERT_X: settings.invertCameraX ? '1' : '0',
     SMS_CAMERA_INVERT_Y: settings.invertCameraY ? '1' : '0',

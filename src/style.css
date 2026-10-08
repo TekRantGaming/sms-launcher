@@ -115,6 +115,14 @@ select { width: 100%; padding: 7px 10px; border: 1px solid #d3dedc; border-radiu
 .range-field output { color: #849196; font-size: 12px; font-variant-numeric: tabular-nums; }
 .range-field input[type=range] { flex: 0 1 200px; min-width: 0; accent-color: #17818a; }
 .detail-hint { margin-top: 15px; color: #849196; font-size: 12px; }
+.preset-panel { margin-top: 14px; padding: 18px; }
+.preset-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.preset-row h2 { margin: 0 0 3px; }
+.preset-row select { width: 220px; flex: none; }
+.preset-note { margin-top: 10px; color: #72868b; font-size: 12px; }
+.preset-tip { margin-top: 8px; padding: 9px 12px; border-radius: 9px; background: #fff6dc; color: #5b4a17; font-size: 12px; }
+.hdr-display { margin: 10px 0 4px; color: #4f6469; font-size: 12px; }
+.hdr-panel .text-button { margin-bottom: 6px; }
 .maintenance-panel .actions { margin: 11px 0; }
 .maintenance-panel .helper { display: block; margin: 8px 0; }
 .maintenance-panel .switch + .field { border-top: 0; }
