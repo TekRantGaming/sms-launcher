@@ -160,6 +160,22 @@ test('NIS is a scaling choice that takes the same upscaling quality', () => {
   assert.deepEqual([env.SMS_PRESENT_FILTER, env.SMS_FSR_MODE], ['nis', 'balanced']);
 });
 
+test('HDR is off unless chosen; on, it follows Windows calibration or the chosen nits', () => {
+  const off = port.normalizeSettings({});
+  assert.deepEqual([off.hdr, off.hdrCalibration, off.hdrPaperWhite, off.hdrPeak, off.hdrContrast, off.hdrSaturation, off.hdrHighlights],
+    [false, true, 200, 1000, 100, 100, 40]);
+  const offEnv = port.buildEnvironment(off, '/d', '/port');
+  assert.equal(offEnv.SMS_HDR, '0');
+  assert.equal(offEnv.SMS_HDR_PEAK, undefined);
+  const calibrated = port.buildEnvironment(port.normalizeSettings({ hdr: true, hdrContrast: 110 }), '/d', '/port');
+  assert.deepEqual([calibrated.SMS_HDR, calibrated.SMS_HDR_PAPER_WHITE, calibrated.SMS_HDR_PEAK, calibrated.SMS_HDR_CONTRAST,
+    calibrated.SMS_HDR_SATURATION, calibrated.SMS_HDR_HIGHLIGHTS], ['1', 'auto', 'auto', '110', '100', '40']);
+  const manual = port.buildEnvironment(port.normalizeSettings({ hdr: true, hdrCalibration: false, hdrPaperWhite: 250, hdrPeak: 800 }), '/d', '/port');
+  assert.deepEqual([manual.SMS_HDR_PAPER_WHITE, manual.SMS_HDR_PEAK], ['250', '800']);
+  const clamped = port.normalizeSettings({ hdrPaperWhite: 5, hdrPeak: 99999, hdrSaturation: -3, hdrHighlights: 400 });
+  assert.deepEqual([clamped.hdrPaperWhite, clamped.hdrPeak, clamped.hdrSaturation, clamped.hdrHighlights], [80, 4000, 0, 100]);
+});
+
 test('the heat-wave effect stays on unless turned off, and reaches the game as SMS_HEAT_HAZE', () => {
   assert.equal(port.normalizeSettings({}).heatHaze, true);
   assert.equal(port.normalizeSettings({}).buttonPrompts, 'gamecube');
