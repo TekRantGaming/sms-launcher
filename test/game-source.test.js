@@ -18,6 +18,10 @@ test('an empty override is this release; bad repositories and refs are refused',
   assert.equal(source.normalizeOverride({ port: { repository: '', ref: '' }, decomp: {} }), null);
   assert.deepEqual(source.normalizeOverride({ decomp: { repository: ' https://github.com/me/sms-english.git ', ref: 'fix/thing' } }),
     { port: null, decomp: { repository: 'https://github.com/me/sms-english.git', ref: 'fix/thing' } });
+  assert.deepEqual(source.normalizeOverride({ port: { repository: ' ', ref: 'fix/thing' }, decomp: { ref: 'abc123' } }),
+    { port: { repository: release.repository, ref: 'fix/thing' },
+      decomp: { repository: 'https://github.com/chasem-dev/sms-english.git', ref: 'abc123' } });
+  assert.throws(() => source.normalizeOverride({ port: { repository: '', ref: '-x' } }), /branch/);
   assert.throws(() => source.normalizeOverride({ port: { repository: '--upload-pack=x', ref: 'main' } }), /repository/);
   assert.throws(() => source.normalizeOverride({ port: { repository: 'https://github.com/me/x', ref: '-x' } }), /branch/);
   assert.throws(() => source.normalizeOverride({ port: { repository: 'https://github.com/me/x', ref: 'a..b' } }), /branch/);
