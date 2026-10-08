@@ -546,6 +546,8 @@ function refresh(data) {
   $('buttonPrompts').value = config.settings.buttonPrompts || 'gamecube';
   $('promptPad').value = config.settings.promptPad || 'match';
   renderPrompts();
+  $('graphicsPreset').value = config.settings.graphicsPreset || 'custom';
+  renderPreset();
   $('softTrigger').value = String(config.settings.softTrigger ?? 40);
   renderSoftTrigger();
   $('softTrigger').disabled = Boolean(data.active);
@@ -555,7 +557,7 @@ function refresh(data) {
   $('reset-bindings').disabled = Boolean(data.active);
   renderUpdateChannels(config.settings.updateChannel);
   renderGameSource(data);
-  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad'])
+  for (const key of ['arch', 'widescreen', 'resolution', 'volume', 'frameRate', 'vsync', 'skipMovies', 'heatHaze', 'overlay', 'fullscreen', 'fullscreenMode', 'exclusiveResolution', 'display', 'invertCameraX', 'invertCameraY', 'freeCamera', 'cameraSpeed', 'mouseCamera', 'mouseSensitivity', 'msaa', 'fxaa', 'anisotropic', 'sharpen', 'brightness', 'aspect', 'presentFilter', 'hudEdges', 'textures', 'cutscenes', 'eclipse', 'autoUpdate', 'updateChannel', 'buttonPrompts', 'promptPad', 'graphicsPreset'])
     $(key).disabled = Boolean(data.active);
   renderDependents(Boolean(data.active));
   changing = false;
@@ -690,6 +692,27 @@ function runWizardAction(method) {
   action(method).finally(() => { setupPending = false; if (current) refresh(current); });
 }
 
+// --- Graphics presets (src/presets.js). Choosing one sets its picture settings; the settings
+// file keeps the choice only while they still match it (port.js), so a change by hand shows Custom.
+if (globalThis.SmsPresets) $('graphicsPreset').replaceChildren(...SmsPresets.CHOICES.map(({ id, label }) => {
+  const option = document.createElement('option'); option.value = id; option.textContent = label; return option;
+}));
+function renderPreset() {
+  if (!globalThis.SmsPresets) return;
+  $('graphicsPreset-detail').textContent = SmsPresets.CHOICES.find(choice => choice.id === $('graphicsPreset').value)?.detail || '';
+}
+$('graphicsPreset').addEventListener('change', () => {
+  const preset = globalThis.SmsPresets && SmsPresets.find($('graphicsPreset').value);
+  if (preset) for (const [key, value] of Object.entries(preset.values)) {
+    if (typeof value === 'boolean') $(key).checked = value;
+    else $(key).value = String(value);
+  }
+  renderRanges();
+  renderDependents();
+  renderPreset();
+  saveSettings();
+});
+
 function renderVolume() { $('volume-value').textContent = `${$('volume').value}%`; }
 
 function renderRanges() {
@@ -730,7 +753,7 @@ function settingsValue() {
     invertCameraX: $('invertCameraX').checked, invertCameraY: $('invertCameraY').checked, hudEdges: $('hudEdges').checked, textures: $('textures').checked, cutscenes: $('cutscenes').checked,
     eclipse: $('eclipse').checked, autoUpdate: $('autoUpdate').checked, updateChannel: $('updateChannel').value,
     keyBindings, padBindings, softTrigger: Number($('softTrigger').value), buttonPrompts: $('buttonPrompts').value,
-    promptPad: $('promptPad').value
+    promptPad: $('promptPad').value, graphicsPreset: $('graphicsPreset').value
   };
 }
 
