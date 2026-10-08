@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('sms', {
   checkTools: () => ipcRenderer.invoke('check-tools'),
   copyMacCommand: index => ipcRenderer.invoke('copy-mac-command', index),
   saveSettings: value => ipcRenderer.invoke('save-settings', value),
+  savePrompts: images => ipcRenderer.invoke('save-prompts', images),
   chooseRom: () => ipcRenderer.invoke('choose-rom'),
   chooseRepo: () => ipcRenderer.invoke('choose-repo'),
   chooseLocation: () => ipcRenderer.invoke('choose-location'),
