@@ -130,6 +130,7 @@ The **Add to Steam** banner on the home screen, under the Discord one, adds the 
 - If Steam is open, it closes for a moment and opens again, because Steam picks up new non-Steam games only when it starts.
 - The launcher is added for the Steam account that signed in last. Choosing it again updates the same entry instead of adding another.
 - Steam's list of non-Steam games is backed up first, as `shortcuts.vdf.sms-launcher-backup` beside it.
+- The artwork is not part of the launcher. It downloads from SteamGridDB when you choose Add to Steam and is saved only in Steam's artwork folder.
 - The banner shows on Windows and Linux, from the installed launcher or the AppImage, while Steam is installed and the launcher is not in its library yet.
 
 The launcher asks before importing, warns if save block checksums fail, and makes a verified backup of your existing card before writing. A failed import restores the files it replaced. Import is disabled while the game or another launcher task is running. The source `.gci` is never changed or uploaded. Restore a **Before Dolphin import** backup to recover previous progress.

@@ -216,8 +216,10 @@ function windowsSteamPath() {
     (error, stdout) => resolve(error ? null : steam.registrySteamPath(stdout))));
 }
 
+// Steam artwork comes straight from SteamGridDB into memory: no-store keeps it
+// out of the launcher's web cache, so the only copy is the one in Steam's folder.
 async function downloadImage(url) {
-  const response = await net.fetch(url);
+  const response = await net.fetch(url, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
   return Buffer.from(await response.arrayBuffer());
 }

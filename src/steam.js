@@ -6,6 +6,10 @@
 // their artwork in that folder's grid/, named after each shortcut's app ID.
 // Steam reads shortcuts.vdf only when it starts and writes its own copy when it
 // closes, so the file changes only while Steam is closed (main.js closes it).
+//
+// No artwork is in this repository or the launcher: it is downloaded from
+// SteamGridDB when the player chooses Add to Steam, and written only into
+// that player's Steam artwork folder, where Steam needs it.
 const fs = require('node:fs');
 const path = require('node:path');
 
