@@ -30,7 +30,7 @@ button:focus-visible, select:focus-visible, .switch input:focus-visible + i { ou
 h1, h2, h3, p { margin: 0; }
 h1 { font-size: 27px; letter-spacing: -.045em; line-height: 1.1; }
 h2 { font-size: 17px; letter-spacing: -.025em; line-height: 1.2; }
-.intro p:last-child, .page-heading p:last-child { margin-top: 5px; color: #62767c; font-size: 13px; }
+.intro #home-description, .page-heading p:last-child { margin-top: 5px; color: #62767c; font-size: 13px; }
 .intro-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 17px; background: #fff7e3; color: #cc9130; font-size: 35px; }
 .panel { background: #fffdf9; border: 1px solid #e7e2d7; border-radius: 12px; box-shadow: 0 3px 14px #17343d08; }
 .badge { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 5px; background: #eef1f0; color: #66777d; font-size: 10px; font-weight: 750; letter-spacing: 0; white-space: nowrap; }
@@ -164,6 +164,12 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
     linear-gradient(90deg, #072d45ac 0%, #072d452e 47%, transparent 80%),
     url('assets/launcher-bg.png') 40% center / cover no-repeat;
 }
+.shell.eclipse {
+  background:
+    linear-gradient(180deg, #07334b70 0%, #07334b05 31%, #062b42aa 100%),
+    linear-gradient(90deg, #072d45ac 0%, #072d452e 47%, transparent 80%),
+    url('assets/launcher-bg-eclipse.png') 40% center / cover no-repeat;
+}
 .topbar { flex-basis: 58px; gap: 16px; background: #092e45bb; border-bottom: 1px solid #ffffff2a; color: #fff; backdrop-filter: blur(16px); -webkit-app-region: drag; user-select: none; }
 .brand-mark { background: #ffc75a; }
 .platform-pill, .online-pill { color: #c9e6ec; }
@@ -177,7 +183,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .intro { flex: none; align-items: start; min-height: 0; color: #fff; text-shadow: 0 2px 18px #082b4599; }
 .intro h1 { font-size: clamp(30px, 3.5vw, 44px); }
 .intro .eyebrow { color: #dcf3f7; }
-.intro p:last-child { color: #f0fcff; font-size: 14px; }
+.intro #home-description { color: #f0fcff; font-size: 14px; }
+.intro .eclipse-disclaimer { margin-top: 4px; color: #dcf3f7; font-size: 12px; }
 .hero-spacer { flex: 1 1 auto; min-height: 10px; }
 .discord-banner { flex: none; display: flex; align-items: center; gap: 12px; margin-left: 20px; padding: 10px 15px 10px 10px; border-color: #a5e0e47d; border-radius: 12px; background: linear-gradient(135deg, #123e59e6, #087e91e0); color: #fff; text-align: left; text-shadow: none; box-shadow: 0 10px 26px #061f3566; backdrop-filter: blur(14px); }
 .discord-banner:hover { border-color: #d3f2f5; background: linear-gradient(135deg, #17496be8, #0a91a6e6); }

@@ -350,6 +350,8 @@ function showWizardStep(data) {
   $('setup-flow').hidden = ready;
   // Eclipse is chosen in Settings only: say so wherever it is installed or played.
   const eclipse = data.config.settings.eclipse;
+  $('shell').classList.toggle('eclipse', Boolean(eclipse));
+  $('eclipse-disclaimer').hidden = !eclipse;
   $('home-title').textContent = ready ? eclipse ? 'Super Mario Eclipse' : 'Super Mario Sunshine' : 'Set up your game';
   $('home-description').textContent = ready
     ? downloadTextures ? 'Set up HD visuals to finish setup.'
