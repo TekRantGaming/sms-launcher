@@ -97,6 +97,8 @@ test('usage sharing is on unless turned off', () => {
   assert.equal(port.normalizeSettings({}).shareUsage, true);
   assert.equal(port.normalizeSettings({ shareUsage: false }).shareUsage, false);
   assert.equal(port.normalizeSettings({ shareUsage: 'no' }).shareUsage, true);
+  assert.equal(port.normalizeSettings({}).discordPresence, true);
+  assert.equal(port.normalizeSettings({ discordPresence: false }).discordPresence, false);
 });
 
 test('settings keep only changed, known key bindings', () => {

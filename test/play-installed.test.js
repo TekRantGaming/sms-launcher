@@ -56,6 +56,7 @@ function fixture(t, { metadata = true, textures = false, eclipse = false } = {})
         environment(_userData, env) { return { ...env, MSYS2_ROOT: path.join(toolRoot, 'msys64') }; },
         async ensure() { throw new Error('Playing must not prepare new tools'); },
         async check() { throw new Error('Playing must not prepare new tools'); } };
+      if (name === './discord') return { createPresence: () => ({ set() {}, stop() {} }) };
       if (name === './saves') return {
         backupRoot: () => path.join(directory, 'backups'),
         backupSaves(_saves, _backups, reason) { backups.push(reason); return { empty: true, message: 'No saves yet' }; },
@@ -83,6 +84,7 @@ test('skip update launches the older installed game, keeps preferences and saves
   assert.equal(options.cwd, f.root);
   assert.equal(options.env.SMS_TEXTURE_PACKS, '0');
   assert.equal(options.env.SMS_HD_CUTSCENES, '0');
+  assert.equal(options.env.SMS_PRESENCE, '1');
   assert.equal(options.env.SMS_SAVE_DIR, f.config.saveDirectory.replaceAll('\\', '/'));
   assert.deepEqual(f.environments, [f.toolRoot]);
   assert.deepEqual(f.backups, ['before-play', 'after-play']);
