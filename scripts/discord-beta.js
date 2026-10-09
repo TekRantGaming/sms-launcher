@@ -4,7 +4,9 @@
 // after the "beta" pre-release is replaced, with the channel's webhook URL in
 // the DISCORD_BETA_WEBHOOK secret; without the secret it does nothing. The
 // message has the launcher and game versions and Beta's notes from
-// changelog.json. A failed post is a warning: Beta is already published.
+// changelog.json, only those the last Beta did not already have when
+// PREVIOUS_CHANGELOG names its changelog.json. A failed post is a warning:
+// Beta is already published.
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -29,8 +31,9 @@ function bullets(lines, more) {
 
 function strings(value) { return Array.isArray(value) ? value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim()) : []; }
 
-// The webhook body. `game` has the repository, version and commit Beta built.
-function message({ launcherVersion, launcherSha, game, repository, beta, now = new Date() }) {
+// The webhook body. `game` has the repository, version and commit Beta built;
+// `previous` is the last Beta's notes, left out so each post has only what is new.
+function message({ launcherVersion, launcherSha, game, repository, beta, previous, now = new Date() }) {
   const repo = `https://github.com/${repository}`;
   const gameRepo = String(game.repository || '').replace(/\.git$/, '');
   const changelog = `${repo}/blob/main/changelog.json`;
@@ -38,9 +41,15 @@ function message({ launcherVersion, launcherSha, game, repository, beta, now = n
     { name: 'Launcher', value: `[${launcherVersion}](${repo}/commit/${launcherSha})`, inline: true },
     { name: 'Game', value: gameRepo ? `[${game.version}](${gameRepo}/commit/${game.commit})` : game.version, inline: true }
   ];
-  const launcher = strings(beta?.launcher), gameNotes = strings(beta?.game);
+  const added = key => {
+    const seen = new Set(strings(previous?.[key]));
+    return strings(beta?.[key]).filter(line => !seen.has(line));
+  };
+  const launcher = added('launcher'), gameNotes = added('game');
   if (launcher.length) fields.push({ name: 'Launcher changes', value: bullets(launcher, changelog) });
   if (gameNotes.length) fields.push({ name: 'Game changes', value: bullets(gameNotes, changelog) });
+  if (previous && !launcher.length && !gameNotes.length)
+    fields.push({ name: 'Changes', value: `Nothing new in [the changelog](${changelog}) since the last Beta.` });
   return {
     username: 'SMS Launcher',
     allowed_mentions: { parse: [] },
@@ -69,7 +78,8 @@ async function main(env = process.env, root = path.join(__dirname, '..')) {
   if (!pinned) throw new Error('src/game-release.json is missing.');
   const game = { ...pinned, version: env.GAME_VERSION || pinned.version, commit: env.GAME_COMMIT || pinned.commit };
   const body = message({ launcherVersion: env.LAUNCHER_VERSION, launcherSha: env.LAUNCHER_SHA, game,
-    repository: env.GITHUB_REPOSITORY, beta: readJson(path.join(root, 'changelog.json'))?.beta });
+    repository: env.GITHUB_REPOSITORY, beta: readJson(path.join(root, 'changelog.json'))?.beta,
+    previous: env.PREVIOUS_CHANGELOG ? readJson(env.PREVIOUS_CHANGELOG)?.beta : undefined });
   try {
     const response = await fetch(env.DISCORD_BETA_WEBHOOK, { method: 'POST',
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
