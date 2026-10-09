@@ -85,7 +85,7 @@ test("this repository's changelog describes the current launcher release and its
   }
   const pkg = require('../package.json');
   const entry = releases.find(item => item.version === pkg.version);
-  assert.ok(entry, `Add v${pkg.version} to changelog.json (npm run update:game drafts it)`);
+  assert.ok(entry, `Add v${pkg.version} to changelog.json: npm run update:game drafts it, and AGENTS.md explains a launcher-only bump`);
   const game = require('../src/game-release.json');
   assert.deepEqual([entry.game.version, entry.game.commit], [game.version, game.commit],
     `changelog.json v${pkg.version} must list the game pinned in src/game-release.json`);

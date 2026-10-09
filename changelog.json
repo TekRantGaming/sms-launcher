@@ -1,4 +1,5 @@
 {
+  "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
   "beta": {
     "launcher": [
       "Show on Discord: while you play, your Discord profile shows where you are in the game, your Shine count and how long you've played. Turn it off under Manage game.",
