@@ -22,16 +22,22 @@ function subjects(args, cwd) {
 }
 
 // The launcher release that ships a game pin lists the game's changes too.
+// Beta's hand-written notes become the release's, and Beta starts empty again;
+// without them, commit subjects are the draft.
 function addChangelogEntry(version, game, previousCommit) {
   const file = path.join(launcherRoot, 'changelog.json');
   const changelog = JSON.parse(fs.readFileSync(file, 'utf8'));
   const existing = changelog.releases.find(release => release.version === version);
-  const launcher = existing?.launcher?.length ? existing.launcher
+  const beta = { launcher: changelog.beta?.launcher || [], game: changelog.beta?.game || [] };
+  const launcher = existing?.launcher?.length ? existing.launcher : beta.launcher.length ? beta.launcher
     : subjects([`v${previousLauncher}..HEAD`], launcherRoot).filter(line => !/^(Select game|Bump launcher)/.test(line));
   const entry = { version, date: new Date().toISOString().slice(0, 10), launcher,
-    game: { version: game.version, commit: game.commit, changes: subjects([`${previousCommit}..${game.commit}`], root) } };
+    game: { version: game.version, commit: game.commit,
+      changes: beta.game.length ? beta.game : subjects([`${previousCommit}..${game.commit}`], root) } };
+  changelog.beta = { launcher: [], game: [] };
   changelog.releases = [entry, ...changelog.releases.filter(release => release.version !== version)];
   fs.writeFileSync(file, `${JSON.stringify(changelog, null, 2)}\n`);
+  return beta.launcher.length || beta.game.length;
 }
 
 try {
@@ -49,8 +55,10 @@ try {
     execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['version', 'patch', '--no-git-tag-version'],
       { cwd: path.join(__dirname, '..'), stdio: 'inherit', shell: process.platform === 'win32' });
     const version = JSON.parse(fs.readFileSync(path.join(launcherRoot, 'package.json'), 'utf8')).version;
-    addChangelogEntry(version, next, current.commit);
+    const fromBeta = addChangelogEntry(version, next, current.commit);
     console.log(`Selected game ${next.version}: ${commit} (decomp ${decomp}).`);
-    console.log(`Drafted changelog.json notes for v${version} from commit subjects. Edit them for players, then commit and push to run the release checks.`);
+    console.log(fromBeta
+      ? `Moved Beta's notes into changelog.json v${version}. Check they match this game commit, then commit and push to run the release checks.`
+      : `Drafted changelog.json notes for v${version} from commit subjects. Edit them for players, then commit and push to run the release checks.`);
   }
 } finally { fs.rmSync(root, { recursive: true, force: true }); }

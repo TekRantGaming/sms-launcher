@@ -1,4 +1,16 @@
 {
+  "beta": {
+    "launcher": [
+      "Show on Discord: while you play, your Discord profile shows where you are in the game, your Shine count and how long you've played. Turn it off under Manage game.",
+      "The launcher keeps its size on Windows displays with high scaling.",
+      "A changelog: see what changed in the launcher and the game with the new button beside Settings. It opens by itself once after an update."
+    ],
+    "game": [
+      "Fixed Shadow Mario never taking Peach in Super Mario Eclipse's Delfino Plaza.",
+      "Portal movies keep playing when Skip cutscenes is on.",
+      "The game reports what you're doing for Discord."
+    ]
+  },
   "releases": [
     {
       "version": "0.1.55",

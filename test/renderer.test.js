@@ -284,3 +284,16 @@ test('the main menu changelog button shows every release', async () => {
   assert.equal(ui.elements.get('changelog-title').textContent, 'Changelog');
   assert.equal(ui.elements.get('changelog-show-all').hidden, true);
 });
+
+test('Beta builds see new Beta notes first, and only Beta notes when no release is new', async () => {
+  const beta = { launcher: ['Beta launcher change'], game: ['Beta game change'], unseen: true };
+  const ui = await renderer(state(), null, { ...notes, unseen: [], beta });
+  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog-title').textContent, "What's new in Beta");
+  assert.equal(ui.elements.get('changelog-show-all').hidden, false);
+  assert.equal(ui.changelogSeen.length, 1);
+  const seen = await renderer(state(), null, { ...notes, unseen: [], beta: { ...beta, unseen: false } });
+  assert.equal(seen.elements.get('changelog').open, false);
+  await seen.click('open-changelog');
+  assert.equal(seen.elements.get('changelog-title').textContent, 'Changelog');
+});

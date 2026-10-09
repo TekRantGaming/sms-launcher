@@ -19,7 +19,7 @@ test('preview versions share the notes of the release they build on', () => {
 });
 
 test('untrusted changelog JSON becomes plain releases, newest first, one per version', () => {
-  const releases = changelog.normalize({ releases: [
+  const { releases } = changelog.normalize({ releases: [
     release('0.1.9'),
     release('0.1.10', { launcher: ['  Trimmed  ', 7, '', { html: '<b>' }], game: { ...pin, commit: 'not-a-commit' } }),
     release('0.1.10', { launcher: ['Duplicate'] }),
@@ -31,18 +31,38 @@ test('untrusted changelog JSON becomes plain releases, newest first, one per ver
   assert.deepEqual(releases[0].launcher, ['Trimmed']);
   assert.equal(releases[0].game.commit, null);
   assert.deepEqual(releases[1].game, pin);
-  assert.deepEqual(changelog.normalize('not json'), []);
-  assert.deepEqual(changelog.normalize({ releases: [release('0.1.1', { date: 'yesterday' })] })[0].date, null);
+  assert.deepEqual(changelog.normalize('not json'), { releases: [], beta: null });
+  assert.equal(changelog.normalize({ releases: [release('0.1.1', { date: 'yesterday' })] }).releases[0].date, null);
+  assert.deepEqual(changelog.normalize({ beta: { launcher: [' New thing ', 3], game: 'not a list' } }).beta,
+    { launcher: ['New thing'], game: [] });
+  assert.equal(changelog.normalize({ beta: { launcher: [], game: [] } }).beta, null);
 });
 
-test('the published changelog corrects bundled notes and keeps versions only bundled', () => {
+test('the published changelog corrects bundled notes, keeps versions only bundled, and owns Beta', () => {
   const merged = changelog.merge(changelog.normalize({ releases: [release('0.1.2', { launcher: ['Corrected'] })] }),
-    changelog.normalize({ releases: [release('0.1.3'), release('0.1.2', { launcher: ['Typo'] })] }));
-  assert.deepEqual(merged.map(item => [item.version, item.launcher[0]]), [['0.1.3', 'Launcher 0.1.3'], ['0.1.2', 'Corrected']]);
+    changelog.normalize({ beta: { launcher: ['Folded into a release'] }, releases: [release('0.1.3'), release('0.1.2', { launcher: ['Typo'] })] }));
+  assert.deepEqual(merged.releases.map(item => [item.version, item.launcher[0]]), [['0.1.3', 'Launcher 0.1.3'], ['0.1.2', 'Corrected']]);
+  assert.equal(merged.beta, null, "Beta's notes follow main, even when emptied");
+});
+
+test("Beta builds show Beta's notes once per wording", () => {
+  const beta = { launcher: ['Beta change'], game: [] };
+  const key = changelog.betaKey(beta);
+  assert.match(key, /^[a-f0-9]{16}$/);
+  assert.notEqual(changelog.betaKey({ launcher: ['Beta change, reworded'], game: [] }), key);
+  assert.equal(changelog.isBeta('0.1.55-beta.25'), true);
+  for (const version of ['0.1.55', '0.1.55-pr12.3', undefined]) assert.equal(changelog.isBeta(version), false);
+  const show = options => changelog.unseenBeta(beta, { current: '0.1.55-beta.25', returning: true, ...options });
+  assert.equal(show({ seen: null }), true);
+  assert.equal(show({ seen: '0'.repeat(16) }), true, 'notes changed since last shown');
+  assert.equal(show({ seen: key }), false);
+  assert.equal(show({ seen: null, returning: false }), false, 'a new install has nothing to catch up on');
+  assert.equal(show({ seen: null, current: '0.1.55' }), false, 'stable builds never show Beta notes');
+  assert.equal(changelog.unseenBeta(null, { seen: null, current: '0.1.55-beta.1', returning: true }), false);
 });
 
 test('after an update the releases since the last one seen show once', () => {
-  const releases = changelog.normalize({ releases: ['0.1.5', '0.1.4', '0.1.3', '0.1.2'].map(version => release(version)) });
+  const { releases } = changelog.normalize({ releases: ['0.1.5', '0.1.4', '0.1.3', '0.1.2'].map(version => release(version)) });
   const unseen = options => changelog.unseen(releases, options).map(item => item.version);
   assert.deepEqual(unseen({ seen: '0.1.2', current: '0.1.4' }), ['0.1.4', '0.1.3']);
   assert.deepEqual(unseen({ seen: '0.1.4', current: '0.1.4' }), []);
@@ -56,7 +76,7 @@ test('after an update the releases since the last one seen show once', () => {
 test("this repository's changelog describes the current launcher release and its game pin", () => {
   const root = path.join(__dirname, '..');
   const raw = JSON.parse(fs.readFileSync(path.join(root, changelog.FILE), 'utf8'));
-  const releases = changelog.normalize(raw);
+  const { releases } = changelog.normalize(raw);
   assert.equal(releases.length, raw.releases.length, 'every entry needs an X.Y.Z version, a unique version and at least one change');
   assert.deepEqual(raw.releases.map(item => item.version), releases.map(item => item.version), 'list the newest release first');
   for (const item of raw.releases) {

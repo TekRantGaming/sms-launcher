@@ -281,6 +281,8 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .changelog-release h3 { margin: 12px 0 5px; color: #207889; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .changelog-release ul { margin: 0; padding-left: 18px; color: #2c4a51; font-size: 13px; line-height: 1.5; }
 .changelog-release li + li { margin-top: 3px; }
+.changelog-beta { border-color: #f1d9a6; background: #fffaf0; }
+.changelog-note { margin-top: 6px; color: #637980; font-size: 12px; }
 .changelog-actions { justify-content: space-between; margin-top: 14px; }
 .settings-entry { display: flex; align-items: center; gap: 13px; width: 100%; margin-top: 10px; padding: 10px 16px; border: 1px solid #dfe9e8; border-radius: 12px; background: #fff; color: #17343d; text-align: left; }
 .settings-entry:hover { border-color: #b7d7d6; background: #f0f9f8; }

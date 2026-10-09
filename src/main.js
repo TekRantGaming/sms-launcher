@@ -175,7 +175,9 @@ function loadConfig() {
     // Random, made on first run, and only ever sent with usage heartbeats.
     installId: telemetry.validInstallId(saved.installId) ? saved.installId : crypto.randomUUID(),
     // The newest launcher version whose changelog the player has been shown.
-    changelogSeen: changelog.baseVersion(saved.changelogSeen)
+    changelogSeen: changelog.baseVersion(saved.changelogSeen),
+    // Which wording of Beta's notes a Beta build last showed.
+    changelogBetaSeen: /^[a-f0-9]{16}$/.test(saved.changelogBetaSeen) ? saved.changelogBetaSeen : null
   };
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
@@ -681,7 +683,7 @@ let releaseNotes = null;
 // cannot be reached. Development runs read the local file so edits show.
 async function loadChangelog() {
   if (releaseNotes) return releaseNotes;
-  let bundled = [];
+  let bundled = changelog.normalize(null);
   try { bundled = changelog.normalize(JSON.parse(fs.readFileSync(path.join(__dirname, '..', changelog.FILE), 'utf8'))); }
   catch (error) { log(`Could not read the bundled changelog: ${error.message}`); }
   if (!app.isPackaged && !process.env.SMS_CHANGELOG_URL) return (releaseNotes = bundled);
@@ -696,19 +698,25 @@ async function loadChangelog() {
   }
 }
 
+let betaShown = null;
 async function changelogState() {
-  const releases = await loadChangelog();
+  const { releases, beta } = await loadChangelog();
+  const options = { current: app.getVersion(), returning: config.completedSetup };
+  betaShown = changelog.isBeta(app.getVersion()) ? beta : null;
   return { releases, current: changelog.baseVersion(app.getVersion()),
-    unseen: changelog.unseen(releases, { seen: config.changelogSeen, current: app.getVersion(),
-      returning: config.completedSetup }).map(release => release.version) };
+    unseen: changelog.unseen(releases, { ...options, seen: config.changelogSeen }).map(release => release.version),
+    beta: betaShown && { ...betaShown, unseen: changelog.unseenBeta(betaShown, { ...options, seen: config.changelogBetaSeen }) } };
 }
 
-// Only moves forward, so leaving a preview for an older release and coming
-// back does not repeat notes already shown.
+// The release only moves forward, so leaving a preview for an older release
+// and coming back does not repeat notes already shown.
 function markChangelogSeen() {
   const version = changelog.baseVersion(app.getVersion());
-  if (!version || (config.changelogSeen && changelog.compareVersions(version, config.changelogSeen) <= 0)) return;
-  config.changelogSeen = version;
+  const betaKey = changelog.betaKey(betaShown);
+  const newer = version && (!config.changelogSeen || changelog.compareVersions(version, config.changelogSeen) > 0);
+  if (!newer && (!betaKey || betaKey === config.changelogBetaSeen)) return;
+  if (newer) config.changelogSeen = version;
+  if (betaKey) config.changelogBetaSeen = betaKey;
   saveConfig();
 }
 
