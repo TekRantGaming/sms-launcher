@@ -1,0 +1,101 @@
+{
+  "_instructions": "Players see this file in the launcher. Add each player-visible change here in the same commit: launcher changes to beta.launcher, game changes Beta now builds to beta.game. Releases move beta into a new entry (npm run update:game does it). One plain sentence for players per line, no commit hashes or PR numbers. See AGENTS.md.",
+  "beta": {
+    "launcher": [
+      "If you already have HD textures, the launcher downloads the new HD texture extras on their own (about 65 MB) instead of the whole pack, and again whenever a newer set comes out.",
+      "Show on Discord: while you play, your Discord profile shows where you are in the game, your Shine count and how long you've played. Turn it off under Manage game.",
+      "The launcher keeps its size on Windows displays with high scaling.",
+      "A changelog: see what changed in the launcher and the game with the new button beside Settings. It opens by itself once after an update."
+    ],
+    "game": [
+      "HD textures cover 208 more textures the UHD pack lacked, including the Pianta and balloon counters, the pause screen's maps, menus and Peach.",
+      "Heavy scenes like Delfino Plaza run much smoother: the game takes less than half as long on each frame.",
+      "Wiggler's music speeds up when you hit him and powers down when he's defeated, as on the GameCube.",
+      "Petey Piranha, Mecha Bowser and other bosses animate at their original speed at 60 and 120 fps.",
+      "The episode select screen shows its coloured background again instead of black.",
+      "Fixed dark fog bands and shimmering HD textures under the sea in Noki Bay.",
+      "Fixed Shadow Mario never taking Peach in Super Mario Eclipse's Delfino Plaza.",
+      "Portal movies keep playing when Skip cutscenes is on.",
+      "The game reports what you're doing for Discord."
+    ]
+  },
+  "releases": [
+    {
+      "version": "0.1.55",
+      "date": "2026-10-08",
+      "launcher": [
+        "HDR settings for Windows: calibration, paper white, peak brightness, contrast, saturation and highlights.",
+        "FSR 1 and NIS upscaling under Settings → Picture → Scaling, with a quality choice.",
+        "The top bar shows how many players are online. Turn off anonymous usage sharing any time under Manage game.",
+        "\"Skip intro movies\" is now \"Skip cutscenes\"."
+      ],
+      "game": {
+        "version": "2026.10.09.1",
+        "commit": "abae850416a02478a7864e3ecf2beca8759187dd",
+        "changes": [
+          "HDR output on Windows, and on more graphics cards.",
+          "NIS (NVIDIA Image Scaling) joins FSR 1 as an upscaler.",
+          "Fixed the Eclipse crashes at every stage exit and in the Tutorial on Windows.",
+          "Fixed Puffer self-collisions when firing at Petey at high frame rates.",
+          "Held sound effects, like the Rocket nozzle charge, keep playing at 60 fps.",
+          "Button prompt glyphs draw correctly with the system font."
+        ]
+      }
+    },
+    {
+      "version": "0.1.54",
+      "date": "2026-10-08",
+      "launcher": [
+        "Graphics presets: Low, Medium, High, Ultra and Steam Deck.",
+        "Button prompts: Original, Xbox, PlayStation 5, Steam Deck, keyboard, or Automatic.",
+        "A game source row with only a branch, tag or commit now uses our fork."
+      ],
+      "game": {
+        "version": "2026.10.08.3",
+        "commit": "57a30357ef2da4dfe665db97002661162ec60d64",
+        "changes": [
+          "Button prompts for Xbox, PlayStation, Steam Deck and keyboard.",
+          "Smoother heavy scenes: less time spent in the vertex loader and thread switches.",
+          "A full crash report is written on every platform.",
+          "Fixed the Turbo nozzle writing past its own memory."
+        ]
+      }
+    },
+    {
+      "version": "0.1.53",
+      "date": "2026-10-07",
+      "launcher": [
+        "Controller button remapping on the Controls page, plus Soft L and Soft R bindings.",
+        "The activity log now docks inside the launcher, and Copy log copies the full run.",
+        "A check-for-updates button next to the launcher update status.",
+        "A Heat-wave effect switch under Settings → Picture.",
+        "A note for SteamOS and Steam Deck players about Steam Input."
+      ],
+      "game": {
+        "version": "2026.10.08.2",
+        "commit": "e21c22222f9de3d9bf5a0e9bdb1cb2a2463f9d6b",
+        "changes": [
+          "60 and 120 fps gameplay stays at full speed when the display makes the game wait.",
+          "GameCube controller adapters are supported.",
+          "Controller buttons can be remapped.",
+          "Native crashes now log their code and location."
+        ]
+      }
+    },
+    {
+      "version": "0.1.52",
+      "date": "2026-10-07",
+      "launcher": [],
+      "game": {
+        "version": "2026.10.07.4",
+        "commit": "e39936208a0a91e08a81b5d62f14691cfdce9ece",
+        "changes": [
+          "Fixed Mario's flags in Super Mario Eclipse.",
+          "Fixed the Gelato gatekeeper's goop angles.",
+          "Linux builds use the system graphics driver's own libraries.",
+          "The performance overlay costs less to draw."
+        ]
+      }
+    }
+  ]
+}

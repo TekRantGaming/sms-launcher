@@ -17,8 +17,8 @@ function state() {
   };
 }
 
-async function renderer(data = state(), copyError = null) {
-  const calls = [], elements = new Map(), droppedFiles = [], listeners = {};
+async function renderer(data = state(), copyError = null, notes = { releases: [], unseen: [], current: '0.1.39' }) {
+  const changelogSeen = [], calls = [], elements = new Map(), droppedFiles = [], listeners = {};
   let logCallback, resetCallback, activityCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
@@ -47,18 +47,19 @@ async function renderer(data = state(), copyError = null) {
     saveActivityLog: async () => { calls.push('saveActivityLog'); },
     copyActivityLog: async () => { calls.push('copyActivityLog'); if (copyError) throw copyError; },
     saveSettings: async value => { calls.push(['saveSettings', value]); return { ...data, config: { ...data.config, settings: port.normalizeSettings(value) } }; },
+    changelog: async () => notes, markChangelogSeen: async () => { changelogSeen.push(true); },
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
   const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
     window: { sms, smsActivityLog: require('../src/activity-log'), addEventListener() {} }, document: {
     getElementById(id) { assert.ok(elements.has(id), `Missing HTML element ${id}`); return elements.get(id); },
     querySelectorAll(selector) {
-      return selector === '.launcher-modal' ? ['page-settings', 'mac-tools-help'].map(id => elements.get(id)) : [];
+      return selector === '.launcher-modal' ? ['page-settings', 'changelog', 'mac-tools-help'].map(id => elements.get(id)) : [];
     }, createElement: () => element()
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
   await new Promise(setImmediate);
-  return { elements, calls, droppedFiles, listeners,
+  return { elements, calls, droppedFiles, listeners, changelogSeen,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
@@ -245,4 +246,54 @@ test('the top bar shows the online count once the usage API answers', async () =
   await ui.refresh();
   assert.equal(ui.elements.get('online-number').textContent, '42 online');
   assert.equal(ui.elements.get('online-count').title, '42 players have the launcher open · 7 playing now');
+});
+
+const notes = {
+  current: '0.1.39', unseen: ['0.1.39'],
+  releases: [
+    { version: '0.1.39', date: '2026-10-09', title: '', launcher: ['Launcher change'],
+      game: { version: '2026.10.09.1', commit: null, changes: ['Game change'] } },
+    { version: '0.1.38', date: '2026-10-08', title: '', launcher: ['Older change'], game: null }
+  ]
+};
+
+test('the changelog opens once after an update with only the new releases', async () => {
+  const ui = await renderer(state(), null, notes);
+  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog-title').textContent, 'Updated to v0.1.39');
+  assert.equal(ui.elements.get('changelog-show-all').hidden, false);
+  assert.equal(ui.changelogSeen.length, 1);
+  await ui.click('changelog-show-all');
+  assert.equal(ui.elements.get('changelog-title').textContent, 'Changelog');
+  assert.equal(ui.elements.get('changelog-show-all').hidden, true);
+});
+
+test('nothing new means no popup, and a running task postpones it to the next start', async () => {
+  const quiet = await renderer(state(), null, { ...notes, unseen: [] });
+  assert.equal(quiet.elements.get('changelog').open, false);
+  assert.equal(quiet.changelogSeen.length, 1);
+  const busy = await renderer({ ...state(), active: { label: 'Build Sunshine port', startedAt: Date.now() } }, null, notes);
+  assert.equal(busy.elements.get('changelog').open, false);
+  assert.equal(busy.changelogSeen.length, 0);
+});
+
+test('the main menu changelog button shows every release', async () => {
+  const ui = await renderer(state(), null, { ...notes, unseen: [] });
+  await ui.click('open-changelog');
+  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog-title').textContent, 'Changelog');
+  assert.equal(ui.elements.get('changelog-show-all').hidden, true);
+});
+
+test('Beta builds see new Beta notes first, and only Beta notes when no release is new', async () => {
+  const beta = { launcher: ['Beta launcher change'], game: ['Beta game change'], unseen: true };
+  const ui = await renderer(state(), null, { ...notes, unseen: [], beta });
+  assert.equal(ui.elements.get('changelog').open, true);
+  assert.equal(ui.elements.get('changelog-title').textContent, "What's new in Beta");
+  assert.equal(ui.elements.get('changelog-show-all').hidden, false);
+  assert.equal(ui.changelogSeen.length, 1);
+  const seen = await renderer(state(), null, { ...notes, unseen: [], beta: { ...beta, unseen: false } });
+  assert.equal(seen.elements.get('changelog').open, false);
+  await seen.click('open-changelog');
+  assert.equal(seen.elements.get('changelog-title').textContent, 'Changelog');
 });

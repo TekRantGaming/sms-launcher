@@ -860,6 +860,95 @@ for (const [id, method] of Object.entries({
 })) $(id).addEventListener('click', () => action(method));
 // The invite opens in the browser, even while the game builds or runs.
 $('discord').addEventListener('click', () => window.sms.openDiscord().catch(error => setMessage(error.message)));
+
+// --- Changelog: changelog.json in the launcher repository (src/changelog.js). Each release lists its
+// launcher changes and the game it pins. After an update it opens once with the releases since the last.
+// Beta builds also get Beta's hand-written notes, shown again whenever they change.
+function changelogDate(date) {
+  return date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+}
+function changelogSection(heading, items) {
+  const section = document.createElement('section');
+  const title = document.createElement('h3');
+  title.textContent = heading;
+  const list = document.createElement('ul');
+  list.append(...items.map(text => { const item = document.createElement('li'); item.textContent = text; return item; }));
+  section.append(title, list);
+  return section;
+}
+function changelogRelease(release, data) {
+  const article = document.createElement('article');
+  article.className = 'changelog-release';
+  const head = document.createElement('header');
+  const title = document.createElement('h2');
+  title.textContent = release.title ? `v${release.version} · ${release.title}` : `v${release.version}`;
+  head.append(title);
+  const tag = data.unseen.includes(release.version) ? ['New', 'badge good'] : release.version === data.current ? ['Installed', 'badge'] : null;
+  if (tag) { const badge = document.createElement('span'); [badge.textContent, badge.className] = tag; head.append(badge); }
+  const date = document.createElement('time');
+  date.textContent = changelogDate(release.date);
+  head.append(date);
+  article.append(head);
+  if (release.launcher.length) article.append(changelogSection('Launcher', release.launcher));
+  if (release.game?.changes.length)
+    article.append(changelogSection(release.game.version ? `Game ${release.game.version}` : 'Game', release.game.changes));
+  return article;
+}
+function changelogBeta(beta) {
+  const article = document.createElement('article');
+  article.className = 'changelog-release changelog-beta';
+  const head = document.createElement('header');
+  const title = document.createElement('h2');
+  title.textContent = 'Beta';
+  const badge = document.createElement('span');
+  [badge.textContent, badge.className] = beta.unseen ? ['New', 'badge good'] : ['Not released yet', 'badge warn'];
+  head.append(title, badge);
+  const note = document.createElement('p');
+  note.className = 'changelog-note';
+  note.textContent = 'In this Beta build, not in a release yet. Beta uses the newest game from its main branch.';
+  article.append(head, note);
+  if (beta.launcher.length) article.append(changelogSection('Launcher', beta.launcher));
+  if (beta.game.length) article.append(changelogSection('Game', beta.game));
+  return article;
+}
+let changelogShown = null;
+function renderChangelog(data, onlyUnseen) {
+  changelogShown = data;
+  const releases = onlyUnseen ? data.releases.filter(release => data.unseen.includes(release.version)) : data.releases;
+  const beta = data.beta && (!onlyUnseen || data.beta.unseen) ? data.beta : null;
+  $('changelog-title').textContent = !onlyUnseen ? 'Changelog' : releases.length ? `Updated to v${data.current}` : "What's new in Beta";
+  $('changelog-subtitle').textContent = !onlyUnseen ? 'Launcher and game updates'
+    : releases.length ? `What's new in the launcher and game since you last opened it.` : "Changes in this Beta that aren't in a release yet.";
+  $('changelog-show-all').hidden = !onlyUnseen || (releases.length === data.releases.length && beta === data.beta);
+  const items = [...(beta ? [changelogBeta(beta)] : []), ...releases.map(release => changelogRelease(release, data))];
+  if (items.length) $('changelog-list').replaceChildren(...items);
+  else $('changelog-list').textContent = 'No changes are listed yet.';
+}
+async function showChangelog() {
+  closeModal();
+  $('changelog-title').textContent = 'Changelog';
+  $('changelog-subtitle').textContent = 'Launcher and game updates';
+  $('changelog-show-all').hidden = true;
+  $('changelog-list').textContent = 'Loading…';
+  $('changelog').showModal();
+  try { renderChangelog(await window.sms.changelog(), false); }
+  catch (_) { $('changelog-list').textContent = "The changelog couldn't be loaded. Try again later."; }
+}
+// Opens once per update. Over another window or a running task it waits for the next start.
+async function showWhatsNew() {
+  try {
+    const data = await window.sms.changelog();
+    if (data.unseen.length || data.beta?.unseen) {
+      if (current?.active || [...document.querySelectorAll('.launcher-modal')].some(dialog => dialog.open)) return;
+      renderChangelog(data, true);
+      $('changelog').showModal();
+    }
+    await window.sms.markChangelogSeen();
+  } catch (_) { /* the changelog button still works */ }
+}
+$('changelog-show-all').addEventListener('click', () => renderChangelog(changelogShown, false));
+$('open-changelog').addEventListener('click', showChangelog);
+$('changelog-page').addEventListener('click', () => window.sms.openChangelogPage().catch(error => setMessage(error.message)));
 $('play').addEventListener('click', () => {
   if (wizardStep === 0) runWizardAction('launchGame');
   else if (wizardStep === 1) {
@@ -974,4 +1063,4 @@ $('window-close').addEventListener('click', () => window.sms.closeWindow());
 window.sms.onWindowState(renderWindowState);
 window.sms.windowState().then(renderWindowState).catch(showError);
 setInterval(() => { if (current?.active) renderActivity(current.active); }, 1000);
-sync().then(() => { for (const line of current.logs) appendLog(line); }).catch(showError);
+sync().then(() => { for (const line of current.logs) appendLog(line); showWhatsNew(); }).catch(showError);
