@@ -93,6 +93,12 @@ test('master volume defaults to full, is clamped to 0-100, and reaches the game 
   assert.equal(port.buildEnvironment(port.normalizeSettings({ volume: 0 }), '/my/disc.iso', '/port').SMS_VOLUME, '0');
 });
 
+test('usage sharing is on unless turned off', () => {
+  assert.equal(port.normalizeSettings({}).shareUsage, true);
+  assert.equal(port.normalizeSettings({ shareUsage: false }).shareUsage, false);
+  assert.equal(port.normalizeSettings({ shareUsage: 'no' }).shareUsage, true);
+});
+
 test('settings keep only changed, known key bindings', () => {
   assert.deepEqual(port.normalizeSettings({}).keyBindings, {});
   const settings = port.normalizeSettings({ keyBindings: { A: ['J'], B: ['LSHIFT', 'RSHIFT', 'C'], R: ['NOPE', 'K', 'K'], JUMP: ['A'] } });

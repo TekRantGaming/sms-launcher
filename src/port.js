@@ -123,6 +123,8 @@ function normalizeSettings(input = {}, platform = process.platform) {
     cutscenes: Boolean(input.cutscenes),
     eclipse: Boolean(input.eclipse),
     autoUpdate: input.autoUpdate !== false,
+    // Anonymous usage heartbeats (versions and OS only); see README Privacy.
+    shareUsage: input.shareUsage !== false,
     // Keys the player changed in Settings → Controls; the rest stay the game's defaults.
     keyBindings: bindings.normalize(input.keyBindings),
     // Controller buttons the player changed in Settings → Controls.

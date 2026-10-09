@@ -4,6 +4,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, net } = require('
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
+const crypto = require('node:crypto');
 const port = require('./port');
 const saves = require('./saves');
 const gciSave = require('./gci-save');
@@ -13,6 +14,7 @@ const updateChannel = require('./update-channel');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
+const telemetry = require('./telemetry');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -33,6 +35,8 @@ const activityLog = createActivityLog();
 const partialOutput = new Map();
 const sessionLog = createSessionLog(() => app.getPath('userData'), error =>
   logOutput(`Could not save the session log: ${error.message}`, 'launcher'));
+let reporter = null;
+let online = null;
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 app.on('second-instance', () => {
@@ -160,8 +164,13 @@ function loadConfig() {
     saveDirectory: typeof saved.saveDirectory === 'string' ? saved.saveDirectory : null,
     previousInstall: saved.previousInstall || null,
     completedSetup: Boolean(saved.completedSetup),
-    gameSource: savedGameSource(saved.gameSource)
+    gameSource: savedGameSource(saved.gameSource),
+    // Random, made on first run, and only ever sent with usage heartbeats.
+    installId: telemetry.validInstallId(saved.installId) ? saved.installId : crypto.randomUUID()
   };
+  if (config.installId !== saved.installId) {
+    try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
+  }
   for (const root of [config.repo, config.previousInstall?.repo].filter(Boolean))
     for (const arch of port.platformInfo().arches)
       for (const eclipse of [false, true]) {
@@ -553,7 +562,7 @@ function state() {
       installedToolVersion: installedBuild?.toolVersion || null,
       toolVersion: buildTools.toolsetFor(), needsUpdate: repoReady && !game.isCurrent(config.repo, config.settings, currentSource()),
       previousReady: Boolean(config.previousInstall && binaryReady(config.previousInstall.repo, config.previousInstall.settings)) },
-    active: activityState(), appUpdate, logs: activityLog.snapshot(), logResetSequence: activityLog.resetSequence(),
+    active: activityState(), appUpdate, online, logs: activityLog.snapshot(), logResetSequence: activityLog.resetSequence(),
     saveDirectory: currentSaveDirectory(), backupDirectory: saves.backupRoot(),
     backups: saves.listBackups().filter(item => item.source === currentSaveDirectory())
   };
@@ -597,6 +606,25 @@ async function updateChannels() {
   if (!channels.some(item => item.id === chosen))
     channels.push({ id: chosen, label: updateChannel.channelLabel(chosen), detail: 'No longer available', missing: true });
   return channels;
+}
+
+function heartbeatPayload() {
+  const installed = port.isPort(config.repo) && binaryReady() ? game.installed(config.repo, config.settings) : null;
+  return telemetry.payload({ installId: config.installId, launcherVersion: app.getVersion(),
+    gameVersion: installed?.gameVersion, availableVersion: currentSource().version,
+    channel: config.settings.updateChannel, playing: active?.label === 'Play Super Mario Sunshine' });
+}
+
+// Development runs stay out of the numbers unless pointed at a test API.
+function setupTelemetry() {
+  const url = telemetry.endpoint();
+  if (!url || (!app.isPackaged && !process.env.SMS_TELEMETRY_URL)) return;
+  reporter = telemetry.createReporter({
+    url, fetch: (target, options) => net.fetch(target, options),
+    sharing: () => config.settings.shareUsage, getPayload: heartbeatPayload,
+    onCount: count => { online = count; broadcast('online', online); }
+  });
+  reporter.start();
 }
 
 function setupAppUpdater() {
@@ -687,8 +715,10 @@ function registerHandlers() {
     if (settings.arch !== config.settings.arch || settings.eclipse !== config.settings.eclipse)
       config.previousInstall = port.playableInstall({ ...config, saveDirectory: currentSaveDirectory() }) || config.previousInstall;
     const channelChanged = settings.updateChannel !== config.settings.updateChannel;
+    const sharingChanged = settings.shareUsage !== config.settings.shareUsage;
     config.settings = settings;
     saveConfig();
+    if (sharingChanged) reporter?.tick();
     if (channelChanged) {
       applyUpdateChannel();
       log(`Launcher updates now follow ${updateChannel.channelLabel(settings.updateChannel)}.`);
@@ -835,6 +865,7 @@ if (ownsInstance) app.whenReady().then(() => {
   createWindow();
   registerHandlers();
   setupAppUpdater();
+  setupTelemetry();
   // The bundled manifest is the update check. Source downloads and builds
   // start with Update & play, so opening the launcher never changes a game.
 });
