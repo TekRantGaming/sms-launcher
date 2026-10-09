@@ -22,6 +22,7 @@
     "productName": "SMS Launcher",
     "files": [
       "src/**/*",
+      "changelog.json",
       "package.json"
     ],
     "extraResources": [

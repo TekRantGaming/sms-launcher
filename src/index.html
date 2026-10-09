@@ -50,7 +50,7 @@
         <div class="hero-spacer" aria-hidden="true"></div>
 
         <section class="launch-panel" aria-label="Play game">
-          <div class="launch-primary"><button id="play" class="play">Continue</button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button></div>
+          <div class="launch-primary"><button id="play" class="play">Continue</button><button id="settings-cog" class="settings-cog" aria-label="Open settings" title="Settings"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.7 2.8h2.6l.4 1.8 1.6.7 1.6-1 1.8 1.8-1 1.6.7 1.6 1.8.4v2.6l-1.8.4-.7 1.6 1 1.6-1.8 1.8-1.6-1-1.6.7-.4 1.8H8.7l-.4-1.8-1.6-.7-1.6 1-1.8-1.8 1-1.6-.7-1.6-1.8-.4V8.7l1.8-.4.7-1.6-1-1.6 1.8-1.8 1.6 1 1.6-.7z"/><circle cx="10" cy="10" r="2.3"/></svg></button><button id="open-changelog" class="settings-cog changelog-button" aria-label="Open changelog" title="Changelog"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.8h7.2L15.5 6v11.2H5z"/><path d="M12 2.8V6h3.5M7.6 9.2h5.3M7.6 11.9h5.3M7.6 14.6h3.4"/></svg></button></div>
           <div id="installed-play-option" class="installed-play-option" hidden><button id="skip-update-play" class="outline">Skip update &amp; play</button><p id="installed-play-note"></p></div>
           <div class="task-progress" id="task-progress" role="status" hidden><div class="progress-summary"><span class="spinner" aria-hidden="true"></span><strong id="progress-title">Working…</strong><span id="progress-time"></span><span id="progress-percent"></span></div><p id="progress-detail">Starting…</p><div class="progress-track" id="progress-track" role="progressbar" aria-label="Task progress"><span id="progress-fill"></span></div><button id="view-build-log" class="progress-log-button">View build log</button></div>
         </section>
@@ -113,6 +113,11 @@
         <button id="view-activity-log" class="subtle activity-log-entry">View activity log</button>
       </div>
       </section>
+    </dialog>
+
+    <dialog id="changelog" class="launcher-modal changelog-modal" aria-label="Changelog">
+      <div class="modal-head"><div><h1 id="changelog-title">Changelog</h1><p id="changelog-subtitle">Launcher and game updates</p></div><button class="modal-close" data-close-modal aria-label="Close changelog">×</button></div>
+      <div class="modal-body"><div id="changelog-list" class="changelog-list" aria-live="polite"></div><div class="actions changelog-actions"><button class="subtle" id="changelog-show-all" hidden>Show all releases</button><button class="text-button" id="changelog-page">View on GitHub ↗</button></div></div>
     </dialog>
 
     <dialog id="mac-tools-help" class="launcher-modal" aria-label="Mac setup help">

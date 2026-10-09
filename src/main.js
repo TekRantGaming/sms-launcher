@@ -17,6 +17,7 @@ const gameSource = require('./game-source');
 const telemetry = require('./telemetry');
 const discord = require('./discord');
 const presence = require('./presence');
+const changelog = require('./changelog');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -172,7 +173,9 @@ function loadConfig() {
     completedSetup: Boolean(saved.completedSetup),
     gameSource: savedGameSource(saved.gameSource),
     // Random, made on first run, and only ever sent with usage heartbeats.
-    installId: telemetry.validInstallId(saved.installId) ? saved.installId : crypto.randomUUID()
+    installId: telemetry.validInstallId(saved.installId) ? saved.installId : crypto.randomUUID(),
+    // The newest launcher version whose changelog the player has been shown.
+    changelogSeen: changelog.baseVersion(saved.changelogSeen)
   };
   if (config.installId !== saved.installId) {
     try { saveConfig(); } catch (error) { log(`Could not save preferences: ${error.message}`); }
@@ -673,6 +676,42 @@ async function updateChannels() {
   return channels;
 }
 
+let releaseNotes = null;
+// The published changelog, or the copy bundled with this launcher when GitHub
+// cannot be reached. Development runs read the local file so edits show.
+async function loadChangelog() {
+  if (releaseNotes) return releaseNotes;
+  let bundled = [];
+  try { bundled = changelog.normalize(JSON.parse(fs.readFileSync(path.join(__dirname, '..', changelog.FILE), 'utf8'))); }
+  catch (error) { log(`Could not read the bundled changelog: ${error.message}`); }
+  if (!app.isPackaged && !process.env.SMS_CHANGELOG_URL) return (releaseNotes = bundled);
+  try {
+    const response = await net.fetch(changelog.url(), { cache: 'no-cache', signal: AbortSignal.timeout(8000) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    releaseNotes = changelog.merge(changelog.normalize(await response.json()), bundled);
+    return releaseNotes;
+  } catch (error) {
+    log(`Showing the changelog bundled with this launcher: ${error.message}`);
+    return bundled;
+  }
+}
+
+async function changelogState() {
+  const releases = await loadChangelog();
+  return { releases, current: changelog.baseVersion(app.getVersion()),
+    unseen: changelog.unseen(releases, { seen: config.changelogSeen, current: app.getVersion(),
+      returning: config.completedSetup }).map(release => release.version) };
+}
+
+// Only moves forward, so leaving a preview for an older release and coming
+// back does not repeat notes already shown.
+function markChangelogSeen() {
+  const version = changelog.baseVersion(app.getVersion());
+  if (!version || (config.changelogSeen && changelog.compareVersions(version, config.changelogSeen) <= 0)) return;
+  config.changelogSeen = version;
+  saveConfig();
+}
+
 function heartbeatPayload() {
   const installed = port.isPort(config.repo) && binaryReady() ? game.installed(config.repo, config.settings) : null;
   return telemetry.payload({ installId: config.installId, launcherVersion: app.getVersion(),
@@ -903,6 +942,9 @@ function registerHandlers() {
   ipcMain.handle('open-docs', () => shell.openPath(path.join(requireRepo(), 'BUILD.md')));
   // Only this fixed invite opens: the page never chooses a URL.
   ipcMain.handle('open-discord', () => shell.openExternal(DISCORD_INVITE));
+  ipcMain.handle('changelog', () => changelogState());
+  ipcMain.handle('changelog-seen', () => markChangelogSeen());
+  ipcMain.handle('open-changelog-page', () => shell.openExternal(changelog.PAGE_URL));
   ipcMain.handle('open-hdr-calibration', () => shell.openExternal(HDR_CALIBRATION_APP));
   ipcMain.handle('display-info', () => displayInfo());
 }

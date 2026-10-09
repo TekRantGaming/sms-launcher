@@ -108,6 +108,8 @@ Launcher updates download automatically when **Update automatically** is enabled
 
 To manage updates yourself, turn off **Update automatically** in **Settings → Manage game**. Use **Update game** there when you're ready.
 
+After the launcher updates, its changelog opens once to show what changed in the launcher and the game since you last opened it. Open it any time with the changelog button beside the Settings cog.
+
 ### Saved games and backups
 
 The launcher keeps your save location when you update or rebuild the game. It makes dated backups before and after playing, and before game updates or cleanup.
@@ -226,13 +228,15 @@ See [build tool publishing](docs/build-tools.md) for archive preparation and pub
 
 Source or tool changes require a game rebuild. Visual preferences and launcher-only updates reuse the existing game. The launcher selects compatible versions; users don't manage branches or commits.
 
-**Launcher release:** run `npm version patch --no-git-tag-version`, commit `package.json` and `package-lock.json`, and push to `main`. The release workflow creates the tag and draft, verifies the game with the published tools, builds the Linux AppImage, universal Mac DMG/ZIP, and Windows installer, then publishes after all checks pass. Documentation-only changes don't need a version bump.
+**Changelog:** [`changelog.json`](changelog.json) has one entry per launcher release: its launcher changes and the game it pins (`game.version` and `game.commit` from `src/game-release.json`) with that game's changes. Write entries for players. The launcher reads the file from `main` on GitHub, so later edits to an entry reach installed launchers, and falls back to the copy it was packaged with when offline. Tests require an entry for the current `package.json` version whose game pin matches `src/game-release.json`.
+
+**Launcher release:** run `npm version patch --no-git-tag-version`, add the new version to `changelog.json`, commit `package.json`, `package-lock.json` and `changelog.json`, and push to `main`. The release workflow creates the tag and draft, verifies the game with the published tools, builds the Linux AppImage, universal Mac DMG/ZIP, and Windows installer, then publishes after all checks pass. Documentation-only changes don't need a version bump.
 
 **Game update:**
 
 1. Push a complete port revision, including its decomp gitlink, to the branch selected in `src/game-release.json` — currently `main`.
-2. Run `npm run update:game` or `npm run update:game -- <port-commit>`. It records exact source revisions, assigns a dated game version, and bumps the launcher version. Selecting the same revision makes no changes.
-3. Review and commit `src/game-release.json`, `package.json`, and `package-lock.json`, then push to `main` to run the release gate.
+2. Run `npm run update:game` or `npm run update:game -- <port-commit>`. It records exact source revisions, assigns a dated game version, bumps the launcher version, and drafts that version's `changelog.json` entry with the game pin and the port and launcher commit subjects since the last release. Selecting the same revision makes no changes.
+3. Rewrite the drafted changelog notes for players, review and commit `src/game-release.json`, `package.json`, `package-lock.json` and `changelog.json`, then push to `main` to run the release gate.
 
 **Tool update:** publish the affected OS or Mac architecture through the separate tool workflow, adopt its generated manifest entry with the new immutable URL and checksum, and bump the launcher. Preserve existing archives and hashes. See [the toolset workflow](docs/build-tools.md).
 
