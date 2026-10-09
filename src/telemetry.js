@@ -4,8 +4,8 @@
 // the top bar. A heartbeat carries only the launcher and game versions, OS,
 // update channel, whether the game is running and a random install ID.
 // Players who turn sharing off still see the count, but are not part of it.
-// Empty until the API is deployed; SMS_TELEMETRY_URL overrides it for testing.
-const TELEMETRY_URL = '';
+// SMS_TELEMETRY_URL overrides it for testing.
+const TELEMETRY_URL = 'https://sms-launcher-telemetry.chasemdev.workers.dev';
 const INTERVAL = 5 * 60 * 1000;
 const INSTALL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

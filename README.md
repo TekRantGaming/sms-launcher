@@ -242,7 +242,7 @@ macOS automatic updates require signed builds. Mac releases are signed with a se
 
 ### Usage API
 
-Check-ins and the online count come from `sms-server-api`, a Cloudflare Worker kept in a separate private repository. `TELEMETRY_URL` in `src/telemetry.js` points packaged launchers at it; while it is empty, nothing is sent. Development runs never report unless `SMS_TELEMETRY_URL` points at a test API, for example `SMS_TELEMETRY_URL=http://localhost:8787 npm start` with the API's `npm run dev`.
+Check-ins and the online count come from `sms-server-api`, a Cloudflare Worker kept in a separate private repository. `TELEMETRY_URL` in `src/telemetry.js` points packaged launchers at it (`https://sms-launcher-telemetry.chasemdev.workers.dev`). Development runs never report unless `SMS_TELEMETRY_URL` points at a test API, for example `SMS_TELEMETRY_URL=http://localhost:8787 npm start` with the API's `npm run dev`.
 
 ### Save storage and recovery
 
