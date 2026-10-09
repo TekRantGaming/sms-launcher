@@ -1,5 +1,5 @@
 'use strict';
-const { contextBridge, ipcRenderer, webUtils } = require('electron');
+const { contextBridge, ipcRenderer, webFrame, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('sms', {
   state: () => ipcRenderer.invoke('state'),
@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('sms', {
   checkAppUpdate: () => ipcRenderer.invoke('check-app-update'),
   installAppUpdate: () => ipcRenderer.invoke('install-app-update'),
   updateChannels: () => ipcRenderer.invoke('update-channels'),
+  zoomFactor: () => webFrame.getZoomFactor(),
   windowState: () => ipcRenderer.invoke('window-state'),
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
   toggleFullScreen: () => ipcRenderer.invoke('window-toggle-full-screen'),

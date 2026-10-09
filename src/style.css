@@ -278,7 +278,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 .modal-view .modal-body { padding-bottom: 12px; }
 .activity-log-entry { margin-top: 14px; }
 .viewport { overflow: auto; }
-.home-page { min-height: 215px; }
+.home-page { height: auto; min-height: 100%; }
 .activity-dock { flex: none; color: #d7e9ed; background: #0b2537; border-top: 1px solid #719aaa66; box-shadow: 0 -8px 28px #061e3433; }
 .console-header { display: flex; align-items: center; gap: 18px; min-height: 52px; padding: 0 26px; background: #102f43; }
 .console-toggle { display: flex; align-items: center; gap: 10px; flex: none; padding: 8px 0; color: #f1f9fb; background: transparent; border-radius: 4px; }
