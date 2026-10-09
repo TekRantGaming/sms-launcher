@@ -123,6 +123,15 @@ Backups are stored in **SMS Launcher Backups** in your home folder, separate fro
 
 Export your North American Super Mario Sunshine save (`GMSE01`, `super_mario_sunshine`) from Dolphin's Memory Card Manager as a `.gci` file. The importer transfers the entire save, including all three slots. It installs the unchanged save data and the card metadata into the save folder shown in the launcher, including custom locations, on Windows, macOS, and Linux. A fresh card does not need to be created in-game first. Other games, regions, raw memory cards, and `.sav`/`.gcs` files are not supported.
 
+### Add to Steam
+
+The **Add to Steam** banner on the home screen, under the Discord one, adds the launcher to your Steam library as a non-Steam game called **Super Mario Sunshine**, with artwork from [SteamGridDB](https://www.steamgriddb.com/game/34899): the library capsule, wide capsule, header, logo and icon. You can then start it from Steam, Big Picture, or a Steam Deck's Game Mode. On a Steam Deck, add it from Desktop Mode.
+
+- If Steam is open, it closes for a moment and opens again, because Steam picks up new non-Steam games only when it starts.
+- The launcher is added for the Steam account that signed in last. Choosing it again updates the same entry instead of adding another.
+- Steam's list of non-Steam games is backed up first, as `shortcuts.vdf.sms-launcher-backup` beside it.
+- The banner shows on Windows and Linux, from the installed launcher or the AppImage, while Steam is installed and the launcher is not in its library yet.
+
 The launcher asks before importing, warns if save block checksums fail, and makes a verified backup of your existing card before writing. A failed import restores the files it replaced. Import is disabled while the game or another launcher task is running. The source `.gci` is never changed or uploaded. Restore a **Before Dolphin import** backup to recover previous progress.
 
 The conversion follows the GCI header/payload approach demonstrated by the community [GCI-to-DAT converter](https://github.com/user-attachments/files/33072655/gci-to-dat.3.html), with metadata and index creation for the port's card backend. Header fields follow [Dolphin's GCI directory entry format](https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Core/HW/GCMemcard/GCMemcard.h).
