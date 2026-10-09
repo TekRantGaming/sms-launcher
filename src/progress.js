@@ -49,6 +49,8 @@ function activityFromLine(line) {
   if (git) return { detail: git[1] === 'Receiving objects' ? 'Downloading files' : 'Preparing downloaded files', percent: Math.min(100, Number(git[2])) };
   if (/^Downloading Super Mario Sunshine UHD Texture Pack/.test(value))
     return { detail: 'Downloading HD textures (about 1 GB)', percent: null };
+  if (/^Downloading Super Mario Sunshine HD texture extras/.test(value))
+    return { detail: 'Downloading HD texture extras', percent: null };
   const textureDownload = value.match(/^Texture download: (\d+)\/(\d+) bytes$/);
   if (textureDownload) {
     const received = Number(textureDownload[1]), total = Number(textureDownload[2]);

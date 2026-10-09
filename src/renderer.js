@@ -307,6 +307,7 @@ function taskName(label) {
       label.startsWith('Unpack build') || label.startsWith('Update private')) return 'Preparing build tools';
   if (label === 'Install HD cutscenes') return 'Preparing HD cutscenes';
   if (label.startsWith('Install UHD')) return 'Downloading HD textures';
+  if (label === 'Install HD texture extras') return 'Updating HD textures';
   if (label.startsWith('Install Eclipse')) return 'Setting up Eclipse';
   if (label.startsWith('Check for port')) return 'Checking for updates';
   if (label.startsWith('Update port') || label.startsWith('Update decompilation')) return 'Updating setup files';
