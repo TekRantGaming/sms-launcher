@@ -30,7 +30,9 @@ test('Discord is looked for in its usual places, discord-ipc-0 first', () => {
 // A stand-in for the Discord app on a local socket.
 function fakeDiscord(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sms-discord-'));
-  const file = path.join(dir, 'discord-ipc-0');
+  // Windows can only listen on a named pipe, which is also where Discord is found there.
+  const file = process.platform === 'win32' ? `\\\\?\\pipe\\${path.basename(dir)}-discord-ipc-0`
+    : path.join(dir, 'discord-ipc-0');
   const received = [], waiters = [];
   let client = null;
   const server = net.createServer(socket => {
@@ -54,7 +56,7 @@ test('an activity is sent after the handshake, and repeats and bursts are held b
   const fake = await fakeDiscord(t);
   let clock = 1000;
   const timers = [];
-  const presence = discord.createPresence({ clientId: '42', platform: 'linux', paths: [fake.file], pid: 7,
+  const presence = discord.createPresence({ clientId: '42', platform: process.platform, paths: [fake.file], pid: 7,
     now: () => clock, setTimeout: (callback, ms) => { timers.push({ callback, ms }); return timers.length; },
     clearTimeout: () => {} });
   presence.set({ details: 'Bianco Hills' });

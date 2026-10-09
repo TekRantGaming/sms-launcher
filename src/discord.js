@@ -47,7 +47,7 @@ function socketPaths(platform = process.platform, env = process.env) {
     'snap.discord-canary', '.flatpak/dev.vencord.Vesktop/xdg-run'];
   const paths = [];
   for (let i = 0; i < 10; ++i)
-    for (const base of bases) for (const folder of folders) paths.push(path.join(base, folder, `discord-ipc-${i}`));
+    for (const base of bases) for (const folder of folders) paths.push(path.posix.join(base, folder, `discord-ipc-${i}`));
   return paths;
 }
 
