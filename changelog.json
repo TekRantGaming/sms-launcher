@@ -16,7 +16,9 @@
       "Fixed dark fog bands and shimmering HD textures under the sea in Noki Bay.",
       "Fixed Shadow Mario never taking Peach in Super Mario Eclipse's Delfino Plaza.",
       "Portal movies keep playing when Skip cutscenes is on.",
-      "The game reports what you're doing for Discord."
+      "The game reports what you're doing for Discord.",
+      "Fixed Super Mario Eclipse crashing when you enter Bianco Hills or Erto Rock.",
+      "Fixed the camera staying tilted in Super Mario Eclipse after Delfino Plaza's opening cutscene plays to the end."
     ]
   },
   "releases": [
