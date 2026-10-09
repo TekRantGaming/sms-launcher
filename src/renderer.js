@@ -757,7 +757,8 @@ function renderRanges() {
 
 // Exclusive fullscreen sizes up to this screen's own (the game picks the closest mode the display has).
 function renderExclusiveResolutions(chosen) {
-  const display = globalThis.screen || { width: 1920, height: 1080 }, scale = globalThis.devicePixelRatio || 1;
+  // screen sizes ignore page zoom, but devicePixelRatio includes it.
+  const display = globalThis.screen || { width: 1920, height: 1080 }, scale = (globalThis.devicePixelRatio || 1) / window.sms.zoomFactor();
   const nativeWidth = Math.round(display.width * scale), nativeHeight = Math.round(display.height * scale);
   const sizes = ['1280x720', '1600x900', '1920x1080', '2560x1080', '2560x1440', '3440x1440', '3840x2160']
     .filter(size => { const [w, h] = size.split('x').map(Number); return w <= nativeWidth && h <= nativeHeight; });

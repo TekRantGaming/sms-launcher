@@ -16,11 +16,15 @@ function main(t, { platform = process.platform, childProcess } = {}) {
   const electron = { ipcMain: { handle: (name, handler) => { handlers[name] = handler; } },
     clipboard: { writeText: text => copied.push(text) },
     app: { requestSingleInstanceLock: () => true, on: (name, handler) => { appEvents[name] = handler; },
-    whenReady: () => ({ then() {} }), getPath: () => root } };
+    whenReady: () => ({ then() {} }), getPath: () => root },
+    screen: { getPrimaryDisplay: () => ({ scaleFactor: 1 }), getDisplayMatching: () => ({ scaleFactor: 1 }), on() {} } };
   electron.BrowserWindow = class {
     webContents = { send() {}, setWindowOpenHandler() {}, on: (name, handler) => { consoleEvents[name] = handler; } };
     isDestroyed() { return false; }
+    getBounds() { return { x: 0, y: 0, width: 1080, height: 760 }; }
+    hookWindowMessage() {}
     on() {}
+    once() {}
     setMenuBarVisibility() {}
     loadFile() {}
   };

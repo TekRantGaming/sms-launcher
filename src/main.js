@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, net, screen } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
@@ -19,6 +19,7 @@ const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
 const { createSessionLog } = require('./session-log');
+const displayScale = require('./display-scale');
 
 const DISCORD_INVITE = 'https://discord.gg/NvUXmm8dB9';
 // Microsoft's free Windows HDR Calibration app (Microsoft Store product 9N7F2SM5D1LR).
@@ -842,12 +843,18 @@ function registerHandlers() {
   ipcMain.handle('display-info', () => displayInfo());
 }
 
+const WINDOW_SIZE = { width: 1080, height: 760, minWidth: 900, minHeight: 600 };
+
 function createWindow() {
+  // Only Windows display scaling is capped: a Mac's Retina 2x is its normal size.
+  const windowsScaling = process.platform === 'win32';
+  const zoom = windowsScaling ? displayScale.zoomFor(screen.getPrimaryDisplay().scaleFactor) : 1;
   window = new BrowserWindow({
-    width: 1080, height: 760, minWidth: 900, minHeight: 700,
+    ...displayScale.scaledSize(WINDOW_SIZE, zoom),
     frame: false, backgroundColor: '#0a3045', title: 'SMS Launcher',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
+  if (windowsScaling) displayScale.followDisplayScale(window, screen, WINDOW_SIZE, zoom);
   window.setMenuBarVisibility(false);
   const sendWindowState = () => broadcast('window-state', { fullscreen: window.isFullScreen() });
   window.on('enter-full-screen', sendWindowState);

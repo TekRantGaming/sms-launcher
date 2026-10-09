@@ -40,7 +40,7 @@ async function renderer(data = state(), copyError = null) {
     elements.set(match[1], node);
   }
   const sms = {
-    state: async () => data, windowState: async () => ({}),
+    state: async () => data, windowState: async () => ({}), zoomFactor: () => 1,
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
     onLog(callback) { logCallback = callback; }, onActivity(callback) { activityCallback = callback; }, onAppUpdate() {}, onWindowState() {}, onOnline(callback) { listeners.online = callback; },
     onLogReset(callback) { resetCallback = callback; },
