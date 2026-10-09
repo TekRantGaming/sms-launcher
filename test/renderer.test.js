@@ -224,6 +224,16 @@ test('usage sharing toggle shows the setting and is saved with the others', asyn
   assert.equal(ui.calls.at(-1)[1].shareUsage, true);
 });
 
+test('the Discord toggle shows the setting and is saved with the others', async () => {
+  const data = state(); data.config.settings = port.normalizeSettings({});
+  const ui = await renderer(data);
+  assert.equal(ui.elements.get('discordPresence').checked, true);
+  ui.elements.get('discordPresence').checked = false;
+  ui.elements.get('discordPresence').dispatch('change');
+  await new Promise(setImmediate);
+  assert.equal(ui.calls.at(-1)[1].discordPresence, false);
+});
+
 test('the top bar shows the online count once the usage API answers', async () => {
   const data = state(), ui = await renderer(data);
   assert.equal(ui.elements.get('online-number').textContent, '');

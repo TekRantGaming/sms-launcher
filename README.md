@@ -145,6 +145,8 @@ The top bar shows how many players have the launcher open. To count you, the lau
 
 Nothing else is sent: no name, account, disc file, saves, settings or file paths, and no IP address is stored. Installs that stop checking in are deleted after 90 days. Turn off **Share anonymous usage** in **Settings → Manage game** to stop sending check-ins; you will still see the online count, but you won't be counted in it.
 
+While the game runs and the Discord app is open on the same computer, your Discord profile shows that you are playing: the level and episode, your Shine and Blue Coin counts, lives, whether you're paused, and how long you have played. This goes only to the Discord app on your computer, and it clears when the game closes. Turn off **Show on Discord** in **Settings → Manage game** to hide it.
+
 ## Need help?
 
 The **Activity log** panel is always available along the bottom of the launcher. It opens when a task starts or reports a failure; click its heading to collapse it or use the expand button for more reading space. Launcher messages, stdout and stderr have separate labels and colors. Stderr also carries normal game diagnostics; its label alone does not mean a crash. Scroll up to pause following output, and click **Follow output** to catch up again. Each fresh Play clears the activity window and replaces the stored session log before any setup or launch steps. Use **Copy log** to copy the full current session to your clipboard or **Save log** to export it to a file, including output older than the latest 700 visible entries. The current session is also kept in the launcher's user-data `logs` folder. The launcher closes stdin for its tasks; this view does not accept terminal input.

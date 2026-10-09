@@ -10,11 +10,11 @@ const { createRequire } = require('node:module');
 const { EventEmitter } = require('node:events');
 const port = require('../src/port');
 
-function fixture(t, { metadata = true, textures = false, eclipse = false } = {}) {
+function fixture(t, { metadata = true, textures = false, eclipse = false, discordPresence = true } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sms installed game-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const root = path.join(directory, 'port');
-  const settings = port.normalizeSettings({ textures: true, cutscenes: true, autoUpdate: true, eclipse });
+  const settings = port.normalizeSettings({ textures: true, cutscenes: true, autoUpdate: true, eclipse, discordPresence });
   for (const file of ['CMakeLists.txt', 'build.sh', 'run.sh', 'clean.sh', 'tools/mods/get.py']) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), 'installed source');
@@ -40,7 +40,7 @@ function fixture(t, { metadata = true, textures = false, eclipse = false } = {})
     fs.writeFileSync(path.join(port.texturePackDirectory(root), 'tex1_fixture.png'), 'installed texture');
   }
   const config = { repo: root, rom, settings, completedSetup: true, saveDirectory: path.join(directory, 'saves') };
-  const starts = [], backups = [], handlers = new Map(), environments = [];
+  const starts = [], backups = [], handlers = new Map(), environments = [], activities = [];
   const sourcePath = path.resolve(__dirname, '../src/main.js');
   const nativeRequire = createRequire(sourcePath);
   const context = vm.createContext({ console, process, Buffer, setTimeout, setInterval, __dirname: path.dirname(sourcePath),
@@ -56,6 +56,7 @@ function fixture(t, { metadata = true, textures = false, eclipse = false } = {})
         environment(_userData, env) { return { ...env, MSYS2_ROOT: path.join(toolRoot, 'msys64') }; },
         async ensure() { throw new Error('Playing must not prepare new tools'); },
         async check() { throw new Error('Playing must not prepare new tools'); } };
+      if (name === './discord') return { createPresence: () => ({ set: activity => activities.push(activity), stop() {} }) };
       if (name === './saves') return {
         backupRoot: () => path.join(directory, 'backups'),
         backupSaves(_saves, _backups, reason) { backups.push(reason); return { empty: true, message: 'No saves yet' }; },
@@ -70,7 +71,7 @@ function fixture(t, { metadata = true, textures = false, eclipse = false } = {})
       return nativeRequire(name);
     }, fixtureConfig: config });
   vm.runInContext(fs.readFileSync(sourcePath, 'utf8') + '\nconfig = fixtureConfig; registerHandlers();', context);
-  return { config, starts, backups, environments, binary, record, toolRoot, root, play: () => handlers.get('play')() };
+  return { config, starts, backups, environments, activities, binary, record, toolRoot, root, play: () => handlers.get('play')() };
 }
 
 test('skip update launches the older installed game, keeps preferences and saves, and never builds or downloads', async t => {
@@ -83,12 +84,24 @@ test('skip update launches the older installed game, keeps preferences and saves
   assert.equal(options.cwd, f.root);
   assert.equal(options.env.SMS_TEXTURE_PACKS, '0');
   assert.equal(options.env.SMS_HD_CUTSCENES, '0');
+  assert.equal(options.env.SMS_PRESENCE, '1');
   assert.equal(options.env.SMS_SAVE_DIR, f.config.saveDirectory.replaceAll('\\', '/'));
   assert.deepEqual(f.environments, [f.toolRoot]);
   assert.deepEqual(f.backups, ['before-play', 'after-play']);
   assert.equal(JSON.stringify(f.config), before);
   assert.equal(fs.readFileSync(f.binary, 'utf8'), 'installed executable');
   assert.equal(fs.readFileSync(f.record, 'utf8'), recordBefore);
+});
+
+test('with Show on Discord off the game is not asked for presence and Discord is not contacted', async t => {
+  const on = fixture(t);
+  await on.play();
+  assert.equal(on.starts[0].options.env.SMS_PRESENCE, '1');
+  assert.equal(on.activities.length, 1);
+  const off = fixture(t, { discordPresence: false });
+  await off.play();
+  assert.equal(off.starts[0].options.env.SMS_PRESENCE, undefined);
+  assert.deepEqual(off.activities, []);
 });
 
 test('skip update supports legacy installs and keeps already installed textures enabled', async t => {

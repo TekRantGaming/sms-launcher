@@ -15,6 +15,8 @@ const bindings = require('./bindings');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
 const telemetry = require('./telemetry');
+const discord = require('./discord');
+const presence = require('./presence');
 const { cleanOutputLine, createActivityReader } = require('./progress');
 const { createActivityLog } = require('./activity-log');
 const { observeProcess, exitDescription, failureMessage } = require('./process-output');
@@ -38,6 +40,9 @@ const sessionLog = createSessionLog(() => app.getPath('userData'), error =>
   logOutput(`Could not save the session log: ${error.message}`, 'launcher'));
 let reporter = null;
 let online = null;
+let discordPresence = null;
+// The running game's handler for its `[presence]` lines (src/presence.js).
+let onPresence = null;
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 app.on('second-instance', () => {
@@ -233,7 +238,15 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
       percent: null, startedAt: Date.now() };
     broadcast('activity', activityState());
     const recent = [], readActivity = createActivityReader();
+    // The game's [presence] lines go to Discord, not the activity log; a
+    // partial line that could become one waits for the rest.
+    function output(text, stream, entry) {
+      if (isGame && stream === 'stdout' && !entry && text
+        && (presence.isPresenceLine(text) || presence.PREFIX.startsWith(text))) return entry;
+      return logOutput(text, stream, entry);
+    }
     function line(value, stream, entry) {
+      if (isGame && stream === 'stdout' && presence.isPresenceLine(value)) return onPresence?.(value);
       completeOutput(value, stream, entry);
       if (!value) return;
       if (recent.push(value) > 80) recent.shift();
@@ -243,7 +256,7 @@ async function launch(command, args, options = {}, label = 'Task', isGame = fals
         broadcast('activity', activityState());
       }
     }
-    const { error, code, signal } = await observeProcess(child, { output: logOutput, line });
+    const { error, code, signal } = await observeProcess(child, { output, line });
     active = null;
     broadcast('activity', activityState());
     if (error) throw error;
@@ -496,15 +509,47 @@ async function play(installation = null) {
   }
   // The prompt images the Controls page drew from these bindings (save-prompts).
   if (settings.buttonPrompts && settings.buttonPrompts !== 'gamecube') env.SMS_BUTTON_PROMPT_DIR = promptDirectory();
+  if (config.settings.discordPresence) env.SMS_PRESENCE = '1';
   const cmd = settings.eclipse
     ? port.eclipseRunCommand(root, settings, disc, process.platform, env)
     : port.commandFor(root, 'run', [disc], process.platform, env);
+  const startedAt = Date.now();
+  startPresence(startedAt, settings.eclipse);
   try {
     return await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Play Super Mario Sunshine', true);
   } finally {
+    stopPresence(startedAt);
     try { makeSaveBackup('after-play'); }
     catch (error) { log(`Save backup failed: ${error.message}`); }
   }
+}
+
+// Time spent in the game, in milliseconds, for Discord; kept apart from preferences.
+function playtimeFile() { return path.join(app.getPath('userData'), 'playtime.json'); }
+
+function playtime() {
+  try {
+    const { ms } = JSON.parse(fs.readFileSync(playtimeFile(), 'utf8'));
+    return Number.isFinite(ms) && ms > 0 ? ms : 0;
+  } catch (_) { return 0; }
+}
+
+// Discord shows the game only while it runs, and only with the setting on.
+function startPresence(startedAt, eclipse) {
+  if (!config.settings.discordPresence) return;
+  discordPresence ||= discord.createPresence({ log });
+  const before = playtime();
+  const show = game => discordPresence.set(presence.activity(game,
+    { startedAt, eclipse, playtime: before + Date.now() - startedAt }));
+  onPresence = line => { const game = presence.parseLine(line); if (game) show(game); };
+  show(null);
+}
+
+function stopPresence(startedAt) {
+  onPresence = null;
+  discordPresence?.stop();
+  try { fs.writeFileSync(playtimeFile(), JSON.stringify({ ms: playtime() + Date.now() - startedAt })); }
+  catch (error) { log(`Could not save play time: ${error.message}`); }
 }
 
 async function launchGame() {
