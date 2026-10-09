@@ -31,6 +31,21 @@ test('without Beta notes the announcement still has both versions', () => {
     assert.deepEqual(message({ ...base, beta }).embeds[0].fields.map(field => field.name), ['Launcher', 'Game']);
 });
 
+test('only notes the last Beta did not have are announced', () => {
+  const beta = { launcher: ['Old launcher change.', 'New launcher change.'], game: ['Old game fix.', 'New game fix.'] };
+  const previous = { launcher: ['Old launcher change.'], game: ['Old game fix.', 'A fix since released.'] };
+  const fields = message({ ...base, beta, previous }).embeds[0].fields;
+  assert.deepEqual(fields.slice(2).map(field => [field.name, field.value]),
+    [['Launcher changes', '• New launcher change.'], ['Game changes', '• New game fix.']]);
+});
+
+test('a Beta with no new notes says so instead of repeating them', () => {
+  const beta = { launcher: ['Launcher change.'], game: ['Game fix.'] };
+  const fields = message({ ...base, beta, previous: beta }).embeds[0].fields;
+  assert.deepEqual(fields.slice(2).map(field => field.name), ['Changes']);
+  assert.match(fields[2].value, /^Nothing new in \[the changelog\]\(.*\) since the last Beta\.$/);
+});
+
 test('long notes are cut to fit Discord with a link to the changelog', () => {
   const lines = Array.from({ length: 30 }, (_, index) => `Change ${index} `.padEnd(100, 'x'));
   const value = message({ ...base, beta: { game: lines } }).embeds[0].fields[2].value;
@@ -68,6 +83,12 @@ test('the announcement posts to the webhook, and a missing secret or failed post
   assert.equal(body.embeds[0].fields[2].value, '• Launcher change.');
   assert.match(logs.pop(), /Told Discord about Beta 0\.1\.55-beta\.27 with game 2026\.10\.09-beta\.0e104fa/);
 
-  await main({ ...env, DISCORD_BETA_WEBHOOK: 'https://discord.test/api/webhooks/1/token' }, root);
+  fs.writeFileSync(path.join(root, 'previous.json'), JSON.stringify({ beta: { launcher: ['Launcher change.'], game: [] } }));
+  await main({ ...env, DISCORD_BETA_WEBHOOK: 'https://discord.test/api/webhooks/1/token', PREVIOUS_CHANGELOG: path.join(root, 'previous.json') }, root);
+  assert.deepEqual(posts[1][1].embeds[0].fields.slice(2).map(field => field.name), ['Changes'], 'notes the last Beta posted are not repeated');
+  logs.pop();
+
+  await main({ ...env, DISCORD_BETA_WEBHOOK: 'https://discord.test/api/webhooks/1/token', PREVIOUS_CHANGELOG: path.join(root, 'missing.json') }, root);
+  assert.equal(posts[2][1].embeds[0].fields[2].value, '• Launcher change.', 'an unreadable last changelog announces every note');
   assert.match(logs.pop(), /^::warning::Could not post the Beta to Discord: HTTP 404: Unknown Webhook/);
 });

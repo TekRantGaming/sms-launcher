@@ -204,7 +204,7 @@ The separate **Smoke test build tools** workflow downloads checksum-verified too
 
 The **Refresh Beta** workflow keeps the Beta update channel current: every push to `main` rebuilds it, and every hour it is rebuilt if the game's branch has new commits. Beta uses the newest commit of the game's branch, not the commit `src/game-release.json` pins for the next Stable release. To rebuild it right away, run **Refresh Beta** in GitHub Actions (or `gh workflow run refresh-beta.yml`).
 
-Each published Beta is announced in Discord when the `DISCORD_BETA_WEBHOOK` repository secret holds a channel webhook URL (in Discord: the channel's **Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL**, then `gh secret set DISCORD_BETA_WEBHOOK`). The message has the launcher and game versions, links to the release and both commits, and Beta's notes from `changelog.json`. Without the secret, or if Discord is unreachable, Beta still publishes.
+Each published Beta is announced in Discord when the `DISCORD_BETA_WEBHOOK` repository secret holds a channel webhook URL (in Discord: the channel's **Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL**, then `gh secret set DISCORD_BETA_WEBHOOK`). The message has the launcher and game versions, links to the release and both commits, and the notes added to Beta in `changelog.json` since the last Beta (all of them if the last Beta's notes can't be read). Without the secret, or if Discord is unreachable, Beta still publishes.
 
 ### Build tools
 
