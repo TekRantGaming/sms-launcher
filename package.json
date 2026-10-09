@@ -45,6 +45,7 @@
         "AppImage"
       ],
       "category": "Game",
+      "artifactName": "SMS-Launcher.${ext}",
       "syncDesktopName": true,
       "executableArgs": [
         "--no-sandbox"

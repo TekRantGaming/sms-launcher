@@ -122,7 +122,8 @@ jobs:
         shell: bash
         # A pre-release version (<version>-pr<N>.<run> or <version>-beta.<run>)
         # whose update feed is its own channel's pre-release, and the dashed
-        # file names GitHub keeps on upload.
+        # file names GitHub keeps on upload. The AppImage keeps package.json's
+        # name without a version, like releases.
         run: |
           node -e '
             const fs = require("fs");
@@ -132,7 +133,6 @@ jobs:
             pkg.build.publish = { provider: "generic", url: `https://github.com/${REPO}/releases/download/${CHANNEL}` };
             pkg.build.detectUpdateChannel = false;
             pkg.build.nsis.artifactName = "SMS-Launcher-Setup-${version}.${ext}";
-            pkg.build.linux.artifactName = "SMS-Launcher-${version}.${ext}";
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
             console.log(`Preview ${pkg.version} on channel ${CHANNEL}`);
             const { GAME, DECOMP } = process.env;
