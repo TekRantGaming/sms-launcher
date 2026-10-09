@@ -44,6 +44,7 @@ jobs:
       pr: ${{ steps.plan.outputs.pr }}
       title: ${{ steps.plan.outputs.title }}
       game: ${{ steps.plan.outputs.game }}
+      game_version: ${{ steps.plan.outputs.game_version }}
       decomp: ${{ steps.plan.outputs.decomp }}
     steps:
       - id: plan
@@ -82,7 +83,7 @@ jobs:
             decomp=$(gh api "repos/$game_repo/contents/decomp?ref=$game" --jq 'select(.type == "submodule") | .sha')
             [[ "$game" =~ ^[0-9a-f]{40}$ && "$decomp" =~ ^[0-9a-f]{40}$ ]] \
               || { echo "::error::Could not find the newest game commit and its decomp in $game_repo."; exit 1; }
-            out game "$game"; out decomp "$decomp"
+            out game "$game"; out decomp "$decomp"; out game_version "$(date -u +%Y.%m.%d)-beta.${game:0:7}"
             echo "Beta game: $game_repo ${game:0:7} (decomp ${decomp:0:7})"
           fi
   package:
@@ -106,6 +107,7 @@ jobs:
       CHANNEL: ${{ needs.plan.outputs.channel }}
       SUFFIX: ${{ needs.plan.outputs.suffix }}
       GAME: ${{ needs.plan.outputs.game }}
+      GAME_VERSION: ${{ needs.plan.outputs.game_version }}
       DECOMP: ${{ needs.plan.outputs.decomp }}
     steps:
       - uses: actions/checkout@v4
@@ -135,12 +137,11 @@ jobs:
             pkg.build.linux.artifactName = "SMS-Launcher-${version}.${ext}";
             fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
             console.log(`Preview ${pkg.version} on channel ${CHANNEL}`);
-            const { GAME, DECOMP } = process.env;
+            const { GAME, GAME_VERSION, DECOMP } = process.env;
             if (GAME) {
               const file = "src/game-release.json";
               const game = JSON.parse(fs.readFileSync(file, "utf8"));
-              const date = new Date().toISOString().slice(0, 10).replaceAll("-", ".");
-              Object.assign(game, { version: `${date}-beta.${GAME.slice(0, 7)}`, commit: GAME, decomp: DECOMP });
+              Object.assign(game, { version: GAME_VERSION, commit: GAME, decomp: DECOMP });
               fs.writeFileSync(file, JSON.stringify(game, null, 2) + "\n");
               console.log(`Game ${game.version}: ${GAME} (decomp ${DECOMP})`);
             }'
@@ -202,12 +203,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
       - name: Replace the channel's pre-release
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -218,6 +222,7 @@ jobs:
           GAME: ${{ needs.plan.outputs.game }}
         run: |
           version=$(sed -n 's/^version: //p' dist/latest.yml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -n "$PR" ]; then
             title="Preview #$PR: $PR_TITLE"
             notes="Preview build of #$PR at ${SHA:0:7} ($version). For testing only: choose \"Pull request #$PR\" under Settings > Manage game > Launcher updates. Replaced by the next preview of this pull request and deleted when it closes."
@@ -231,6 +236,30 @@ jobs:
           gh api "repos/$GH_REPO/commits/$SHA" --silent 2>/dev/null || target=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
           gh release delete "$CHANNEL" --cleanup-tag --yes 2>/dev/null || true
           gh release create "$CHANNEL" dist/* --prerelease --latest=false --target "$target" --title "$title" --notes "$notes"
+  # Tells a Discord channel about each new Beta through the webhook in the
+  # DISCORD_BETA_WEBHOOK secret (Discord: channel settings > Integrations >
+  # Webhooks). Without the secret this does nothing.
+  discord:
+    needs: [plan, publish]
+    if: needs.plan.outputs.channel == 'beta'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          sparse-checkout: |
+            scripts/discord-beta.js
+            src/game-release.json
+            changelog.json
+          sparse-checkout-cone-mode: false
+      - name: Announce the Beta on Discord
+        env:
+          DISCORD_BETA_WEBHOOK: ${{ secrets.DISCORD_BETA_WEBHOOK }}
+          LAUNCHER_VERSION: ${{ needs.publish.outputs.version }}
+          LAUNCHER_SHA: ${{ needs.plan.outputs.sha }}
+          GAME_VERSION: ${{ needs.plan.outputs.game_version }}
+          GAME_COMMIT: ${{ needs.plan.outputs.game }}
+        run: node scripts/discord-beta.js
   comment:
     needs: [plan, publish]
     if: needs.plan.outputs.pr != ''
