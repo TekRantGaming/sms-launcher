@@ -73,7 +73,7 @@ Logos, menus, and movies stay at 30 fps.
 
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs (for example 1920×1080 on a 4K screen). **Monitor** opens the game on the same monitor as the launcher or on the primary one. F11 or Alt+Enter switches full screen while playing.
 
-**Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip intro movies**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
+**Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip cutscenes**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
 
 **Graphics preset** sets them all at once, the way PC games do: **Low**, **Medium**, **High** or **Ultra** set Picture sharpness, anti-aliasing, FXAA, texture filtering, sharpening, scaling and the heat-wave effect, and **Steam Deck** suits the Deck's 1280×800 screen (2×, 16:10, full screen). Changing any of those yourself switches it to **Custom**. If the frame rate still drops, try a lower screen resolution: set **Full screen type** to Exclusive and choose a lower **Exclusive resolution**.
 
@@ -132,6 +132,18 @@ The conversion follows the GCI header/payload approach demonstrated by the commu
 Super Mario Eclipse is a fan-made expansion available in Settings. Enable it and choose **Install Eclipse mod**, then finish any setup the launcher requests. Turn it off to return to the original game.
 
 Eclipse needs a full, unmodified North American ISO; compressed CISO files won't work for its patch. Eclipse has been verified on Linux and is experimental on Windows and Mac.
+
+### Privacy
+
+The top bar shows how many players have the launcher open. To count you, the launcher sends an anonymous check-in every 5 minutes while it is open. It contains only:
+
+- the launcher version, installed game version and the game version this release offers
+- your OS and processor type (for example `win32`, `x64`)
+- your launcher update channel
+- whether the game is running
+- a random install ID made on first run
+
+Nothing else is sent: no name, account, disc file, saves, settings or file paths, and no IP address is stored. Installs that stop checking in are deleted after 90 days. Turn off **Share anonymous usage** in **Settings → Manage game** to stop sending check-ins; you will still see the online count, but you won't be counted in it.
 
 ## Need help?
 
@@ -227,6 +239,10 @@ Source or tool changes require a game rebuild. Visual preferences and launcher-o
 Release packages embed their GitHub update feed, check on startup and every 30 minutes, and install downloaded updates on quit. The Mac ZIP is required by the automatic updater; the DMG is the recommended user installation.
 
 macOS automatic updates require signed builds. Mac releases are signed with a self-signed certificate: run `scripts/make-mac-cert.sh` once, store its output as the `MAC_CSC_LINK` and `MAC_CSC_KEY_PASSWORD` secrets, and back it up. Installs only accept updates signed with that same certificate, or a later Developer ID build of the same app, so never generate a replacement. Without the secrets, builds are unsigned and can only be installed by hand. Windows signing uses `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD`. `SMS_LAUNCHER_UPDATE_URL` can override the embedded feed with an HTTPS generic feed. Local packages without a feed cannot fetch new launcher releases automatically.
+
+### Usage API
+
+Check-ins and the online count come from `sms-server-api`, a Cloudflare Worker kept in a separate private repository. `TELEMETRY_URL` in `src/telemetry.js` points packaged launchers at it (`https://sms-launcher-telemetry.chasemdev.workers.dev`). Development runs never report unless `SMS_TELEMETRY_URL` points at a test API, for example `SMS_TELEMETRY_URL=http://localhost:8787 npm start` with the API's `npm run dev`.
 
 ### Save storage and recovery
 

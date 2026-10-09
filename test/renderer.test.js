@@ -18,7 +18,7 @@ function state() {
 }
 
 async function renderer(data = state(), copyError = null) {
-  const calls = [], elements = new Map(), droppedFiles = [];
+  const calls = [], elements = new Map(), droppedFiles = [], listeners = {};
   let logCallback, resetCallback, activityCallback;
   function element(classes = '') {
     const names = new Set(classes.split(' ')), listeners = new Map();
@@ -42,10 +42,11 @@ async function renderer(data = state(), copyError = null) {
   const sms = {
     state: async () => data, windowState: async () => ({}), zoomFactor: () => 1,
     importDolphinSave: async file => { calls.push('importDolphinSave'); droppedFiles.push(file); return { name: 'super_mario_sunshine' }; },
-    onLog(callback) { logCallback = callback; }, onActivity(callback) { activityCallback = callback; }, onAppUpdate() {}, onWindowState() {},
+    onLog(callback) { logCallback = callback; }, onActivity(callback) { activityCallback = callback; }, onAppUpdate() {}, onWindowState() {}, onOnline(callback) { listeners.online = callback; },
     onLogReset(callback) { resetCallback = callback; },
     saveActivityLog: async () => { calls.push('saveActivityLog'); },
     copyActivityLog: async () => { calls.push('copyActivityLog'); if (copyError) throw copyError; },
+    saveSettings: async value => { calls.push(['saveSettings', value]); return { ...data, config: { ...data.config, settings: port.normalizeSettings(value) } }; },
     play: async () => { calls.push('play'); }, launchGame: async () => { calls.push('launchGame'); }
   };
   const context = vm.createContext({ console, setInterval() {}, requestAnimationFrame: callback => setImmediate(callback),
@@ -57,7 +58,7 @@ async function renderer(data = state(), copyError = null) {
   } });
   vm.runInContext(fs.readFileSync(path.resolve(__dirname, '../src/renderer.js'), 'utf8'), context);
   await new Promise(setImmediate);
-  return { elements, calls, droppedFiles,
+  return { elements, calls, droppedFiles, listeners,
     async emitLog(entry) { logCallback(entry); await new Promise(setImmediate); },
     async resetLog(sequence) { resetCallback(sequence); await new Promise(setImmediate); },
     async emitActivity(active) { activityCallback(active); await new Promise(setImmediate); },
@@ -211,4 +212,27 @@ test('a fresh Play clears rendered history and ignores delayed output from the p
   await ui.emitLog(old);
   await ui.emitLog({ id: 2, sequence: 3, stream: 'stdout', text: 'new run' });
   assert.equal(ui.elements.get('log').textContent, '[stdout] new run\n');
+});
+
+test('usage sharing toggle shows the setting and is saved with the others', async () => {
+  const data = state(); data.config.settings = port.normalizeSettings({ shareUsage: false });
+  const ui = await renderer(data);
+  assert.equal(ui.elements.get('shareUsage').checked, false);
+  ui.elements.get('shareUsage').checked = true;
+  ui.elements.get('shareUsage').dispatch('change');
+  await new Promise(setImmediate);
+  assert.equal(ui.calls.at(-1)[1].shareUsage, true);
+});
+
+test('the top bar shows the online count once the usage API answers', async () => {
+  const data = state(), ui = await renderer(data);
+  assert.equal(ui.elements.get('online-number').textContent, '');
+  ui.listeners.online({ online: 1, playing: 0 });
+  assert.equal(ui.elements.get('online-count').hidden, false);
+  assert.equal(ui.elements.get('online-number').textContent, '1 online');
+  assert.equal(ui.elements.get('online-count').title, '1 player has the launcher open · 0 playing now');
+  data.online = { online: 42, playing: 7 };
+  await ui.refresh();
+  assert.equal(ui.elements.get('online-number').textContent, '42 online');
+  assert.equal(ui.elements.get('online-count').title, '42 players have the launcher open · 7 playing now');
 });

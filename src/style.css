@@ -18,6 +18,10 @@ button:focus-visible, select:focus-visible, .switch input:focus-visible + i { ou
 .tab:hover { color: #1e4c54; background: #f3f7f6; }
 .tab.active { color: #125e66; border-bottom-color: #137c83; }
 .platform-pill { margin-left: auto; color: #6c7c82; font-size: 12px; white-space: nowrap; }
+.online-pill { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: #6c7c82; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.online-pill[hidden] { display: none; }
+.online-pill i { width: 7px; height: 7px; border-radius: 50%; background: #3fbf6f; box-shadow: 0 0 0 3px #3fbf6f33; }
+.online-pill:not([hidden]) + .platform-pill { margin-left: 0; }
 .viewport { flex: 1; min-height: 0; width: 100%; padding: 22px 26px; }
 .page { height: 100%; }
 .home-page { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
@@ -162,7 +166,7 @@ pre { height: 120px; margin: 0; padding: 12px; overflow: auto; border-radius: 8p
 }
 .topbar { flex-basis: 58px; gap: 16px; background: #092e45bb; border-bottom: 1px solid #ffffff2a; color: #fff; backdrop-filter: blur(16px); -webkit-app-region: drag; user-select: none; }
 .brand-mark { background: #ffc75a; }
-.platform-pill { color: #c9e6ec; }
+.platform-pill, .online-pill { color: #c9e6ec; }
 .window-controls { display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag; }
 .window-control { display: grid; place-items: center; width: 37px; height: 32px; padding: 0; border: 1px solid #ffffff2f; border-radius: 7px; background: #ffffff12; color: #e5f6f9; -webkit-app-region: no-drag; }
 .window-control:hover { background: #ffffff2c; }

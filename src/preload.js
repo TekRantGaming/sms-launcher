@@ -49,5 +49,6 @@ contextBridge.exposeInMainWorld('sms', {
   onLog: callback => ipcRenderer.on('log', (_event, line) => callback(line)),
   onLogReset: callback => ipcRenderer.on('log-reset', (_event, sequence) => callback(sequence)),
   onActivity: callback => ipcRenderer.on('activity', (_event, value) => callback(value)),
-  onAppUpdate: callback => ipcRenderer.on('app-update', (_event, value) => callback(value))
+  onAppUpdate: callback => ipcRenderer.on('app-update', (_event, value) => callback(value)),
+  onOnline: callback => ipcRenderer.on('online', (_event, value) => callback(value))
 });
