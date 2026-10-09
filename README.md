@@ -73,7 +73,7 @@ Logos, menus, and movies stay at 30 fps.
 
 Turn on **Settings → Visuals → Full screen** to have the game fill your display on its next launch. **Full screen type** chooses Borderless (the default) or Exclusive, which switches your display to the **Exclusive resolution** while the game runs (for example 1920×1080 on a 4K screen). **Monitor** opens the game on the same monitor as the launcher or on the primary one. F11 or Alt+Enter switches full screen while playing.
 
-**Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip intro movies**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
+**Settings → Performance** also has **Vsync** (Off, On or Adaptive), **Skip cutscenes**, and **Performance overlay**, which opens the game's frame-rate overlay at start (the backtick key toggles it in game).
 
 **Graphics preset** sets them all at once, the way PC games do: **Low**, **Medium**, **High** or **Ultra** set Picture sharpness, anti-aliasing, FXAA, texture filtering, sharpening, scaling and the heat-wave effect, and **Steam Deck** suits the Deck's 1280×800 screen (2×, 16:10, full screen). Changing any of those yourself switches it to **Custom**. If the frame rate still drops, try a lower screen resolution: set **Full screen type** to Exclusive and choose a lower **Exclusive resolution**.
 
