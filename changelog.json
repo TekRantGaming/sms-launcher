@@ -13,7 +13,8 @@
         "Show on Discord: while you play, your Discord profile shows where you are in the game, your Shine count and how long you've played. Turn it off under Manage game.",
         "The launcher keeps its size on Windows displays with high scaling.",
         "A changelog: see what changed in the launcher and the game with the new button beside Settings. It opens by itself once after an update.",
-        "\"Skip intro movies\" is now \"Skip cutscenes\", since it skips every movie."
+        "\"Skip intro movies\" is now \"Skip cutscenes\", since it skips every movie.",
+        "With Super Mario Eclipse turned on in Settings, the home screen shows Eclipse artwork and notes that the launcher isn't affiliated with the Eclipse team."
       ],
       "game": {
         "version": "2026.10.09.2",
