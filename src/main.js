@@ -12,6 +12,7 @@ const buildTools = require('./build-tools');
 const game = require('./game-version');
 const updateChannel = require('./update-channel');
 const steam = require('./steam');
+const appImageUpdate = require('./appimage-update');
 const bindings = require('./bindings');
 const prompts = require('./prompts');
 const gameSource = require('./game-source');
@@ -720,6 +721,8 @@ function setupAppUpdater() {
     return;
   }
   ({ autoUpdater: updater } = require('electron-updater'));
+  // Updates keep the AppImage's name and folder, so Steam shortcuts to it keep working
+  if (process.platform === 'linux') appImageUpdate.keepAppImagePath(updater);
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
   applyUpdateChannel();

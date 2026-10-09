@@ -22,7 +22,7 @@ Choose the launcher file for your computer:
 | --- | --- |
 | Windows | The `.exe` installer |
 | Mac — Intel or Apple Silicon | `SMS-Launcher-<version>-mac-universal.dmg` |
-| Linux | The `.AppImage` |
+| Linux | `SMS-Launcher.AppImage` |
 
 The launcher requires a **64-bit computer** and an internet connection for setup. Required setup tools download automatically.
 
@@ -43,6 +43,8 @@ Use the DMG for the usual drag-and-drop installation. If you download the ZIP in
 ### Linux
 
 Download the `.AppImage`, allow it to run as a program in your file manager's permissions settings, then open it.
+
+To play through Steam (on a Steam Deck, in Desktop Mode), choose the **Add to Steam** banner on the home screen; see [Add to Steam](#add-to-steam). Launcher updates install over the AppImage in place, keeping its name and folder, so the Steam shortcut and any desktop entry keep working.
 
 ## Set up your game
 
