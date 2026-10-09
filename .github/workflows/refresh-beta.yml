@@ -12,10 +12,12 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-# One Beta build at a time; a newer request waits and replaces any older waiting one.
+# One Beta build at a time. A push to main (merges are linear, so the newest
+# commit has everything) or a manual run cancels the build in progress. The
+# hourly check never cancels: it waits, replacing any older waiting run.
 concurrency:
   group: refresh-beta
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 jobs:
   check:
     runs-on: ubuntu-latest
