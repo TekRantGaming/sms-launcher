@@ -47,12 +47,13 @@ class ProgressResponse:
 
 
 def main():
+    # texture-progress.py GET_PY [get.py's arguments, "textures" by default]
     installer = sys.argv[1]
     original_argv = sys.argv
     original_urlopen = urllib.request.urlopen
     try:
         urllib.request.urlopen = lambda *args, **kwargs: ProgressResponse(original_urlopen(*args, **kwargs))
-        sys.argv = [installer, "textures"]
+        sys.argv = [installer] + (original_argv[2:] or ["textures"])
         runpy.run_path(installer, run_name="__main__")
     finally:
         urllib.request.urlopen = original_urlopen

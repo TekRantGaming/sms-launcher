@@ -47,6 +47,8 @@ test('reads pipe chunks, carriage-return progress, split Unicode, and the final 
 test('reports texture install phases without inventing a download percentage', () => {
   assert.deepEqual(activityFromLine('Downloading Super Mario Sunshine UHD Texture Pack v2.1.1'),
     { detail: 'Downloading HD textures (about 1 GB)', percent: null });
+  assert.deepEqual(activityFromLine('Downloading Super Mario Sunshine HD texture extras v1.1.0'),
+    { detail: 'Downloading HD texture extras', percent: null });
   assert.deepEqual(activityFromLine('Unpacking GMS.7z'), { detail: 'Installing HD textures', percent: null });
   assert.deepEqual(activityFromLine('Installed 2180 textures in mods/textures/GMS.'),
     { detail: 'HD textures installed', percent: 100 });

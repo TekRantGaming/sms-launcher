@@ -173,6 +173,30 @@ function cutscenePackInstalled(root) {
   } catch (_) { return false; }
 }
 
+// HD textures the UHD pack lacks, from the port's own release
+// (chasem-dev/sms-hd-texture-extras). The port pins that release in
+// tools/mods/texture-extras.json and records the one it installed in the
+// install's .release file; a new pin means downloading only the extras again.
+function textureExtrasDirectory(root) { return path.join(texturePackDirectory(root), 'sms-hd-texture-extras'); }
+
+function textureExtrasSupported(root) {
+  return fs.existsSync(path.join(root, 'tools', 'mods', 'texture-extras.json'));
+}
+
+function textureExtrasInstalled(root) {
+  try {
+    const pinned = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'mods', 'texture-extras.json'), 'utf8'));
+    const installed = JSON.parse(fs.readFileSync(path.join(textureExtrasDirectory(root), '.release'), 'utf8'));
+    return typeof pinned.md5 === 'string' && /^[0-9a-f]{32}$/.test(pinned.md5) && installed.md5 === pinned.md5;
+  } catch (_) { return false; }
+}
+
+// Extras to download for these settings: HD textures on, a port that knows
+// them, and not the pinned release installed.
+function textureExtrasWanted(root, settings) {
+  return Boolean(settings.textures) && textureExtrasSupported(root) && !textureExtrasInstalled(root);
+}
+
 function cutscenePackSupported(root) {
   return ['install_cutscenes.py', 'cutscene-release.json'].some(file =>
     fs.existsSync(path.join(root, 'tools', 'media', file)));
@@ -295,9 +319,10 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
     ? path.join(process.resourcesPath, 'scripts', 'texture-progress.py')
     : path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
   if (platform !== 'win32') {
-    const file = action === 'python' || action === 'textures' || action === 'cutscenes' ? 'python3' : path.join(root, `${action}.sh`);
+    const file = ['python', 'textures', 'texture-extras', 'cutscenes'].includes(action) ? 'python3' : path.join(root, `${action}.sh`);
     const commandArgs = action === 'python' ? ['tools/mods/get.py', 'eclipse', '--iso', ...args]
       : action === 'textures' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py')]
+        : action === 'texture-extras' ? [textureProgress, path.join(root, 'tools', 'mods', 'get.py'), 'extras', '--if-outdated']
         : action === 'cutscenes' ? ['tools/media/install_cutscenes.py', '--iso', ...args] : args;
     return { command: file, args: commandArgs, cwd: root, env: environment };
   }
@@ -310,12 +335,14 @@ function commandFor(root, action, args = [], platform = process.platform, enviro
       ? 'cd "$(cygpath -u "$1")" && python tools/media/install_cutscenes.py --iso "$(cygpath -u "$2")"'
     : action === 'textures'
       ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py'
+    : action === 'texture-extras'
+      ? 'cd "$(cygpath -u "$1")" && python "$(cygpath -u "$2")" tools/mods/get.py extras --if-outdated'
     : action === 'clean'
       ? 'cd "$(cygpath -u "$1")" && ./clean.sh "${@:2}"'
       : `cd "$(cygpath -u "$1")" && ./${action}.sh "$(cygpath -u "$2")"`;
   return {
     command: bash,
-    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' ? [textureProgress] : args)], cwd: root,
+    args: ['-c', script, 'sms-launcher', root, ...(action === 'textures' || action === 'texture-extras' ? [textureProgress] : args)], cwd: root,
     env: { ...environment, MSYSTEM: environment.SMS_ARCH === '32' && !environment.SMS_WINDOWS_32_CROSS ? 'MINGW32' : 'MINGW64', CHERE_INVOKING: '1',
       PATH: environment.SMS_WINDOWS_32_CROSS ? environment.PATH : [path.join(msys, environment.SMS_ARCH === '32' ? 'mingw32' : 'mingw64', 'bin'),
         path.join(msys, 'usr', 'bin'), environment.PATH || ''].join(path.delimiter) }
@@ -363,5 +390,6 @@ function gameRunCommand(root, settings, disc, platform = process.platform, envir
 function eclipseRunCommand(...args) { return gameRunCommand(...args); }
 
 module.exports = { PORT_URL, ECLIPSE_ISO, platformInfo, isPort, validateRom, normalizeSettings, savedSettings,
-  texturePackDirectory, texturePackInstalled, cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
+  texturePackDirectory, texturePackInstalled, textureExtrasDirectory, textureExtrasSupported, textureExtrasInstalled, textureExtrasWanted,
+  cutscenePackDirectory, cutscenePackInstalled, cutscenePackSupported, cutscenePackRequirements, wantsCutscenes, hdVisualsInstalled, buildEnvironment, gameDisc, binaryPath,
   commandFor, eclipseBuildCommand, eclipseRunCommand, playableInstall };

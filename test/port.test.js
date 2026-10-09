@@ -242,6 +242,39 @@ test('recognizes an installed texture pack and points the game at its folder', (
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('texture extras are downloaded again only when the port pins another release', t => {
+  const root = temporary(); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const on = port.normalizeSettings({ textures: true }), off = port.normalizeSettings({ textures: false });
+  const pin = md5 => {
+    fs.mkdirSync(path.join(root, 'tools', 'mods'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'tools', 'mods', 'texture-extras.json'), JSON.stringify({ md5 }));
+  };
+  const record = md5 => {
+    fs.mkdirSync(port.textureExtrasDirectory(root), { recursive: true });
+    fs.writeFileSync(path.join(port.textureExtrasDirectory(root), '.release'), JSON.stringify({ md5 }));
+  };
+  // An older port without the extras: nothing to download, HD setup unchanged.
+  assert.equal(port.textureExtrasSupported(root), false);
+  assert.equal(port.textureExtrasWanted(root, on), false);
+  pin('9352b8c1462182ca1a5493eef4062f1e');
+  assert.equal(port.textureExtrasWanted(root, on), true);   // existing UHD-only install
+  assert.equal(port.textureExtrasWanted(root, off), false); // HD textures off
+  record('9352b8c1462182ca1a5493eef4062f1e');
+  assert.equal(port.textureExtrasInstalled(root), true);
+  assert.equal(port.textureExtrasWanted(root, on), false);
+  pin('0123456789abcdef0123456789abcdef');                   // a newer release pinned
+  assert.equal(port.textureExtrasWanted(root, on), true);
+  fs.writeFileSync(path.join(port.textureExtrasDirectory(root), '.release'), 'not json');
+  assert.equal(port.textureExtrasWanted(root, on), true);
+  // The extras never hold up HD setup or play: they are not part of hdVisualsInstalled.
+  fs.writeFileSync(path.join(port.texturePackDirectory(root), 'tex1_existing.png'), 'texture');
+  assert.equal(port.hdVisualsInstalled(root, on), true);
+  const progressScript = path.resolve(__dirname, '..', 'scripts', 'texture-progress.py');
+  for (const platform of ['linux', 'darwin'])
+    assert.deepEqual(port.commandFor(root, 'texture-extras', [], platform).args,
+      [progressScript, path.join(root, 'tools', 'mods', 'get.py'), 'extras', '--if-outdated']);
+});
+
 test('Eclipse builder uses its own CMake tree without bundling the patched disc', () => {
   if (process.platform !== 'linux') return;
   const dir = temporary();
@@ -302,6 +335,9 @@ test('Windows command passes an image path as data to MSYS2 Bash', () => {
     assert.match(textures.args[1], /python "\$\(cygpath -u "\$2"\)" tools\/mods\/get\.py/);
     assert.equal(textures.args[3], 'C:\\port');
     assert.equal(textures.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
+    const extras = port.commandFor('C:\\port', 'texture-extras', [], 'win32', { PATH: 'C:\\Windows', MSYS2_ROOT: dir });
+    assert.match(extras.args[1], /tools\/mods\/get\.py extras --if-outdated$/);
+    assert.equal(extras.args[4], path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'));
   } finally {
     if (old === undefined) delete process.env.MSYS2_ROOT;
     else process.env.MSYS2_ROOT = old;

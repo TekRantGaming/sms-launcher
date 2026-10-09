@@ -387,6 +387,21 @@ async function installEclipse(root = requireRepo()) {
   return launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install Eclipse from your disc');
 }
 
+// The texture extras' pinned release, downloaded on its own (not the UHD pack
+// again) when it is missing or a newer one is pinned. They only add to the UHD
+// pack, so a failed download is logged and never stops setup or play.
+async function updateTextureExtras(root, settings) {
+  if (!port.textureExtrasWanted(root, settings)) return;
+  try {
+    await ensureBuildTools();
+    const cmd = port.commandFor(root, 'texture-extras', [], process.platform, toolEnv());
+    await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install HD texture extras');
+    if (!port.textureExtrasInstalled(root)) throw new Error('the installer finished without them');
+  } catch (error) {
+    log(`HD texture extras were not updated (${error.message}); the game plays without them and setup tries again next time.`);
+  }
+}
+
 async function installTextures(root = requireRepo()) {
   await ensureBuildTools();
   if (config.settings.textures && !port.texturePackInstalled(root)) {
@@ -394,6 +409,7 @@ async function installTextures(root = requireRepo()) {
     await launch(cmd.command, cmd.args, { cwd: cmd.cwd, env: cmd.env }, 'Install UHD textures');
     if (!port.texturePackInstalled(root)) throw new Error('Texture installer finished without a usable texture pack.');
   } else if (config.settings.textures) log('HD textures are already installed.');
+  await updateTextureExtras(root, config.settings);
   if (port.wantsCutscenes(config.settings) && port.cutscenePackSupported(root) && !port.cutscenePackInstalled(root)) {
     const rom = port.validateRom(config.rom);
     const cmd = port.commandFor(root, 'cutscenes', [rom], process.platform, toolEnv());
@@ -428,6 +444,7 @@ async function build(forceFresh = false) {
     game.carryUserFiles(original, root);
   }
   if (!port.hdVisualsInstalled(root, settings)) await installTextures(root);
+  else await updateTextureExtras(root, settings);
   if (settings.eclipse && !fs.existsSync(path.join(root, port.ECLIPSE_ISO))) await installEclipse(root);
   const disc = port.gameDisc(root, rom, settings.eclipse);
   const env = toolEnv(port.buildEnvironment(settings, disc, root));
@@ -456,6 +473,7 @@ async function setupGame() {
   port.validateRom(config.rom);
   if (!game.isCurrent(config.repo, config.settings, currentSource())) await build();
   else if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
+  else await updateTextureExtras(config.repo, config.settings);
   return state();
 }
 
@@ -557,6 +575,7 @@ async function launchGame() {
   port.validateRom(config.rom);
   if (!binaryReady() || (config.settings.autoUpdate && !game.isCurrent(config.repo, config.settings, currentSource()))) await build();
   if (!port.hdVisualsInstalled(config.repo, config.settings)) await installTextures();
+  else await updateTextureExtras(config.repo, config.settings);
   return play();
 }
 

@@ -34,7 +34,7 @@ test('texture progress reaches the launcher over pipes while the installer keeps
     t.after(() => new Promise(resolve => server.close(resolve)));
     const installer = path.join(root, 'existing installer.py');
     fs.writeFileSync(installer, `import hashlib, os, sys, urllib.request
-assert sys.argv[1:] == ['textures']
+assert sys.argv[1:] == os.environ.get('TEST_TEXTURE_ARGS', 'textures').split()
 with urllib.request.urlopen(os.environ['TEST_TEXTURE_URL']) as response, open('archive.part', 'wb') as target:
     while True:
         chunk = response.read(65536)
@@ -50,9 +50,9 @@ with open('installed.flag', 'w') as installed:
     installed.write(checksum)
 print('Installed 1 textures in mods/textures/GMS.', flush=True)
 `);
-    const run = (route, expected = checksum) => promisify(execFile)(python,
-      [path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), installer],
-      { cwd: root, timeout: 15000, env: { ...process.env,
+    const run = (route, expected = checksum, args = []) => promisify(execFile)(python,
+      [path.resolve(__dirname, '..', 'scripts', 'texture-progress.py'), installer, ...args],
+      { cwd: root, timeout: 15000, env: { ...process.env, TEST_TEXTURE_ARGS: args.join(' ') || 'textures',
         TEST_TEXTURE_URL: `http://127.0.0.1:${server.address().port}/${route}`, TEST_TEXTURE_CHECKSUM: expected } });
 
     const known = await run('known');
@@ -79,4 +79,8 @@ print('Installed 1 textures in mods/textures/GMS.', flush=True)
       return true;
     });
     assert.equal(fs.existsSync(path.join(root, 'installed.flag')), false);
+    // The texture extras run the same installer with their own arguments.
+    const extras = await run('known', checksum, ['extras', '--if-outdated']);
+    assert.match(extras.stdout, /Texture download: \d+\/\d+ bytes/);
+    assert.equal(fs.readFileSync(path.join(root, 'installed.flag'), 'utf8'), checksum);
   });
